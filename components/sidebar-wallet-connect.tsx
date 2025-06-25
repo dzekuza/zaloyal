@@ -122,44 +122,11 @@ export default function SidebarWalletConnect() {
         <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
           <DialogHeader>
             <DialogTitle>Authentication</DialogTitle>
-            <DialogDescription className="text-gray-300">Choose your preferred authentication method</DialogDescription>
+            <DialogDescription className="text-gray-300">Sign in or register with your email</DialogDescription>
           </DialogHeader>
 
-          <Tabs defaultValue="wallet" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 bg-white/10">
-              <TabsTrigger value="wallet" className="data-[state=active]:bg-white/20 text-white">
-                <Wallet className="w-4 h-4 mr-2" />
-                Wallet
-              </TabsTrigger>
-              <TabsTrigger value="email" className="data-[state=active]:bg-white/20 text-white">
-                <Mail className="w-4 h-4 mr-2" />
-                Email
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="wallet" className="space-y-4">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <Wallet className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-2">Connect Your Wallet</h3>
-                  <p className="text-gray-400 text-sm">Connect your Web3 wallet to start participating in quests</p>
-                </div>
-                <Button
-                  onClick={connectWallet}
-                  disabled={isConnecting}
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
-                >
-                  {isConnecting ? "Connecting..." : "Connect MetaMask"}
-                </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="email" className="space-y-4">
-              <EmailAuth onSuccess={handleEmailAuthSuccess} onError={handleEmailAuthError} />
-            </TabsContent>
-          </Tabs>
+          {/* Only show email authentication */}
+          <EmailAuth onSuccess={handleEmailAuthSuccess} onError={handleEmailAuthError} />
 
           {authError && (
             <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">

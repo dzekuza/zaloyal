@@ -13,16 +13,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import type { Database } from "@/lib/supabase"
 
-type Project = Database["public"]["Tables"]["projects"]["Row"] & {
-  quest_count?: number
-  total_participants?: number
-  quests?: Array<Database["public"]["Tables"]["quests"]["Row"]>
-}
+type Project = {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string;
+  website_url?: string | null;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
+  contract_address?: string | null;
+  blockchain_network?: string | null;
+  twitter_url?: string | null;
+  discord_url?: string | null;
+  github_url?: string | null;
+  category?: string | null;
+  verified?: boolean | null;
+  created_at: string;
+  quest_count?: number;
+  total_participants?: number;
+  additional_info?: string | null;
+};
 
-type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
-  task_count?: number
-  participants?: number
-}
+type Quest = {
+  id: string;
+  project_id: string;
+  creator_id: string;
+  title: string;
+  description: string;
+  image_url?: string | null;
+  total_xp: number;
+  status: string;
+  featured?: boolean | null;
+  time_limit_days?: number | null;
+  created_at: string;
+  task_count?: number;
+  participants?: number;
+};
 
 export default function ProjectDetail() {
   const params = useParams()
@@ -32,12 +58,14 @@ export default function ProjectDetail() {
   const [quests, setQuests] = useState<Quest[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("overview")
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
     if (projectId) {
       fetchProject()
       fetchQuests()
     }
+    fetchUser()
   }, [projectId])
 
   const fetchProject = async () => {
@@ -120,6 +148,13 @@ export default function ProjectDetail() {
     }
   }
 
+  const fetchUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUserId(user?.id || null);
+  };
+
+  const isOwner = currentUserId && project && project.owner_id === currentUserId;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -179,6 +214,11 @@ export default function ProjectDetail() {
                   {project.category && (
                     <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">{project.category}</Badge>
                   )}
+                  {isOwner && (
+                    <Link href={`/project/${project.id}/edit`}>
+                      <Button size="sm" className="ml-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white">Edit Project</Button>
+                    </Link>
+                  )}
                 </div>
                 <p className="text-gray-300 text-lg max-w-2xl">{project.description}</p>
               </div>
@@ -204,7 +244,7 @@ export default function ProjectDetail() {
               </div>
               <div className="flex items-center gap-2 text-green-400">
                 <Zap className="w-5 h-5" />
-                <span className="font-semibold">{project.total_xp_distributed || 0}</span>
+                <span className="font-semibold">{(project as any).total_xp_distributed || 0}</span>
                 <span className="text-gray-400">XP Distributed</span>
               </div>
             </div>
@@ -214,7 +254,7 @@ export default function ProjectDetail() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(project.website_url, "_blank")}
+                  onClick={() => window.open(project.website_url || '', "_blank")}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 >
                   <Globe className="w-4 h-4" />
@@ -224,7 +264,7 @@ export default function ProjectDetail() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(project.twitter_url, "_blank")}
+                  onClick={() => window.open(project.twitter_url || '', "_blank")}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 >
                   <Twitter className="w-4 h-4" />
@@ -234,7 +274,7 @@ export default function ProjectDetail() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(project.discord_url, "_blank")}
+                  onClick={() => window.open(project.discord_url || '', "_blank")}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 >
                   <MessageSquare className="w-4 h-4" />
@@ -244,7 +284,7 @@ export default function ProjectDetail() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(project.github_url, "_blank")}
+                  onClick={() => window.open(project.github_url || '', "_blank")}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 >
                   <Github className="w-4 h-4" />
@@ -327,6 +367,15 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="quests" className="space-y-6">
+            {isOwner && (
+              <div className="mb-6 text-right">
+                <Link href={`/create?projectId=${project.id}`}>
+                  <Button className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                    + Create Quest
+                  </Button>
+                </Link>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {quests.map((quest) => (
                 <QuestCard key={quest.id} quest={quest} />
@@ -382,7 +431,7 @@ export default function ProjectDetail() {
                     {project.website_url && (
                       <Button
                         variant="outline"
-                        onClick={() => window.open(project.website_url, "_blank")}
+                        onClick={() => window.open(project.website_url || '', "_blank")}
                         className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                       >
                         <Globe className="w-4 h-4 mr-2" />
@@ -392,7 +441,7 @@ export default function ProjectDetail() {
                     {project.twitter_url && (
                       <Button
                         variant="outline"
-                        onClick={() => window.open(project.twitter_url, "_blank")}
+                        onClick={() => window.open(project.twitter_url || '', "_blank")}
                         className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                       >
                         <Twitter className="w-4 h-4 mr-2" />
@@ -402,7 +451,7 @@ export default function ProjectDetail() {
                     {project.discord_url && (
                       <Button
                         variant="outline"
-                        onClick={() => window.open(project.discord_url, "_blank")}
+                        onClick={() => window.open(project.discord_url || '', "_blank")}
                         className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                       >
                         <MessageSquare className="w-4 h-4 mr-2" />
@@ -412,7 +461,7 @@ export default function ProjectDetail() {
                     {project.github_url && (
                       <Button
                         variant="outline"
-                        onClick={() => window.open(project.github_url, "_blank")}
+                        onClick={() => window.open(project.github_url || '', "_blank")}
                         className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                       >
                         <Github className="w-4 h-4 mr-2" />

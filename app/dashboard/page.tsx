@@ -1,130 +1,118 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Trophy, Zap, Users, Star, Target, Clock, CheckCircle } from "lucide-react"
-
-// Mock user data
-const mockUser = {
-  walletAddress: "0x742d35Cc6634C0532925a3b8D4C0532925a3b8D4",
-  username: "CryptoExplorer",
-  avatar: "/placeholder.svg?height=80&width=80",
-  totalXP: 8750,
-  completedQuests: 12,
-  rank: 47,
-  level: 15,
-  nextLevelXP: 10000,
-  badges: [
-    { id: 1, name: "DeFi Master", icon: "🏆", rarity: "legendary" },
-    { id: 2, name: "NFT Collector", icon: "🎨", rarity: "epic" },
-    { id: 3, name: "Social Butterfly", icon: "🦋", rarity: "rare" },
-    { id: 4, name: "Early Adopter", icon: "⚡", rarity: "common" },
-  ],
-}
-
-const mockActiveQuests = [
-  {
-    id: "1",
-    title: "DeFi Master Challenge",
-    progress: 75,
-    totalTasks: 8,
-    completedTasks: 6,
-    xpEarned: 1875,
-    totalXP: 2500,
-    timeLeft: "5 days",
-    status: "active",
-  },
-  {
-    id: "2",
-    title: "NFT Collection Quest",
-    progress: 33,
-    totalTasks: 6,
-    completedTasks: 2,
-    xpEarned: 600,
-    totalXP: 1800,
-    timeLeft: "12 days",
-    status: "active",
-  },
-  {
-    id: "3",
-    title: "Web3 Social Media Mastery",
-    progress: 90,
-    totalTasks: 10,
-    completedTasks: 9,
-    xpEarned: 1350,
-    totalXP: 1500,
-    timeLeft: "15 days",
-    status: "active",
-  },
-]
-
-const mockCompletedQuests = [
-  {
-    id: "4",
-    title: "Crypto Basics Bootcamp",
-    xpEarned: 1200,
-    completedDate: "2024-01-15",
-    rank: 23,
-  },
-  {
-    id: "5",
-    title: "Trading Fundamentals",
-    xpEarned: 1800,
-    completedDate: "2024-01-10",
-    rank: 12,
-  },
-  {
-    id: "6",
-    title: "Wallet Security Challenge",
-    xpEarned: 800,
-    completedDate: "2024-01-05",
-    rank: 45,
-  },
-]
-
-const mockAchievements = [
-  {
-    id: 1,
-    title: "First Quest Complete",
-    description: "Complete your first quest",
-    icon: Target,
-    unlocked: true,
-    unlockedDate: "2024-01-01",
-  },
-  {
-    id: 2,
-    title: "XP Collector",
-    description: "Earn 5,000 XP",
-    icon: Zap,
-    unlocked: true,
-    unlockedDate: "2024-01-10",
-  },
-  {
-    id: 3,
-    title: "Social Master",
-    description: "Complete 10 social tasks",
-    icon: Users,
-    unlocked: true,
-    unlockedDate: "2024-01-12",
-  },
-  {
-    id: 4,
-    title: "DeFi Expert",
-    description: "Complete 5 DeFi quests",
-    icon: Trophy,
-    unlocked: false,
-    progress: 80,
-  },
-]
+import { supabase } from "@/lib/supabase"
+import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview")
+  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
+  const [emailUser, setEmailUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [activeQuests, setActiveQuests] = useState<any[]>([])
+  const [completedQuests, setCompletedQuests] = useState<any[]>([])
+  const [badges, setBadges] = useState<any[]>([])
+  const [achievements, setAchievements] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const levelProgress = (mockUser.totalXP / mockUser.nextLevelXP) * 100
+  useEffect(() => {
+    // Wallet user
+    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
+      setWalletUser(user)
+    })
+    // Email user
+    const checkEmailAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+        setEmailUser({ ...user, profile })
+      }
+    }
+    checkEmailAuth()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        checkEmailAuth()
+      } else if (event === "SIGNED_OUT") {
+        setEmailUser(null)
+      }
+    })
+    return () => {
+      unsubscribeWallet()
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      let userId: string | null = null
+      let userProfile: any = null
+      if (walletUser) {
+        // Get user by wallet address
+        const { data: userData } = await supabase
+          .from("users")
+          .select("*")
+          .eq("wallet_address", walletUser.walletAddress.toLowerCase())
+          .single()
+        userId = userData?.id
+        userProfile = userData
+      } else if (emailUser?.profile) {
+        userId = emailUser.profile.id
+        userProfile = emailUser.profile
+      }
+      setProfile(userProfile)
+      if (!userId) {
+        setLoading(false)
+        return
+      }
+      // Fetch active quests
+      const { data: activeProgress } = await supabase
+        .from("user_quest_progress")
+        .select(`*, quests:quest_id(*), total_xp_earned, completion_percentage`)
+        .eq("user_id", userId)
+        .eq("status", "active")
+      // Fetch completed quests
+      const { data: completedProgress } = await supabase
+        .from("user_quest_progress")
+        .select(`*, quests:quest_id(*), total_xp_earned, completed_at, completion_percentage`)
+        .eq("user_id", userId)
+        .eq("status", "completed")
+        .order("completed_at", { ascending: false })
+      // Fetch badges
+      const { data: badgeData } = await supabase
+        .from("user_badges")
+        .select("*")
+        .eq("user_id", userId)
+        .order("earned_at", { ascending: false })
+      setActiveQuests(activeProgress || [])
+      setCompletedQuests(completedProgress || [])
+      setBadges(badgeData || [])
+      // Achievements: treat badges as achievements for now
+      setAchievements(badgeData || [])
+      setLoading(false)
+    }
+    fetchData()
+  }, [walletUser, emailUser])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading dashboard...</div>
+      </div>
+    )
+  }
+
+  // Level progress calculation
+  const levelProgress = profile && profile.total_xp && profile.level
+    ? ((profile.total_xp % 1000) / 1000) * 100
+    : 0
+  const nextLevelXP = profile ? ((profile.level || 1) * 1000) : 1000
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
@@ -149,29 +137,29 @@ export default function Dashboard() {
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <img
-                    src={mockUser.avatar || "/placeholder.svg"}
+                    src={profile?.avatar || "/placeholder.svg"}
                     alt="Profile"
                     className="w-20 h-20 rounded-full border-2 border-white/20"
                   />
                   <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
-                    L{mockUser.level}
+                    L{profile?.level}
                   </div>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">{mockUser.username}</h1>
-                  <p className="text-gray-400 text-sm font-mono">{mockUser.walletAddress}</p>
+                  <h1 className="text-2xl font-bold text-white">{profile?.username}</h1>
+                  <p className="text-gray-400 text-sm font-mono">{profile?.walletAddress}</p>
                   <div className="flex items-center gap-4 mt-2 text-sm">
                     <span className="flex items-center gap-1 text-yellow-400">
                       <Zap className="w-4 h-4" />
-                      {mockUser.totalXP} XP
+                      {profile?.total_xp} XP
                     </span>
                     <span className="flex items-center gap-1 text-green-400">
                       <Trophy className="w-4 h-4" />
-                      Rank #{mockUser.rank}
+                      Rank #{profile?.rank}
                     </span>
                     <span className="flex items-center gap-1 text-blue-400">
                       <CheckCircle className="w-4 h-4" />
-                      {mockUser.completedQuests} Quests
+                      {profile?.completedQuests} Quests
                     </span>
                   </div>
                 </div>
@@ -182,12 +170,12 @@ export default function Dashboard() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Level Progress</span>
                     <span className="text-white">
-                      {mockUser.totalXP}/{mockUser.nextLevelXP} XP
+                      {profile?.total_xp}/{nextLevelXP} XP
                     </span>
                   </div>
                   <Progress value={levelProgress} className="h-2" />
                   <p className="text-xs text-gray-400">
-                    {mockUser.nextLevelXP - mockUser.totalXP} XP to Level {mockUser.level + 1}
+                    {nextLevelXP - profile?.total_xp} XP to Level {profile?.level + 1}
                   </p>
                 </div>
               </div>
@@ -220,7 +208,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-blue-200 text-sm">Total XP</p>
-                      <p className="text-2xl font-bold text-white">{mockUser.totalXP}</p>
+                      <p className="text-2xl font-bold text-white">{profile?.total_xp}</p>
                     </div>
                     <Zap className="w-8 h-8 text-blue-400" />
                   </div>
@@ -232,7 +220,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-green-200 text-sm">Global Rank</p>
-                      <p className="text-2xl font-bold text-white">#{mockUser.rank}</p>
+                      <p className="text-2xl font-bold text-white">#{profile?.rank}</p>
                     </div>
                     <Trophy className="w-8 h-8 text-green-400" />
                   </div>
@@ -244,7 +232,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-purple-200 text-sm">Completed</p>
-                      <p className="text-2xl font-bold text-white">{mockUser.completedQuests}</p>
+                      <p className="text-2xl font-bold text-white">{profile?.completedQuests}</p>
                     </div>
                     <CheckCircle className="w-8 h-8 text-purple-400" />
                   </div>
@@ -256,7 +244,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-orange-200 text-sm">Current Level</p>
-                      <p className="text-2xl font-bold text-white">{mockUser.level}</p>
+                      <p className="text-2xl font-bold text-white">{profile?.level}</p>
                     </div>
                     <Star className="w-8 h-8 text-orange-400" />
                   </div>
@@ -272,7 +260,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {mockUser.badges.map((badge) => (
+                  {badges.map((badge) => (
                     <div key={badge.id} className="text-center">
                       <div
                         className={`w-16 h-16 mx-auto mb-2 rounded-full bg-gradient-to-r ${getRarityColor(badge.rarity)} flex items-center justify-center text-2xl`}
@@ -295,7 +283,7 @@ export default function Dashboard() {
 
           <TabsContent value="quests" className="space-y-6">
             <div className="grid gap-6">
-              {mockActiveQuests.map((quest) => (
+              {activeQuests.map((quest) => (
                 <Card
                   key={quest.id}
                   className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm"
@@ -311,7 +299,7 @@ export default function Dashboard() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Zap className="w-4 h-4 text-yellow-400" />
-                            {quest.xpEarned}/{quest.totalXP} XP
+                            {quest.total_xp_earned}/{quest.totalXP} XP
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
@@ -321,9 +309,9 @@ export default function Dashboard() {
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-400">Progress</span>
-                            <span className="text-white">{quest.progress}%</span>
+                            <span className="text-white">{quest.completion_percentage}%</span>
                           </div>
-                          <Progress value={quest.progress} className="h-2" />
+                          <Progress value={quest.completion_percentage} className="h-2" />
                         </div>
                       </div>
                       <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
@@ -338,7 +326,7 @@ export default function Dashboard() {
 
           <TabsContent value="achievements" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {mockAchievements.map((achievement) => {
+              {achievements.map((achievement) => {
                 const IconComponent = achievement.icon
                 return (
                   <Card
@@ -354,21 +342,13 @@ export default function Dashboard() {
                         </div>
                         <div className="flex-1">
                           <h3 className={`font-semibold mb-1 ${achievement.unlocked ? "text-white" : "text-gray-400"}`}>
-                            {achievement.title}
+                            {achievement.name}
                           </h3>
                           <p className="text-gray-400 text-sm mb-2">{achievement.description}</p>
                           {achievement.unlocked ? (
                             <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
                               Unlocked {achievement.unlockedDate}
                             </Badge>
-                          ) : achievement.progress ? (
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-gray-400">Progress</span>
-                                <span className="text-white">{achievement.progress}%</span>
-                              </div>
-                              <Progress value={achievement.progress} className="h-1" />
-                            </div>
                           ) : (
                             <Badge variant="outline" className="text-gray-400 border-gray-500/30">
                               Locked
@@ -391,14 +371,14 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockCompletedQuests.map((quest) => (
+                  {completedQuests.map((quest) => (
                     <div key={quest.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
                       <div>
                         <h3 className="text-white font-semibold">{quest.title}</h3>
-                        <p className="text-gray-400 text-sm">Completed on {quest.completedDate}</p>
+                        <p className="text-gray-400 text-sm">Completed on {quest.completed_at}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-yellow-400 font-semibold">+{quest.xpEarned} XP</p>
+                        <p className="text-yellow-400 font-semibold">+{quest.total_xp_earned} XP</p>
                         <p className="text-gray-400 text-sm">Rank #{quest.rank}</p>
                       </div>
                     </div>

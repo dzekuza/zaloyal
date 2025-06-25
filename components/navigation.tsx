@@ -82,15 +82,15 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
+          {/* <Link href="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-white">Web3Quest</span>
-          </Link>
+          </Link> */}
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          {/* <div className="hidden md:flex items-center space-x-8">
             <Link href="/" className="text-gray-300 hover:text-white transition-colors flex items-center gap-2">
               <Home className="w-4 h-4" />
               Projects
@@ -109,10 +109,10 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
               <Trophy className="w-4 h-4" />
               Leaderboard
             </Link>
-          </div>
+          </div> */}
 
           {/* User Section */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 justify-end w-full">
             {currentUser ? (
               <>
                 {/* User Stats - Desktop */}
@@ -137,7 +137,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={user?.avatar || emailUser?.profile?.avatar_url} />
+                        <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
                         <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
                           {displayName.charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -182,26 +182,25 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                     </div>
                     <DropdownMenuSeparator className="lg:hidden bg-slate-700" />
 
-                    <DropdownMenuItem className="text-white hover:bg-slate-700">
-                      <User className="w-4 h-4 mr-2" />
-                      Profile
+                    <DropdownMenuItem asChild className="text-white hover:bg-slate-700">
+                      <Link href="/profile">
+                        <User className="w-4 h-4 mr-2" />
+                        Profile
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="text-white hover:bg-slate-700">
                       <Settings className="w-4 h-4 mr-2" />
                       Settings
                     </DropdownMenuItem>
 
-                    {(user?.role === "participant" || emailUser?.profile?.role === "participant") && (
-                      <>
-                        <DropdownMenuSeparator className="bg-slate-700" />
-                        <DropdownMenuItem asChild className="text-white hover:bg-slate-700">
-                          <Link href="/register-project">
-                            <Building2 className="w-4 h-4 mr-2" />
-                            Register Project
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
+                    {/* Always show Register Project link for authenticated users */}
+                    <DropdownMenuSeparator className="bg-slate-700" />
+                    <DropdownMenuItem asChild className="text-white hover:bg-slate-700">
+                      <Link href="/register-project">
+                        <Building2 className="w-4 h-4 mr-2" />
+                        Register Project
+                      </Link>
+                    </DropdownMenuItem>
 
                     <DropdownMenuSeparator className="bg-slate-700" />
                     <DropdownMenuItem

@@ -17,6 +17,7 @@ interface ImageUploadProps {
   className?: string
   maxSizeMB?: number
   acceptedTypes?: string[]
+  label?: string
 }
 
 export default function ImageUpload({
@@ -27,6 +28,7 @@ export default function ImageUpload({
   className = "",
   maxSizeMB = 5,
   acceptedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"],
+  label = "Upload Quest Image",
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -189,7 +191,7 @@ export default function ImageUpload({
                     <ImageIcon className="w-8 h-8 text-white" />
                   </div>
                   <div>
-                    <p className="text-white font-medium mb-2">Upload Quest Image</p>
+                    <p className="text-white font-medium mb-2">{label}</p>
                     <p className="text-gray-400 text-sm mb-4">Drag and drop an image here, or click to browse</p>
                     <div className="text-xs text-gray-500">
                       <p>Supported formats: JPEG, PNG, GIF, WebP</p>

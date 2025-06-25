@@ -82,7 +82,8 @@ const steps = [
 ]
 
 export default function RegisterProject() {
-  const [user, setUser] = useState<WalletUser | null>(null)
+  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
+  const [emailUser, setEmailUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -104,13 +105,26 @@ export default function RegisterProject() {
     additionalInfo: "",
   })
 
+  const currentUser = walletUser || emailUser
+
   useEffect(() => {
-    const unsubscribe = walletAuth.onAuthStateChange((user) => {
-      setUser(user)
+    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
+      setWalletUser(user)
       setLoading(false)
     })
 
-    return unsubscribe
+    // Check for email user
+    const checkEmailAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+        setEmailUser({ ...user, profile })
+      }
+      setLoading(false)
+    }
+    checkEmailAuth()
+
+    return () => unsubscribeWallet()
   }, [])
 
   const handleInputChange = (field: keyof ProjectForm, value: string) => {
@@ -145,31 +159,70 @@ export default function RegisterProject() {
   }
 
   const handleSubmit = async () => {
-    if (!user) {
-      alert("Please connect your wallet first")
-      return
+    // Ensure user is authenticated (wallet or email)
+    if (!currentUser) {
+      alert("Please connect your wallet or sign in with email first");
+      return;
+    }
+
+    // Ensure Supabase Auth session is present
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      alert("You must be signed in with Supabase Auth to submit a project application.");
+      setSubmitting(false);
+      return;
     }
 
     setSubmitting(true)
 
     try {
-      // Get user ID from database
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("wallet_address", user.walletAddress.toLowerCase())
-        .single()
+      let userId: string | null = null;
+      let walletAddress: string | null = null;
+      let email: string | null = null;
+      let userData = null;
+      let userError = null;
 
-      if (userError || !userData) {
-        throw new Error("User not found")
+      if (walletUser) {
+        // Wallet user: get wallet address from JWT or walletUser
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        walletAddress = authUser?.user_metadata?.wallet_address || walletUser.walletAddress;
+        if (walletAddress) {
+          // Query with both sides lowercased
+          const result = await supabase
+            .from("users")
+            .select("id")
+            .eq("wallet_address", walletAddress.toLowerCase())
+            .single();
+          userData = result.data;
+          userError = result.error;
+        }
       }
+      if (!userData && emailUser) {
+        // Email user: get user ID from database using email (case-insensitive)
+        email = emailUser.email;
+        if (email) {
+          const result = await supabase
+            .from("users")
+            .select("id")
+            .eq("email", email.toLowerCase())
+            .single();
+          userData = result.data;
+          userError = result.error;
+        }
+      }
+      if (!userData || userError) {
+        throw new Error("User not found");
+      }
+      userId = userData.id;
 
-      // Submit project application
-      const { error: applicationError } = await supabase.from("project_applications").insert({
-        user_id: userData.id,
-        project_name: formData.name,
-        project_description: formData.description,
+      // Submit project directly to projects table
+      const { error: projectError } = await supabase.from("projects").insert({
+        owner_id: userId,
+        name: formData.name,
+        description: formData.description,
         website_url: formData.websiteUrl,
+        logo_url: formData.logoUrl || null,
+        cover_image_url: formData.coverImageUrl || null,
         contract_address: formData.contractAddress,
         blockchain_network: formData.blockchainNetwork,
         twitter_url: formData.twitterUrl || null,
@@ -177,17 +230,27 @@ export default function RegisterProject() {
         telegram_url: formData.telegramUrl || null,
         github_url: formData.githubUrl || null,
         medium_url: formData.mediumUrl || null,
-        logo_url: formData.logoUrl || null,
-        cover_image_url: formData.coverImageUrl || null,
         category: formData.category,
-        additional_info: formData.additionalInfo || null,
+        status: 'approved', // Make project live immediately
       })
 
-      if (applicationError) {
-        throw applicationError
+      if (projectError) {
+        console.error('Project registration error:', projectError);
+        alert('Failed to submit project: ' + (projectError.message || JSON.stringify(projectError)));
+        throw projectError;
       }
 
       setSubmitted(true)
+
+      // Update user role to 'creator' if not already
+      const { data: userProfile, error: fetchProfileError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      if (!fetchProfileError && userProfile && userProfile.role !== 'creator') {
+        await supabase.from('users').update({ role: 'creator' }).eq('id', userId);
+      }
     } catch (error) {
       console.error("Project registration error:", error)
       alert("Failed to submit project application. Please try again.")
@@ -204,14 +267,14 @@ export default function RegisterProject() {
     )
   }
 
-  if (!user) {
+  if (!loading && !currentUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md">
           <div className="text-center">
             <Building2 className="w-16 h-16 mx-auto text-blue-400 mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-4">Connect Your Wallet</h2>
-            <p className="text-gray-300 mb-6">You need to connect your wallet to register a project</p>
+            <h2 className="text-2xl font-bold text-white mb-4">Connect Your Wallet or Sign In</h2>
+            <p className="text-gray-300 mb-6">You need to connect your wallet or sign in with email to register a project</p>
             <Link href="/">
               <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
                 Go Back

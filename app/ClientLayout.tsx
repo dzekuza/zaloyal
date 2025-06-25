@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Home, Inbox, Search, Settings, Wallet, Mail } from "lucide-react"
+import { Calendar, Home, Inbox, Search, Settings, Wallet, Mail, Users } from "lucide-react"
 import Navigation from "@/components/navigation"
 import EmailAuth from "@/components/email-auth"
 import { walletAuth } from "@/lib/wallet-auth"
@@ -35,6 +35,11 @@ const items = [
     title: "Home",
     url: "/",
     icon: Home,
+  },
+  {
+    title: "My Projects",
+    url: "/project",
+    icon: Users,
   },
   {
     title: "Dashboard",
@@ -147,44 +152,12 @@ export default function ClientLayout({
               <DialogHeader>
                 <DialogTitle>Authentication</DialogTitle>
                 <DialogDescription className="text-gray-300">
-                  Choose your preferred authentication method
+                  Sign in or register with your email
                 </DialogDescription>
               </DialogHeader>
 
-              <Tabs defaultValue="wallet" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-2 bg-white/10">
-                  <TabsTrigger value="wallet" className="data-[state=active]:bg-white/20 text-white">
-                    <Wallet className="w-4 h-4 mr-2" />
-                    Wallet
-                  </TabsTrigger>
-                  <TabsTrigger value="email" className="data-[state=active]:bg-white/20 text-white">
-                    <Mail className="w-4 h-4 mr-2" />
-                    Email
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="wallet" className="space-y-4">
-                  <div className="text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                      <Wallet className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-white font-semibold mb-2">Connect Your Wallet</h3>
-                      <p className="text-gray-400 text-sm">Connect your Web3 wallet to start participating in quests</p>
-                    </div>
-                    <button
-                      onClick={connectWallet}
-                      className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 px-4 py-2 rounded-md font-medium transition-colors"
-                    >
-                      Connect MetaMask
-                    </button>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="email" className="space-y-4">
-                  <EmailAuth onSuccess={handleEmailAuthSuccess} onError={handleEmailAuthError} />
-                </TabsContent>
-              </Tabs>
+              {/* Only show email authentication */}
+              <EmailAuth onSuccess={handleEmailAuthSuccess} onError={handleEmailAuthError} />
 
               {authError && (
                 <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">

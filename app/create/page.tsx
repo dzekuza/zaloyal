@@ -83,7 +83,8 @@ interface QuestForm {
 }
 
 export default function CreateQuest() {
-  const [user, setUser] = useState<WalletUser | null>(null)
+  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
+  const [emailUser, setEmailUser] = useState<any>(null)
   const [categories, setCategories] = useState<Database["public"]["Tables"]["quest_categories"]["Row"][]>([])
   const [questForm, setQuestForm] = useState<QuestForm>({
     title: "",
@@ -131,31 +132,59 @@ export default function CreateQuest() {
   ]
 
   useEffect(() => {
-    const unsubscribe = walletAuth.onAuthStateChange(async (user) => {
-      setUser(user)
+    // Wallet user
+    const unsubscribeWallet = walletAuth.onAuthStateChange(async (user) => {
+      setWalletUser(user)
       if (user) {
-        await fetchUserProjects(user)
+        await fetchUserProjects(user, null)
+      }
+    })
+    // Email user
+    const checkEmailAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+        setEmailUser({ ...user, profile })
+        if (profile) {
+          await fetchUserProjects(null, profile)
+        }
+      }
+    }
+    checkEmailAuth()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        checkEmailAuth()
+      } else if (event === "SIGNED_OUT") {
+        setEmailUser(null)
       }
     })
     fetchCategories()
-    return unsubscribe
+    return () => {
+      unsubscribeWallet()
+      subscription.unsubscribe()
+    }
   }, [])
 
-  const fetchUserProjects = async (user: WalletUser) => {
+  // Fetch projects for wallet or email user
+  const fetchUserProjects = async (walletUser: WalletUser | null, emailProfile: any | null) => {
     try {
-      const { data: userData } = await supabase
-        .from("users")
-        .select("id")
-        .eq("wallet_address", user.walletAddress.toLowerCase())
-        .single()
-
-      if (userData) {
+      let userId = null
+      if (walletUser) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("id")
+          .eq("wallet_address", walletUser.walletAddress.toLowerCase())
+          .single()
+        userId = userData?.id
+      } else if (emailProfile) {
+        userId = emailProfile.id
+      }
+      if (userId) {
         const { data: projects, error } = await supabase
           .from("projects")
           .select("*")
-          .eq("owner_id", userData.id)
+          .eq("owner_id", userId)
           .eq("status", "approved")
-
         if (error) throw error
         setUserProjects(projects || [])
       }
@@ -224,32 +253,34 @@ export default function CreateQuest() {
   }
 
   const handlePublish = async () => {
-    if (!user) {
-      alert("Please connect your wallet first")
+    const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
+    if (!userObj) {
+      alert("Please sign in first")
       return
     }
-
     if (!questForm.title || !questForm.description || questForm.tasks.length === 0) {
       alert("Please fill in all required fields and add at least one task")
       return
     }
-
     try {
       // Get user ID from database
-      // const { data: userData, error: userError } = await supabase
-      //   .from("users")
-      //   .select("id")
-      //   .eq("wallet_address", user.walletAddress.toLowerCase())
-      //   .single()
-
-      // if (userError || !userData) {
-      //   alert("User not found. Please reconnect your wallet.")
-      //   return
-      // }
-
+      let userId = null
+      if (walletUser) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("id")
+          .eq("wallet_address", walletUser.walletAddress.toLowerCase())
+          .single()
+        userId = userData?.id
+      } else if (emailUser?.profile) {
+        userId = emailUser.profile.id
+      }
+      if (!userId) {
+        alert("User not found. Please sign in again.")
+        return
+      }
       // Calculate total XP
       const totalXP = questForm.tasks.reduce((sum, task) => sum + task.xpReward, 0)
-
       // Create quest
       const { data: quest, error: questError } = await supabase
         .from("quests")
@@ -257,6 +288,7 @@ export default function CreateQuest() {
           title: questForm.title,
           description: questForm.description,
           project_id: selectedProjectId,
+          creator_id: userId,
           category_id: questForm.categoryId || null,
           image_url: questForm.imageUrl || null,
           total_xp: totalXP,
@@ -266,9 +298,7 @@ export default function CreateQuest() {
         })
         .select()
         .single()
-
       if (questError) throw questError
-
       // Create tasks
       const tasksToInsert = questForm.tasks.map((task, index) => ({
         quest_id: quest.id,
@@ -277,43 +307,28 @@ export default function CreateQuest() {
         task_type: task.type,
         xp_reward: task.xpReward,
         order_index: index,
-
-        // Social task fields
         social_action: task.socialAction || null,
         social_platform: task.socialPlatform || null,
         social_url: task.socialUrl || null,
         social_username: task.socialUsername || null,
         social_post_id: task.socialPostId || null,
-
-        // Download task fields
         download_url: task.downloadUrl || null,
         download_title: task.downloadTitle || null,
         download_description: task.downloadDescription || null,
-
-        // Form task fields
         form_url: task.formUrl || null,
         form_title: task.formTitle || null,
         form_description: task.formDescription || null,
-
-        // Visit task fields
         visit_url: task.visitUrl || null,
         visit_title: task.visitTitle || null,
         visit_description: task.visitDescription || null,
         visit_duration_seconds: task.visitDuration || null,
-
-        // Learn task fields
         learn_content: task.learnContent || null,
         learn_questions: task.learnQuestions || null,
         learn_passing_score: task.learnPassingScore || 80,
       }))
-
       const { error: tasksError } = await supabase.from("tasks").insert(tasksToInsert)
-
       if (tasksError) throw tasksError
-
       alert("Quest published successfully!")
-
-      // Reset form
       setQuestForm({
         title: "",
         description: "",
@@ -338,7 +353,7 @@ export default function CreateQuest() {
               <div>
                 <Label className="text-white">Platform</Label>
                 <Select
-                  value={currentTask.socialPlatform}
+                  value={currentTask.socialPlatform || ""}
                   onValueChange={(value) => setCurrentTask((prev) => ({ ...prev, socialPlatform: value }))}
                 >
                   <SelectTrigger className="bg-white/10 border-white/20 text-white">
@@ -356,7 +371,7 @@ export default function CreateQuest() {
               <div>
                 <Label className="text-white">Action</Label>
                 <Select
-                  value={currentTask.socialAction}
+                  value={currentTask.socialAction || ""}
                   onValueChange={(value) => setCurrentTask((prev) => ({ ...prev, socialAction: value as any }))}
                 >
                   <SelectTrigger className="bg-white/10 border-white/20 text-white">
@@ -375,7 +390,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">URL/Link</Label>
               <Input
-                value={currentTask.socialUrl}
+                value={currentTask.socialUrl || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, socialUrl: e.target.value }))}
                 placeholder="https://twitter.com/username or https://t.me/groupname"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -385,7 +400,7 @@ export default function CreateQuest() {
               <div>
                 <Label className="text-white">Username (without @)</Label>
                 <Input
-                  value={currentTask.socialUsername}
+                  value={currentTask.socialUsername || ""}
                   onChange={(e) => setCurrentTask((prev) => ({ ...prev, socialUsername: e.target.value }))}
                   placeholder="username"
                   className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -396,7 +411,7 @@ export default function CreateQuest() {
               <div>
                 <Label className="text-white">Post ID</Label>
                 <Input
-                  value={currentTask.socialPostId}
+                  value={currentTask.socialPostId || ""}
                   onChange={(e) => setCurrentTask((prev) => ({ ...prev, socialPostId: e.target.value }))}
                   placeholder="Post ID or URL"
                   className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -412,7 +427,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">Download URL</Label>
               <Input
-                value={currentTask.downloadUrl}
+                value={currentTask.downloadUrl || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, downloadUrl: e.target.value }))}
                 placeholder="https://example.com/file.pdf"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -421,7 +436,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">File Title</Label>
               <Input
-                value={currentTask.downloadTitle}
+                value={currentTask.downloadTitle || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, downloadTitle: e.target.value }))}
                 placeholder="Whitepaper.pdf"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -430,7 +445,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">File Description</Label>
               <Textarea
-                value={currentTask.downloadDescription}
+                value={currentTask.downloadDescription || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, downloadDescription: e.target.value }))}
                 placeholder="Description of what users will download"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -445,7 +460,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">Form URL</Label>
               <Input
-                value={currentTask.formUrl}
+                value={currentTask.formUrl || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, formUrl: e.target.value }))}
                 placeholder="https://forms.google.com/..."
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -454,7 +469,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">Form Title</Label>
               <Input
-                value={currentTask.formTitle}
+                value={currentTask.formTitle || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, formTitle: e.target.value }))}
                 placeholder="User Feedback Form"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -463,7 +478,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">Form Description</Label>
               <Textarea
-                value={currentTask.formDescription}
+                value={currentTask.formDescription || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, formDescription: e.target.value }))}
                 placeholder="What information will users provide?"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -478,7 +493,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">Page URL</Label>
               <Input
-                value={currentTask.visitUrl}
+                value={currentTask.visitUrl || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, visitUrl: e.target.value }))}
                 placeholder="https://example.com/page"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -487,7 +502,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">Page Title</Label>
               <Input
-                value={currentTask.visitTitle}
+                value={currentTask.visitTitle || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, visitTitle: e.target.value }))}
                 placeholder="Documentation Page"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -497,7 +512,7 @@ export default function CreateQuest() {
               <Label className="text-white">Expected Duration (seconds)</Label>
               <Input
                 type="number"
-                value={currentTask.visitDuration}
+                value={currentTask.visitDuration || 0}
                 onChange={(e) =>
                   setCurrentTask((prev) => ({ ...prev, visitDuration: Number.parseInt(e.target.value) || 0 }))
                 }
@@ -508,7 +523,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">Visit Description</Label>
               <Textarea
-                value={currentTask.visitDescription}
+                value={currentTask.visitDescription || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, visitDescription: e.target.value }))}
                 placeholder="What should users look for on this page?"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -523,7 +538,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">Learning Content (HTML)</Label>
               <Textarea
-                value={currentTask.learnContent}
+                value={currentTask.learnContent || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, learnContent: e.target.value }))}
                 placeholder="<h2>Introduction to DeFi</h2><p>DeFi stands for...</p>"
                 rows={6}
@@ -534,7 +549,7 @@ export default function CreateQuest() {
               <Label className="text-white">Passing Score (%)</Label>
               <Input
                 type="number"
-                value={currentTask.learnPassingScore}
+                value={currentTask.learnPassingScore ?? 80}
                 onChange={(e) =>
                   setCurrentTask((prev) => ({ ...prev, learnPassingScore: Number.parseInt(e.target.value) || 80 }))
                 }
@@ -547,7 +562,7 @@ export default function CreateQuest() {
             <div>
               <Label className="text-white">Quiz Questions (JSON)</Label>
               <Textarea
-                value={JSON.stringify(currentTask.learnQuestions || [], null, 2)}
+                value={JSON.stringify(currentTask.learnQuestions || [], null, 2) || ""}
                 onChange={(e) => {
                   try {
                     const questions = JSON.parse(e.target.value)
@@ -575,13 +590,13 @@ export default function CreateQuest() {
     }
   }
 
-  if (!user) {
+  if (!walletUser && !emailUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">Connect Your Wallet</h2>
-            <p className="text-gray-300 mb-6">You need to connect your wallet to create quests</p>
+            <h2 className="text-2xl font-bold text-white mb-4">Sign In Required</h2>
+            <p className="text-gray-300 mb-6">You need to sign in to create quests</p>
             <Link href="/">
               <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
                 Go Back
@@ -666,7 +681,7 @@ export default function CreateQuest() {
                   </Label>
                   <Input
                     id="title"
-                    value={questForm.title}
+                    value={questForm.title || ""}
                     onChange={(e) => setQuestForm((prev) => ({ ...prev, title: e.target.value }))}
                     placeholder="Enter quest title..."
                     className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -679,7 +694,7 @@ export default function CreateQuest() {
                   </Label>
                   <Textarea
                     id="description"
-                    value={questForm.description}
+                    value={questForm.description || ""}
                     onChange={(e) => setQuestForm((prev) => ({ ...prev, description: e.target.value }))}
                     placeholder="Describe your quest..."
                     rows={4}
@@ -725,7 +740,7 @@ export default function CreateQuest() {
                     </Label>
                     <Input
                       type="number"
-                      value={questForm.timeLimit}
+                      value={questForm.timeLimit || ""}
                       onChange={(e) => setQuestForm((prev) => ({ ...prev, timeLimit: e.target.value }))}
                       placeholder="30"
                       className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -944,7 +959,7 @@ export default function CreateQuest() {
                 <div>
                   <Label className="text-white">Task Title</Label>
                   <Input
-                    value={currentTask.title}
+                    value={currentTask.title || ""}
                     onChange={(e) => setCurrentTask((prev) => ({ ...prev, title: e.target.value }))}
                     placeholder="Enter task title..."
                     className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -954,7 +969,7 @@ export default function CreateQuest() {
                 <div>
                   <Label className="text-white">Task Description</Label>
                   <Textarea
-                    value={currentTask.description}
+                    value={currentTask.description || ""}
                     onChange={(e) => setCurrentTask((prev) => ({ ...prev, description: e.target.value }))}
                     placeholder="Describe what participants need to do..."
                     rows={3}
@@ -966,7 +981,7 @@ export default function CreateQuest() {
                   <Label className="text-white">XP Reward</Label>
                   <Input
                     type="number"
-                    value={currentTask.xpReward}
+                    value={currentTask.xpReward || 0}
                     onChange={(e) =>
                       setCurrentTask((prev) => ({ ...prev, xpReward: Number.parseInt(e.target.value) || 0 }))
                     }

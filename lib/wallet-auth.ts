@@ -1,10 +1,12 @@
 "use client"
 
 import { supabase } from "./supabase"
+import bs58 from "bs58"
 
 declare global {
   interface Window {
     ethereum?: any
+    solana?: any
   }
 }
 
@@ -23,54 +25,37 @@ class WalletAuth {
 
   async connectWallet(): Promise<WalletUser | null> {
     try {
-      if (!window.ethereum) {
-        throw new Error("MetaMask is not installed")
+      const provider = window.solana
+      if (!provider || !provider.isPhantom) {
+        throw new Error("Phantom Wallet is not installed")
       }
 
-      // Request account access
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      })
-
-      if (accounts.length === 0) {
-        throw new Error("No accounts found")
-      }
-
-      const walletAddress = accounts[0].toLowerCase()
-
-      // Sign a message to verify wallet ownership
+      await provider.connect()
+      const walletAddress = provider.publicKey.toString()
       const message = `Sign this message to authenticate with QuestHub: ${Date.now()}`
-      const signature = await window.ethereum.request({
-        method: "personal_sign",
-        params: [message, walletAddress],
+      const encodedMessage = new TextEncoder().encode(message)
+
+      // Sign the message with Phantom
+      const signed = await provider.signMessage(encodedMessage, "utf8")
+      const signature = bs58.encode(signed.signature) // base58 encode
+
+      // 1. Get a custom JWT from the backend
+      const jwtRes = await fetch("/api/auth/wallet-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletAddress, signature, message }),
       })
+      const { token } = await jwtRes.json()
+      if (!token) throw new Error("Failed to get JWT for wallet login")
 
-      // ❶ Try to create a (short-lived) anonymous session so RLS policies
-      //    receive a JWT that includes our custom claims. Some Supabase
-      //    projects have anonymous sign-ins turned off, so we fall back
-      //    gracefully if that’s the case.
-      try {
-        const { error: anonErr } = await supabase.auth.signInAnonymously({
-          options: {
-            data: {
-              wallet_address: walletAddress,
-              signature,
-              message,
-            },
-          },
-        })
+      // 2. Sign in to Supabase with the custom JWT
+      const { error: jwtError } = await supabase.auth.signInWithIdToken({
+        provider: "custom",
+        token,
+      })
+      if (jwtError) throw jwtError
 
-        if (anonErr && !/anonymous sign[- ]?ins? are disabled/i.test(anonErr.message)) {
-          // Any error _other_ than “anonymous sign-ins are disabled” is fatal
-          throw anonErr
-        }
-      } catch (e) {
-        // Log and continue when the project has anonymous sign-ins disabled.
-        // All public selects will still work; inserts/updates use RLS fallbacks.
-        console.warn("Anon sign-in skipped:", (e as Error).message)
-      }
-
-      // Create (or fetch) the user via server route so RLS is bypassed
+      // 3. Create (or fetch) the user via server route so RLS is bypassed
       const res = await fetch("/api/users/upsert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -211,3 +196,28 @@ class WalletAuth {
 }
 
 export const walletAuth = new WalletAuth()
+
+export async function linkWalletToProfile() {
+  const provider = window.solana;
+  if (!provider || !provider.isPhantom) {
+    throw new Error("Phantom Wallet is not installed");
+  }
+  await provider.connect();
+  const walletAddress = provider.publicKey.toString();
+  const message = `Link this wallet to your account: ${Date.now()}`;
+  const encodedMessage = new TextEncoder().encode(message);
+  const signed = await provider.signMessage(encodedMessage, "utf8");
+  const signature = bs58.encode(signed.signature);
+
+  // Optionally verify signature here or on backend
+
+  // Save wallet address to user profile
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const { error } = await supabase
+    .from("users")
+    .update({ wallet_address: walletAddress })
+    .eq("id", user.id);
+  if (error) throw error;
+  return walletAddress;
+}

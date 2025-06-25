@@ -13,9 +13,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import type { Database } from "@/lib/supabase"
 
-type Project = Database["public"]["Tables"]["projects"]["Row"] & {
-  quest_count?: number
-  total_participants?: number
+type Project = {
+  id: string;
+  name: string;
+  description?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  status?: string;
+  category?: string | null;
+  featured?: boolean | null;
+  verified?: boolean | null;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
+  website_url?: string | null;
+  twitter_url?: string | null;
+  discord_url?: string | null;
+  total_xp_distributed?: number;
+  quest_count?: number;
+  total_participants?: number;
+  // ...add any other fields you use from the projects table
 }
 
 export default function ProjectDiscovery() {
@@ -124,11 +140,12 @@ export default function ProjectDiscovery() {
       // ──────────────────────────────────────────────────────────────────────────
       if (err?.message?.includes("projects") && err.message.includes("does not exist")) {
         console.warn("`projects` table not found – falling back to quests.")
-        const { data: quests = [] } = await supabase.from("quests").select("*").eq("status", "active")
+        const { data: quests } = await supabase.from("quests").select("*").eq("status", "active")
+        const safeQuests = quests || []
 
-        // Group quests by creator to mimic a “project” card
+        // Group quests by creator to mimic a "project" card
         const grouped = Object.values(
-          quests.reduce<Record<string, Project>>((acc, q) => {
+          safeQuests.reduce<Record<string, Project>>((acc, q) => {
             acc[q.creator_id] ??= {
               id: q.creator_id,
               name: "Creator " + q.creator_id.slice(0, 6),
@@ -152,6 +169,9 @@ export default function ProjectDiscovery() {
       }
     }
   }
+
+  // Add a helper to sum XP distributed
+  const totalXPDistributed = projects.reduce((sum, p) => sum + (p.total_xp_distributed || 0), 0)
 
   /* ------------------------------------------------------------------ */
   /*  render                                                            */
@@ -180,7 +200,7 @@ export default function ProjectDiscovery() {
           <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
             <span className="flex items-center gap-2">
               <Users className="w-4 h-4" />
-              50+ Verified Projects
+              {projects.length} Verified Projects
             </span>
             <span className="flex items-center gap-2">
               <Zap className="w-4 h-4" />
@@ -188,7 +208,7 @@ export default function ProjectDiscovery() {
             </span>
             <span className="flex items-center gap-2">
               <Trophy className="w-4 h-4" />
-              10M+ XP Distributed
+              {totalXPDistributed.toLocaleString()} XP Distributed
             </span>
           </div>
         </div>

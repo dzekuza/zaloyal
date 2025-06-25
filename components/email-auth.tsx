@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Mail, Eye, EyeOff, User } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import EmailVerification from "./email-verification"
 
 interface EmailAuthProps {
   onSuccess: (user: any) => void
@@ -18,7 +17,6 @@ interface EmailAuthProps {
 export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [showVerification, setShowVerification] = useState(false)
   const [verificationEmail, setVerificationEmail] = useState("")
   const [loginForm, setLoginForm] = useState({ email: "", password: "" })
   const [registerForm, setRegisterForm] = useState({
@@ -44,7 +42,30 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
       if (error) throw error
 
       // Get user profile
-      const { data: profile } = await supabase.from("users").select("*").eq("email", loginForm.email).single()
+      let { data: profile } = await supabase.from("users").select("*").eq("email", loginForm.email).single()
+
+      // If user profile does not exist, create it
+      if (!profile) {
+        const { user } = data;
+        const { error: profileError } = await supabase.from("users").insert({
+          id: user.id,
+          email: user.email,
+          username: user.user_metadata?.username || "",
+          auth_provider: "email",
+          email_verified: false,
+          total_xp: 0,
+          level: 1,
+          completed_quests: 0,
+          role: "participant",
+        });
+        if (profileError) {
+          onError("Profile creation error: " + (profileError.message || JSON.stringify(profileError)));
+          setLoading(false);
+          return;
+        }
+        // Fetch the newly created profile
+        ({ data: profile } = await supabase.from("users").select("*").eq("email", loginForm.email).single());
+      }
 
       onSuccess({ ...data.user, profile })
     } catch (error: any) {
@@ -85,54 +106,45 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
 
       if (error) throw error
 
-      // Show verification screen
-      setVerificationEmail(registerForm.email)
-      setShowVerification(true)
+      // Get the authenticated user (wait for session)
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("User not authenticated after registration");
+
+      // Check if user already exists in users table
+      const { data: existingUser, error: fetchError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", authUser.email)
+        .single();
+
+      if (!existingUser && !fetchError) {
+        // Insert only if not exists, and set id to authUser.id
+        const { error: profileError } = await supabase.from("users").insert({
+          id: authUser.id,
+          email: authUser.email,
+          username: registerForm.username,
+          auth_provider: "email",
+          email_verified: false,
+          total_xp: 0,
+          level: 1,
+          completed_quests: 0,
+          role: "participant",
+        });
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+          onError("Profile creation error: " + (profileError.message || JSON.stringify(profileError)));
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Call onSuccess immediately
+      onSuccess(authUser)
     } catch (error: any) {
       onError(error.message || "Registration failed")
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleVerified = async () => {
-    try {
-      // Create user profile after verification
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (user) {
-        const { error: profileError } = await supabase.from("users").insert({
-          email: registerForm.email,
-          username: registerForm.username,
-          auth_provider: "email",
-          email_verified: true,
-          total_xp: 0,
-          level: 1,
-          completed_quests: 0,
-          role: "participant",
-        })
-
-        if (profileError) {
-          console.error("Profile creation error:", profileError)
-        }
-
-        onSuccess(user)
-      }
-    } catch (error: any) {
-      onError(error.message || "Verification failed")
-    }
-  }
-
-  if (showVerification) {
-    return (
-      <EmailVerification
-        email={verificationEmail}
-        onVerified={handleVerified}
-        onBack={() => setShowVerification(false)}
-      />
-    )
   }
 
   return (

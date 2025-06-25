@@ -53,7 +53,8 @@ export default function QuestDetail() {
 
   const [quest, setQuest] = useState<Quest | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
-  const [user, setUser] = useState<WalletUser | null>(null)
+  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
+  const [emailUser, setEmailUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [verifyingTask, setVerifyingTask] = useState<string | null>(null)
   const [submissionData, setSubmissionData] = useState<{ [key: string]: any }>({})
@@ -63,15 +64,36 @@ export default function QuestDetail() {
       fetchQuest()
       fetchTasks()
     }
-
-    const unsubscribe = walletAuth.onAuthStateChange((user) => {
-      setUser(user)
+    // Wallet user
+    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
+      setWalletUser(user)
       if (user && questId) {
-        fetchTasks() // Refetch to get user submissions
+        fetchTasks()
       }
     })
-
-    return unsubscribe
+    // Email user
+    const checkEmailAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+        setEmailUser({ ...user, profile })
+        if (profile && questId) {
+          fetchTasks()
+        }
+      }
+    }
+    checkEmailAuth()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        checkEmailAuth()
+      } else if (event === "SIGNED_OUT") {
+        setEmailUser(null)
+      }
+    })
+    return () => {
+      unsubscribeWallet()
+      subscription.unsubscribe()
+    }
   }, [questId])
 
   const fetchQuest = async () => {
@@ -106,32 +128,33 @@ export default function QuestDetail() {
   const fetchTasks = async () => {
     try {
       const query = supabase.from("tasks").select("*").eq("quest_id", questId).order("order_index")
-
       const { data: tasksData, error } = await query
-
       if (error) throw error
-
       // If user is connected, fetch their submissions
-      if (user) {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("id")
-          .eq("wallet_address", user.walletAddress.toLowerCase())
-          .single()
-
-        if (userData) {
+      const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
+      if (userObj) {
+        let userId = null
+        if (walletUser) {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("id")
+            .eq("wallet_address", walletUser.walletAddress.toLowerCase())
+            .single()
+          userId = userData?.id
+        } else if (emailUser?.profile) {
+          userId = emailUser.profile.id
+        }
+        if (userId) {
           const { data: submissions } = await supabase
             .from("user_task_submissions")
             .select("*")
             .eq("quest_id", questId)
-            .eq("user_id", userData.id)
-
+            .eq("user_id", userId)
           // Merge submissions with tasks
           const tasksWithSubmissions = tasksData?.map((task) => ({
             ...task,
             user_task_submissions: submissions?.find((sub) => sub.task_id === task.id) || null,
           }))
-
           setTasks(tasksWithSubmissions || [])
         } else {
           setTasks(tasksData || [])
@@ -147,20 +170,21 @@ export default function QuestDetail() {
   }
 
   const handleTaskVerification = async (task: Task) => {
-    if (!user) {
-      alert("Please connect your wallet first")
+    const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
+    if (!userObj) {
+      alert("Please sign in first")
       return
     }
-
     setVerifyingTask(task.id)
-
     try {
       let response
-      const baseData = {
-        userWallet: user.walletAddress,
-        taskId: task.id,
+      let baseData: any = { taskId: task.id }
+      if (walletUser) {
+        baseData.userWallet = walletUser.walletAddress
+      } else if (emailUser?.profile) {
+        baseData.userId = emailUser.profile.id
+        baseData.userEmail = emailUser.email
       }
-
       switch (task.task_type) {
         case "social":
           if (task.social_platform === "twitter") {
@@ -196,11 +220,9 @@ export default function QuestDetail() {
             })
           }
           break
-
         case "download":
         case "visit":
         case "form":
-          // For these task types, we'll mark as completed when user confirms
           response = await fetch("/api/verify/manual-completion", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -210,9 +232,7 @@ export default function QuestDetail() {
             }),
           })
           break
-
         case "learn":
-          // Handle learn task submission with quiz answers
           response = await fetch("/api/verify/learn-completion", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -223,13 +243,11 @@ export default function QuestDetail() {
           })
           break
       }
-
       if (response) {
         const result = await response.json()
-
         if (result.verified) {
           alert(`Task completed! You earned ${result.xpEarned} XP`)
-          fetchTasks() // Refresh tasks to show updated status
+          fetchTasks()
         } else {
           alert(result.message || "Verification failed")
         }
@@ -466,29 +484,29 @@ export default function QuestDetail() {
   }
 
   const handleTelegramAuth = async (task: Task, telegramUser: any) => {
-    if (!user) {
-      alert("Please connect your wallet first")
+    const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
+    if (!userObj) {
+      alert("Please sign in first")
       return
     }
-
     setVerifyingTask(task.id)
-
     try {
+      let baseData: any = { taskId: task.id, telegramData: telegramUser }
+      if (walletUser) {
+        baseData.userWallet = walletUser.walletAddress
+      } else if (emailUser?.profile) {
+        baseData.userId = emailUser.profile.id
+        baseData.userEmail = emailUser.email
+      }
       const response = await fetch("/api/verify/telegram-join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userWallet: user.walletAddress,
-          taskId: task.id,
-          telegramData: telegramUser,
-        }),
+        body: JSON.stringify(baseData),
       })
-
       const result = await response.json()
-
       if (result.verified) {
         alert(`Task completed! You earned ${result.xpEarned} XP`)
-        fetchTasks() // Refresh tasks to show updated status
+        fetchTasks()
       } else {
         alert(result.message || "Verification failed")
       }
@@ -577,7 +595,7 @@ export default function QuestDetail() {
                     {tasks.length} Tasks
                   </span>
                 </div>
-                {user && (
+                {(walletUser || emailUser) && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Your Progress</span>
