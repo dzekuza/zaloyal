@@ -1,0 +1,709 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Separator } from "@/components/ui/separator"
+import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  CheckCircle,
+  Circle,
+  Twitter,
+  MessageCircle,
+  ExternalLink,
+  Users,
+  Zap,
+  Trophy,
+  Clock,
+  ArrowLeft,
+  Download,
+  FileText,
+  Eye,
+  BookOpen,
+} from "lucide-react"
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import { supabase } from "@/lib/supabase"
+import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
+import type { Database } from "@/lib/supabase"
+import TelegramLoginWidget from "@/components/telegram-login-widget"
+
+type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
+  quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
+  users: Database["public"]["Tables"]["users"]["Row"] | null
+}
+
+type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
+  user_task_submissions?: Database["public"]["Tables"]["user_task_submissions"]["Row"] | null
+}
+
+export default function QuestDetail() {
+  const params = useParams()
+  const questId = params.id as string
+
+  const [quest, setQuest] = useState<Quest | null>(null)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [user, setUser] = useState<WalletUser | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [verifyingTask, setVerifyingTask] = useState<string | null>(null)
+  const [submissionData, setSubmissionData] = useState<{ [key: string]: any }>({})
+
+  useEffect(() => {
+    if (questId) {
+      fetchQuest()
+      fetchTasks()
+    }
+
+    const unsubscribe = walletAuth.onAuthStateChange((user) => {
+      setUser(user)
+      if (user && questId) {
+        fetchTasks() // Refetch to get user submissions
+      }
+    })
+
+    return unsubscribe
+  }, [questId])
+
+  const fetchQuest = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("quests")
+        .select(`
+          *,
+          quest_categories (
+            id,
+            name,
+            description,
+            icon,
+            color
+          ),
+          users (
+            id,
+            username,
+            wallet_address
+          )
+        `)
+        .eq("id", questId)
+        .single()
+
+      if (error) throw error
+      setQuest(data)
+    } catch (error) {
+      console.error("Error fetching quest:", error)
+    }
+  }
+
+  const fetchTasks = async () => {
+    try {
+      const query = supabase.from("tasks").select("*").eq("quest_id", questId).order("order_index")
+
+      const { data: tasksData, error } = await query
+
+      if (error) throw error
+
+      // If user is connected, fetch their submissions
+      if (user) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("id")
+          .eq("wallet_address", user.walletAddress.toLowerCase())
+          .single()
+
+        if (userData) {
+          const { data: submissions } = await supabase
+            .from("user_task_submissions")
+            .select("*")
+            .eq("quest_id", questId)
+            .eq("user_id", userData.id)
+
+          // Merge submissions with tasks
+          const tasksWithSubmissions = tasksData?.map((task) => ({
+            ...task,
+            user_task_submissions: submissions?.find((sub) => sub.task_id === task.id) || null,
+          }))
+
+          setTasks(tasksWithSubmissions || [])
+        } else {
+          setTasks(tasksData || [])
+        }
+      } else {
+        setTasks(tasksData || [])
+      }
+    } catch (error) {
+      console.error("Error fetching tasks:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleTaskVerification = async (task: Task) => {
+    if (!user) {
+      alert("Please connect your wallet first")
+      return
+    }
+
+    setVerifyingTask(task.id)
+
+    try {
+      let response
+      const baseData = {
+        userWallet: user.walletAddress,
+        taskId: task.id,
+      }
+
+      switch (task.task_type) {
+        case "social":
+          if (task.social_platform === "twitter") {
+            if (task.social_action === "follow") {
+              response = await fetch("/api/verify/twitter-follow", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...baseData,
+                  username: submissionData[task.id]?.username || "",
+                }),
+              })
+            } else if (task.social_action === "like") {
+              response = await fetch("/api/verify/twitter-like", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...baseData,
+                  username: submissionData[task.id]?.username || "",
+                  postId: task.social_post_id,
+                }),
+              })
+            }
+          } else if (task.social_platform === "telegram") {
+            response = await fetch("/api/verify/telegram-join", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...baseData,
+                username: submissionData[task.id]?.username || "",
+                groupId: task.social_url?.split("/").pop(),
+              }),
+            })
+          }
+          break
+
+        case "download":
+        case "visit":
+        case "form":
+          // For these task types, we'll mark as completed when user confirms
+          response = await fetch("/api/verify/manual-completion", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...baseData,
+              submissionData: submissionData[task.id] || {},
+            }),
+          })
+          break
+
+        case "learn":
+          // Handle learn task submission with quiz answers
+          response = await fetch("/api/verify/learn-completion", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...baseData,
+              answers: submissionData[task.id]?.answers || [],
+            }),
+          })
+          break
+      }
+
+      if (response) {
+        const result = await response.json()
+
+        if (result.verified) {
+          alert(`Task completed! You earned ${result.xpEarned} XP`)
+          fetchTasks() // Refresh tasks to show updated status
+        } else {
+          alert(result.message || "Verification failed")
+        }
+      }
+    } catch (error) {
+      console.error("Verification error:", error)
+      alert("Verification failed. Please try again.")
+    } finally {
+      setVerifyingTask(null)
+    }
+  }
+
+  const getTaskIcon = (task: Task) => {
+    switch (task.task_type) {
+      case "social":
+        if (task.social_platform === "twitter") return <Twitter className="w-5 h-5" />
+        if (task.social_platform === "telegram") return <MessageCircle className="w-5 h-5" />
+        return <Users className="w-5 h-5" />
+      case "download":
+        return <Download className="w-5 h-5" />
+      case "form":
+        return <FileText className="w-5 h-5" />
+      case "visit":
+        return <Eye className="w-5 h-5" />
+      case "learn":
+        return <BookOpen className="w-5 h-5" />
+      default:
+        return <Trophy className="w-5 h-5" />
+    }
+  }
+
+  const getTaskActionButton = (task: Task) => {
+    const isCompleted = task.user_task_submissions?.status === "verified"
+    const isVerifying = verifyingTask === task.id
+
+    if (isCompleted) {
+      return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Completed</Badge>
+    }
+
+    switch (task.task_type) {
+      case "social":
+        if (task.social_platform === "telegram") {
+          return (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  disabled={isVerifying}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+                >
+                  {isVerifying ? "Verifying..." : "Verify"} <ExternalLink className="w-3 h-3 ml-1" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-slate-800 border-slate-700 text-white">
+                <DialogHeader>
+                  <DialogTitle>Verify Telegram Group Membership</DialogTitle>
+                  <DialogDescription className="text-gray-300">
+                    First join the Telegram group, then authenticate with Telegram to verify your membership.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <Button
+                      onClick={() => window.open(task.social_url || "", "_blank")}
+                      className="bg-blue-500 hover:bg-blue-600 text-white mb-4"
+                    >
+                      Join Telegram Group
+                    </Button>
+                  </div>
+
+                  <div className="text-center">
+                    <TelegramLoginWidget
+                      botUsername="your_bot_username" // Replace with actual bot username
+                      onAuth={(telegramUser) => {
+                        handleTelegramAuth(task, telegramUser)
+                      }}
+                    />
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )
+        }
+        return (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                size="sm"
+                disabled={isVerifying}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+              >
+                {isVerifying ? "Verifying..." : "Verify"} <ExternalLink className="w-3 h-3 ml-1" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white">
+              <DialogHeader>
+                <DialogTitle>Verify Social Task</DialogTitle>
+                <DialogDescription className="text-gray-300">
+                  Complete the social media action and provide your username for verification.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Your {task.social_platform} username (without @)</label>
+                  <Input
+                    placeholder="username"
+                    value={submissionData[task.id]?.username || ""}
+                    onChange={(e) =>
+                      setSubmissionData((prev) => ({
+                        ...prev,
+                        [task.id]: { ...prev[task.id], username: e.target.value },
+                      }))
+                    }
+                    className="bg-white/10 border-white/20 text-white"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => window.open(task.social_url || "", "_blank")}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Open {task.social_platform}
+                  </Button>
+                  <Button
+                    onClick={() => handleTaskVerification(task)}
+                    disabled={!submissionData[task.id]?.username}
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500"
+                  >
+                    Verify
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )
+
+      case "download":
+        return (
+          <Button
+            size="sm"
+            onClick={() => {
+              window.open(task.download_url || "", "_blank")
+              setTimeout(() => handleTaskVerification(task), 2000)
+            }}
+            disabled={isVerifying}
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+          >
+            {isVerifying ? "Verifying..." : "Download"} <Download className="w-3 h-3 ml-1" />
+          </Button>
+        )
+
+      case "visit":
+        return (
+          <Button
+            size="sm"
+            onClick={() => {
+              window.open(task.visit_url || "", "_blank")
+              setTimeout(() => handleTaskVerification(task), 3000)
+            }}
+            disabled={isVerifying}
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+          >
+            {isVerifying ? "Verifying..." : "Visit"} <ExternalLink className="w-3 h-3 ml-1" />
+          </Button>
+        )
+
+      case "form":
+        return (
+          <Button
+            size="sm"
+            onClick={() => {
+              window.open(task.form_url || "", "_blank")
+              setTimeout(() => handleTaskVerification(task), 5000)
+            }}
+            disabled={isVerifying}
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+          >
+            {isVerifying ? "Verifying..." : "Complete Form"} <ExternalLink className="w-3 h-3 ml-1" />
+          </Button>
+        )
+
+      case "learn":
+        return (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                size="sm"
+                disabled={isVerifying}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+              >
+                {isVerifying ? "Submitting..." : "Take Quiz"}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Learn & Quiz</DialogTitle>
+                <DialogDescription className="text-gray-300">
+                  Read the content below and answer the questions.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-6">
+                <div className="prose prose-invert max-w-none">
+                  <div dangerouslySetInnerHTML={{ __html: task.learn_content || "" }} />
+                </div>
+                <Separator className="bg-white/20" />
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Quiz Questions</h3>
+                  {/* Quiz questions would be rendered here */}
+                  <Button
+                    onClick={() => handleTaskVerification(task)}
+                    className="w-full bg-gradient-to-r from-blue-500 to-purple-500"
+                  >
+                    Submit Quiz
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )
+
+      default:
+        return (
+          <Button
+            size="sm"
+            onClick={() => handleTaskVerification(task)}
+            disabled={isVerifying}
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+          >
+            {isVerifying ? "Verifying..." : "Complete"}
+          </Button>
+        )
+    }
+  }
+
+  const handleTelegramAuth = async (task: Task, telegramUser: any) => {
+    if (!user) {
+      alert("Please connect your wallet first")
+      return
+    }
+
+    setVerifyingTask(task.id)
+
+    try {
+      const response = await fetch("/api/verify/telegram-join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userWallet: user.walletAddress,
+          taskId: task.id,
+          telegramData: telegramUser,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.verified) {
+        alert(`Task completed! You earned ${result.xpEarned} XP`)
+        fetchTasks() // Refresh tasks to show updated status
+      } else {
+        alert(result.message || "Verification failed")
+      }
+    } catch (error) {
+      console.error("Telegram verification error:", error)
+      alert("Verification failed. Please try again.")
+    } finally {
+      setVerifyingTask(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading quest...</div>
+      </div>
+    )
+  }
+
+  if (!quest) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">Quest not found</div>
+      </div>
+    )
+  }
+
+  const completedTasks = tasks.filter((task) => task.user_task_submissions?.status === "verified").length
+  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0
+  const userXP = tasks
+    .filter((task) => task.user_task_submissions?.status === "verified")
+    .reduce((sum, task) => sum + task.xp_reward, 0)
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="container mx-auto px-4 py-8">
+        {/* Back Button */}
+        <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Quests
+        </Link>
+
+        {/* Quest Header */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          <div className="lg:col-span-2">
+            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden">
+              <div className="relative">
+                <img
+                  src={quest.image_url || "/placeholder.svg?height=300&width=600"}
+                  alt={quest.title}
+                  className="w-full h-64 object-cover"
+                />
+                <div className="absolute top-4 left-4 flex gap-2">
+                  <Badge
+                    className="text-white border-0"
+                    style={{
+                      background: `linear-gradient(to right, ${quest.quest_categories?.color || "#3B82F6"}, ${quest.quest_categories?.color || "#8B5CF6"})`,
+                    }}
+                  >
+                    {quest.quest_categories?.icon} {quest.quest_categories?.name}
+                  </Badge>
+                </div>
+                <div className="absolute top-4 right-4">
+                  <Badge variant="outline" className="bg-black/50 text-white border-white/30">
+                    <Clock className="w-3 h-3 mr-1" />
+                    {quest.time_limit_days ? `${quest.time_limit_days} days` : "No limit"}
+                  </Badge>
+                </div>
+              </div>
+              <CardHeader>
+                <CardTitle className="text-2xl text-white">{quest.title}</CardTitle>
+                <CardDescription className="text-gray-300 text-base">{quest.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
+                  <span className="flex items-center gap-1">
+                    <Zap className="w-4 h-4 text-yellow-400" />
+                    {quest.total_xp} Total XP
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    {quest.participant_count} Participants
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Trophy className="w-4 h-4" />
+                    {tasks.length} Tasks
+                  </span>
+                </div>
+                {user && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Your Progress</span>
+                      <span className="text-white">
+                        {completedTasks}/{tasks.length} tasks completed
+                      </span>
+                    </div>
+                    <Progress value={progressPercentage} className="h-2" />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Your XP</span>
+                      <span className="text-yellow-400 font-semibold">{userXP} XP earned</span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quest Stats Sidebar */}
+          <div className="space-y-6">
+            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white">Quest Stats</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total Rewards</span>
+                  <span className="text-yellow-400 font-semibold">{quest.total_xp} XP</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Participants</span>
+                  <span className="text-white">{quest.participant_count}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Tasks</span>
+                  <span className="text-white">{tasks.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Status</span>
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">{quest.status}</Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white">Creator</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold">
+                      {quest.users?.username?.charAt(0).toUpperCase() || "A"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">{quest.users?.username || "Anonymous"}</p>
+                    <p className="text-gray-400 text-sm">Verified Creator</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Tasks Section */}
+        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-white">Quest Tasks</CardTitle>
+            <CardDescription className="text-gray-300">Complete all tasks to earn the full XP reward</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {tasks.map((task, index) => (
+                <div key={task.id}>
+                  <div className="flex items-start gap-4 p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                    <div className="flex-shrink-0 mt-1">
+                      {task.user_task_submissions?.status === "verified" ? (
+                        <CheckCircle className="w-6 h-6 text-green-400" />
+                      ) : (
+                        <Circle className="w-6 h-6 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            {getTaskIcon(task)}
+                            <h3
+                              className={`font-semibold ${task.user_task_submissions?.status === "verified" ? "text-green-400" : "text-white"}`}
+                            >
+                              {task.title}
+                            </h3>
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                            >
+                              +{task.xp_reward} XP
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            >
+                              {task.task_type}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-400 text-sm mb-3">{task.description}</p>
+                          {task.social_url && (
+                            <p className="text-xs text-blue-400 hover:underline">
+                              <a href={task.social_url} target="_blank" rel="noopener noreferrer">
+                                {task.social_url}
+                              </a>
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex-shrink-0">{getTaskActionButton(task)}</div>
+                      </div>
+                    </div>
+                  </div>
+                  {index < tasks.length - 1 && <Separator className="bg-white/10" />}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
