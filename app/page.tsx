@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Search, Filter, Users, Zap, Trophy, Star, Globe, Twitter, MessageSquare } from "lucide-react"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import EditProjectForm from "@/components/edit-project-form"
 
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -45,6 +47,7 @@ export default function ProjectDiscovery() {
   const [loading, setLoading] = useState(true)
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
 
   const categories = [
     "DeFi",
@@ -261,11 +264,29 @@ export default function ProjectDiscovery() {
           Featured Projects
         </h2>
 
-        <ProjectGrid projects={filteredProjects.filter((p) => p.featured)} currentUserId={currentUserId} />
+        <ProjectGrid
+          projects={filteredProjects.filter((p) => p.featured)}
+          currentUserId={currentUserId}
+          editingProject={editingProject}
+          setEditingProject={setEditingProject}
+          onProjectDeleted={() => {
+            // Optionally refetch projects or update state
+            window.location.reload()
+          }}
+        />
 
         {/* All Projects */}
         <h2 className="text-2xl font-bold text-white my-6">All Projects</h2>
-        <ProjectGrid projects={filteredProjects} currentUserId={currentUserId} />
+        <ProjectGrid
+          projects={filteredProjects}
+          currentUserId={currentUserId}
+          editingProject={editingProject}
+          setEditingProject={setEditingProject}
+          onProjectDeleted={() => {
+            // Optionally refetch projects or update state
+            window.location.reload()
+          }}
+        />
 
         {filteredProjects.length === 0 && (
           <div className="text-center py-12">
@@ -281,8 +302,24 @@ export default function ProjectDiscovery() {
 /* ------------------------------------------------------------------ */
 /*  sub-component                                                      */
 /* ------------------------------------------------------------------ */
-function ProjectGrid({ projects, currentUserId }: { projects: Project[], currentUserId: string | null }) {
+function ProjectGrid({ projects, currentUserId, editingProject, setEditingProject, onProjectDeleted }: {
+  projects: Project[],
+  currentUserId: string | null,
+  editingProject: Project | null,
+  setEditingProject: (p: Project | null) => void,
+  onProjectDeleted: () => void
+}) {
   if (!projects.length) return null
+
+  async function handleDeleteProject(projectId: string) {
+    if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) return;
+    const { error } = await supabase.from("projects").delete().eq("id", projectId)
+    if (error) {
+      alert("Failed to delete project: " + error.message)
+    } else {
+      onProjectDeleted()
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
@@ -346,6 +383,36 @@ function ProjectGrid({ projects, currentUserId }: { projects: Project[], current
               {project.twitter_url && <IconLink href={project.twitter_url} icon={Twitter} />}
               {project.discord_url && <IconLink href={project.discord_url} icon={MessageSquare} />}
             </div>
+
+            {currentUserId && project.owner_id === currentUserId && (
+              <div className="flex gap-2 mb-2">
+                <Dialog open={editingProject?.id === project.id} onOpenChange={open => setEditingProject(open ? project : null)}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" onClick={() => setEditingProject(project)}>
+                      Edit
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Edit Project</DialogTitle>
+                    </DialogHeader>
+                    {editingProject && editingProject.id === project.id && (
+                      <EditProjectForm
+                        project={editingProject}
+                        onSave={() => setEditingProject(null)}
+                      />
+                    )}
+                  </DialogContent>
+                </Dialog>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleDeleteProject(project.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+            )}
 
             <Link href={`/project/${project.id}`}>
               <Button

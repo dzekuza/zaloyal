@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Globe, Twitter, MessageSquare, Github, Users, Zap, Trophy, Calendar, Star } from "lucide-react"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import EditProjectForm from "@/components/edit-project-form"
 
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -93,15 +95,15 @@ export default function ProjectDetailPage() {
       {/* Cover Image */}
       <div className="relative h-64 w-full bg-cover bg-center" style={{ backgroundImage: `url(${project.cover_image_url || "/placeholder.svg?height=256&width=1200"})` }}>
         <div className="absolute inset-0 bg-black/50" />
-        <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end gap-6">
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-6">
           <img
             src={project.logo_url || "/placeholder.svg?height=80&width=80"}
             alt={`${project.name} logo`}
-            className="w-20 h-20 rounded-full border-4 border-white bg-white"
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white mb-4 sm:mb-0"
           />
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-white">{project.name}</h1>
+          <div className="flex-1 w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">{project.name}</h1>
               {project.verified && (
                 <Badge className="bg-green-500/20 text-green-400 border-green-500/30">✓ Verified</Badge>
               )}
@@ -109,20 +111,28 @@ export default function ProjectDetailPage() {
                 <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">{project.category}</Badge>
               )}
               {isOwner && (
-                <Link href={`/project/${projectId}/edit`}>
-                  <Button size="sm" className="ml-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white">Edit Project</Button>
-                </Link>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="ml-0 sm:ml-2 mt-2 sm:mt-0 bg-gradient-to-r from-blue-500 to-purple-500 text-white">Edit Project</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Edit Project</DialogTitle>
+                    </DialogHeader>
+                    <EditProjectForm project={project} onSave={() => {}} />
+                  </DialogContent>
+                </Dialog>
               )}
             </div>
-            <p className="text-gray-300 text-lg max-w-2xl">{project.description}</p>
+            <p className="text-gray-300 text-base sm:text-lg max-w-full sm:max-w-2xl">{project.description}</p>
           </div>
         </div>
       </div>
 
       {/* Stats Bar */}
       <div className="bg-black/20 border-b border-white/10">
-        <div className="container mx-auto px-6 py-4 flex items-center gap-8">
-          <div className="flex items-center gap-8 flex-1">
+        <div className="container mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 sm:gap-8">
+          <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 sm:gap-8 flex-1 w-full">
             <div className="flex items-center gap-2 text-yellow-400">
               <Trophy className="w-5 h-5" />
               <span className="font-semibold">{quests.length}</span>
@@ -139,7 +149,7 @@ export default function ProjectDetailPage() {
               <span className="text-gray-400">XP Distributed</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {project.website_url && (
               <Button size="sm" variant="outline" onClick={() => window.open(project.website_url, "_blank")} className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                 <Globe className="w-4 h-4" />
@@ -162,7 +172,7 @@ export default function ProjectDetailPage() {
             )}
             {isOwner && (
               <Link href={`/create?projectId=${projectId}`}>
-                <Button size="sm" className="ml-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2">
+                <Button size="sm" className="ml-0 sm:ml-2 mt-2 sm:mt-0 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 w-full sm:w-auto">
                   + Create Quest
                 </Button>
               </Link>

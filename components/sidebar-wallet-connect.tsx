@@ -84,19 +84,6 @@ export default function SidebarWalletConnect() {
           </div>
         </div>
 
-        {/* Register Project Button */}
-        {user.role === "participant" && (
-          <Link href="/register-project">
-            <Button
-              size="sm"
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0 text-xs"
-            >
-              <Building2 className="w-3 h-3 mr-1" />
-              Register Project
-            </Button>
-          </Link>
-        )}
-
         <Button
           onClick={disconnectWallet}
           variant="outline"

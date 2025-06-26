@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import WalletConnect from "@/components/wallet-connect"
 
 export default function ProfilePage() {
   const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
@@ -99,18 +100,36 @@ export default function ProfilePage() {
     setSocialLinks((prev: any) => ({ ...prev, [platform]: value }))
   }
 
+  const handleDisconnectWallet = async () => {
+    await walletAuth.disconnectWallet()
+    setWalletUser(null)
+    // Optionally reload the page: window.location.reload()
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-white text-xl">Loading...</div>
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center py-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center py-12" style={{ margin: 0 }}>
       <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-white">Edit Profile</CardTitle>
           <CardDescription className="text-gray-300">Manage your profile information</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Wallet Linking UI */}
+          <div>
+            <WalletConnect />
+            {walletUser && (
+              <button
+                onClick={handleDisconnectWallet}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+              >
+                Disconnect Wallet
+              </button>
+            )}
+          </div>
           {error && <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">{error}</div>}
           {success && <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm">{success}</div>}
           <div className="flex flex-col md:flex-row gap-8 items-center">

@@ -16,7 +16,6 @@ export interface WalletUser {
   totalXP: number
   level: number
   rank?: number
-  role: "participant" | "creator" | "admin"
 }
 
 class WalletAuth {
@@ -75,7 +74,6 @@ class WalletAuth {
         totalXP: user.total_xp,
         level: user.level,
         rank: user.rank ?? undefined,
-        role: user.role,
       }
 
       this.currentUser = formattedUser
@@ -94,7 +92,6 @@ class WalletAuth {
   async disconnectWallet(): Promise<void> {
     this.currentUser = null
     localStorage.removeItem("wallet_user")
-    await supabase.auth.signOut()
     this.notifyListeners()
   }
 
@@ -113,7 +110,6 @@ class WalletAuth {
         totalXP: existingUser.total_xp,
         level: existingUser.level,
         rank: existingUser.rank || undefined,
-        role: existingUser.role,
       }
     }
 
@@ -126,7 +122,6 @@ class WalletAuth {
         total_xp: 0,
         level: 1,
         completed_quests: 0,
-        role: "participant",
       })
       .select()
       .single()
@@ -141,13 +136,30 @@ class WalletAuth {
       totalXP: newUser.total_xp,
       level: newUser.level,
       rank: newUser.rank || undefined,
-      role: newUser.role,
     }
   }
 
-  getCurrentUser(): WalletUser | null {
-    if (!this.currentUser) {
-      // Try to restore from localStorage
+  async getCurrentUser(): Promise<WalletUser | null> {
+    // 1. Check if authenticated with Supabase
+    if (typeof window !== 'undefined') {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        // Fetch wallet address from users table
+        const { data: profile } = await supabase.from("users").select("wallet_address,username,total_xp,level,rank").eq("id", user.id).single()
+        if (profile && profile.wallet_address) {
+          const walletUser: WalletUser = {
+            walletAddress: profile.wallet_address,
+            username: profile.username || undefined,
+            totalXP: profile.total_xp,
+            level: profile.level,
+            rank: profile.rank || undefined,
+          }
+          this.currentUser = walletUser
+          localStorage.setItem("wallet_user", JSON.stringify(walletUser))
+          return walletUser
+        }
+      }
+      // Fallback to localStorage
       const stored = localStorage.getItem("wallet_user")
       if (stored) {
         try {
@@ -155,19 +167,22 @@ class WalletAuth {
         } catch (error) {
           console.error("Failed to parse stored user:", error)
           localStorage.removeItem("wallet_user")
+          this.currentUser = null
         }
+      } else {
+        this.currentUser = null
       }
+      return this.currentUser
     }
-    return this.currentUser
+    return null
   }
 
   onAuthStateChange(callback: (user: WalletUser | null) => void): () => void {
-    this.listeners.push(callback)
-
-    // Call immediately with current state
-    callback(this.getCurrentUser())
-
-    // Return unsubscribe function
+    // Always restore from Supabase/localStorage before subscribing
+    this.getCurrentUser().then(() => {
+      this.listeners.push(callback)
+      callback(this.currentUser)
+    })
     return () => {
       this.listeners = this.listeners.filter((listener) => listener !== callback)
     }

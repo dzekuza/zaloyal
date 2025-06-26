@@ -26,6 +26,8 @@ import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import ImageUpload from "@/components/image-upload"
+import WalletConnect from "@/components/wallet-connect"
+import { useRouter } from "next/navigation"
 
 interface ProjectForm {
   // Step 1: Basic Info
@@ -82,6 +84,7 @@ const steps = [
 ]
 
 export default function RegisterProject() {
+  const [isClient, setIsClient] = useState(false);
   const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
   const [emailUser, setEmailUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -104,10 +107,15 @@ export default function RegisterProject() {
     coverImageUrl: "",
     additionalInfo: "",
   })
+  const router = useRouter()
 
   const currentUser = walletUser || emailUser
 
+  console.log('walletUser:', walletUser);
+  console.log('walletAuth.getCurrentUser():', walletAuth.getCurrentUser());
+
   useEffect(() => {
+    setIsClient(true);
     const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
       setWalletUser(user)
       setLoading(false)
@@ -190,24 +198,21 @@ export default function RegisterProject() {
           // Query with both sides lowercased
           const result = await supabase
             .from("users")
-            .select("id")
-            .eq("wallet_address", walletAddress.toLowerCase())
+            .select("id,email")
+            .ilike("wallet_address", walletAddress)
             .single();
           userData = result.data;
           userError = result.error;
-        }
-      }
-      if (!userData && emailUser) {
-        // Email user: get user ID from database using email (case-insensitive)
-        email = emailUser.email;
-        if (email) {
-          const result = await supabase
-            .from("users")
-            .select("id")
-            .eq("email", email.toLowerCase())
-            .single();
-          userData = result.data;
-          userError = result.error;
+          // If not found by wallet, try by email
+          if ((!userData || userError) && authUser?.email) {
+            const emailResult = await supabase
+              .from("users")
+              .select("id")
+              .eq("email", authUser.email.toLowerCase())
+              .single();
+            userData = emailResult.data;
+            userError = emailResult.error;
+          }
         }
       }
       if (!userData || userError) {
@@ -249,6 +254,10 @@ export default function RegisterProject() {
     }
   }
 
+  if (!isClient) {
+    return null; // or a loading spinner
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -257,17 +266,17 @@ export default function RegisterProject() {
     )
   }
 
-  if (!loading && !currentUser) {
+  if (!loading && !walletUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md">
           <div className="text-center">
             <Building2 className="w-16 h-16 mx-auto text-blue-400 mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-4">Connect Your Wallet or Sign In</h2>
-            <p className="text-gray-300 mb-6">You need to connect your wallet or sign in with email to register a project</p>
-            <Link href="/">
+            <h2 className="text-2xl font-bold text-white mb-4">Wallet Required</h2>
+            <p className="text-gray-300 mb-6">You need to link your wallet in your profile before you can register a project.</p>
+            <Link href="/profile">
               <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
-                Go Back
+                Go to Profile
               </Button>
             </Link>
           </div>
@@ -566,6 +575,7 @@ export default function RegisterProject() {
                         onImageRemoved={() => handleInputChange("logoUrl", "")}
                         currentImage={formData.logoUrl}
                         maxSizeMB={2}
+                        label="Upload Project Logo"
                       />
                     </div>
 
@@ -579,6 +589,7 @@ export default function RegisterProject() {
                         onImageRemoved={() => handleInputChange("coverImageUrl", "")}
                         currentImage={formData.coverImageUrl}
                         maxSizeMB={5}
+                        label="Upload Cover Image"
                       />
                     </div>
                   </div>

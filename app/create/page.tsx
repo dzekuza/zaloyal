@@ -466,24 +466,6 @@ export default function CreateQuest() {
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
               />
             </div>
-            <div>
-              <Label className="text-white">Form Title</Label>
-              <Input
-                value={currentTask.formTitle || ""}
-                onChange={(e) => setCurrentTask((prev) => ({ ...prev, formTitle: e.target.value }))}
-                placeholder="User Feedback Form"
-                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-              />
-            </div>
-            <div>
-              <Label className="text-white">Form Description</Label>
-              <Textarea
-                value={currentTask.formDescription || ""}
-                onChange={(e) => setCurrentTask((prev) => ({ ...prev, formDescription: e.target.value }))}
-                placeholder="What information will users provide?"
-                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-              />
-            </div>
           </div>
         )
 
@@ -496,36 +478,6 @@ export default function CreateQuest() {
                 value={currentTask.visitUrl || ""}
                 onChange={(e) => setCurrentTask((prev) => ({ ...prev, visitUrl: e.target.value }))}
                 placeholder="https://example.com/page"
-                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-              />
-            </div>
-            <div>
-              <Label className="text-white">Page Title</Label>
-              <Input
-                value={currentTask.visitTitle || ""}
-                onChange={(e) => setCurrentTask((prev) => ({ ...prev, visitTitle: e.target.value }))}
-                placeholder="Documentation Page"
-                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-              />
-            </div>
-            <div>
-              <Label className="text-white">Expected Duration (seconds)</Label>
-              <Input
-                type="number"
-                value={currentTask.visitDuration || 0}
-                onChange={(e) =>
-                  setCurrentTask((prev) => ({ ...prev, visitDuration: Number.parseInt(e.target.value) || 0 }))
-                }
-                placeholder="30"
-                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-              />
-            </div>
-            <div>
-              <Label className="text-white">Visit Description</Label>
-              <Textarea
-                value={currentTask.visitDescription || ""}
-                onChange={(e) => setCurrentTask((prev) => ({ ...prev, visitDescription: e.target.value }))}
-                placeholder="What should users look for on this page?"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
               />
             </div>

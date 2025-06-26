@@ -146,6 +146,7 @@ export default function ClientLayout({
             </SidebarInset>
           </SidebarProvider>
 
+
           {/* Auth Dialog */}
           <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
             <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
