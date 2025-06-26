@@ -90,26 +90,26 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
           </Link> */}
 
           {/* Desktop Navigation */}
-          {/* <div className="hidden md:flex items-center space-x-8">
-            <Link href="/" className="text-gray-300 hover:text-white transition-colors flex items-center gap-2">
+          <div className="hidden md:flex items-center space-x-8">
+            <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <Home className="w-4 h-4" />
               Projects
             </Link>
             <Link
               href="/dashboard"
-              className="text-gray-300 hover:text-white transition-colors flex items-center gap-2"
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
             >
               <BarChart3 className="w-4 h-4" />
               Dashboard
             </Link>
             <Link
               href="/leaderboard"
-              className="text-gray-300 hover:text-white transition-colors flex items-center gap-2"
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
             >
               <Trophy className="w-4 h-4" />
               Leaderboard
             </Link>
-          </div> */}
+          </div>
 
           {/* User Section */}
           <div className="flex items-center space-x-4 justify-end w-full">

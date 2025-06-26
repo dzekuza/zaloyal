@@ -241,16 +241,6 @@ export default function RegisterProject() {
       }
 
       setSubmitted(true)
-
-      // Update user role to 'creator' if not already
-      const { data: userProfile, error: fetchProfileError } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .single();
-      if (!fetchProfileError && userProfile && userProfile.role !== 'creator') {
-        await supabase.from('users').update({ role: 'creator' }).eq('id', userId);
-      }
     } catch (error) {
       console.error("Project registration error:", error)
       alert("Failed to submit project application. Please try again.")

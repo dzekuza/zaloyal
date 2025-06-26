@@ -15,6 +15,7 @@ import type { Database } from "@/lib/supabase"
 
 type Project = {
   id: string;
+  owner_id: string;
   name: string;
   description?: string | null;
   created_at?: string;
@@ -43,6 +44,7 @@ export default function ProjectDiscovery() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const categories = [
     "DeFi",
@@ -81,6 +83,14 @@ export default function ProjectDiscovery() {
 
     setFilteredProjects(filtered)
   }, [searchTerm, selectedCategory, projects])
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    }
+    fetchUser();
+  }, [])
 
   /* ------------------------------------------------------------------ */
   /*  helpers                                                           */
@@ -251,11 +261,11 @@ export default function ProjectDiscovery() {
           Featured Projects
         </h2>
 
-        <ProjectGrid projects={filteredProjects.filter((p) => p.featured)} />
+        <ProjectGrid projects={filteredProjects.filter((p) => p.featured)} currentUserId={currentUserId} />
 
         {/* All Projects */}
         <h2 className="text-2xl font-bold text-white my-6">All Projects</h2>
-        <ProjectGrid projects={filteredProjects} />
+        <ProjectGrid projects={filteredProjects} currentUserId={currentUserId} />
 
         {filteredProjects.length === 0 && (
           <div className="text-center py-12">
@@ -271,7 +281,7 @@ export default function ProjectDiscovery() {
 /* ------------------------------------------------------------------ */
 /*  sub-component                                                      */
 /* ------------------------------------------------------------------ */
-function ProjectGrid({ projects }: { projects: Project[] }) {
+function ProjectGrid({ projects, currentUserId }: { projects: Project[], currentUserId: string | null }) {
   if (!projects.length) return null
 
   return (
@@ -342,7 +352,7 @@ function ProjectGrid({ projects }: { projects: Project[] }) {
                 size="sm"
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600"
               >
-                Explore Project
+                {currentUserId && project.owner_id === currentUserId ? "View My Project" : "Explore Project"}
               </Button>
             </Link>
           </CardContent>
