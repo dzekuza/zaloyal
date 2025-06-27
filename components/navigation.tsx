@@ -16,6 +16,7 @@ import { User, LogOut, Settings, Trophy, Zap, Building2, Home, BarChart3, Users,
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 interface NavigationProps {
   onAuthClick: () => void
@@ -81,193 +82,179 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
   }
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-white/10">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row items-center justify-between h-auto md:h-16 gap-2 md:gap-0">
-          <div className="flex items-center space-x-8 w-full md:w-auto">
-            <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
-              <Home className="w-4 h-4" />
-              Projects
-            </Link>
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+    <nav className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-white/10 py-2 md:py-3">
+      <div className=" px-4">
+        <div className="items-center h-auto md:h-16 gap-auto grid grid-cols-2 justify-end">
+          {/* Left: Search bar */}
+          <div className="hidden md:inline-grid justify-self-start">
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                if (searchTerm.trim()) router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
+              }}
+              className="relative flex items-center w-full max-w-md mx-auto"
             >
-              <BarChart3 className="w-4 h-4" />
-              Dashboard
-            </Link>
-            <Link
-              href="/leaderboard"
-              className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <Trophy className="w-4 h-4" />
-              Leaderboard
-            </Link>
+              <input
+                type="text"
+                placeholder="Search projects or quests..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-10 pr-3 py-2 rounded-md bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+            </form>
           </div>
-          {/* Search Field - always visible */}
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              if (searchTerm.trim()) router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
-            }}
-            className="relative flex items-center w-full md:w-auto mt-2 md:mt-0"
-          >
-            <input
-              type="text"
-              placeholder="Search projects or quests..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10 pr-3 py-2 rounded-md bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-          </form>
-        </div>
+          {/* Right: Profile/User and Hamburger */}
+          <div className="flex items-center justify-end gap-4 w-full col-span-2 md:col-span-1">
+            {currentUser ? (
+              <>
+                {/* User Stats - Desktop */}
+                <div className="hidden lg:flex items-center space-x-4 text-sm">
+                  <div className="flex items-center gap-1 text-yellow-400">
+                    <Zap className="w-4 h-4" />
+                    <span className="font-semibold">{userStats.xp}</span>
+                    <span className="text-gray-400">XP</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-blue-400">
+                    <Trophy className="w-4 h-4" />
+                    <span className="font-semibold">L{userStats.level}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-green-400">
+                    <Users className="w-4 h-4" />
+                    <span className="font-semibold">#{userStats.rank}</span>
+                  </div>
+                </div>
 
-        {/* User Section */}
-        <div className="flex items-center space-x-4 justify-end w-full">
-          {currentUser ? (
-            <>
-              {/* User Stats - Desktop */}
-              <div className="hidden lg:flex items-center space-x-4 text-sm">
-                <div className="flex items-center gap-1 text-yellow-400">
-                  <Zap className="w-4 h-4" />
-                  <span className="font-semibold">{userStats.xp}</span>
-                  <span className="text-gray-400">XP</span>
-                </div>
-                <div className="flex items-center gap-1 text-blue-400">
-                  <Trophy className="w-4 h-4" />
-                  <span className="font-semibold">L{userStats.level}</span>
-                </div>
-                <div className="flex items-center gap-1 text-green-400">
-                  <Users className="w-4 h-4" />
-                  <span className="font-semibold">#{userStats.rank}</span>
-                </div>
-              </div>
+                {/* User Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
+                        <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                          {displayName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="hidden sm:block text-left">
+                        <div className="text-white text-sm font-medium">{displayName}</div>
+                        <div className="text-gray-400 text-xs">
+                          {displayAddress?.slice(0, 6)}...{displayAddress?.slice(-4)}
+                        </div>
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
+                    <div className="px-2 py-1.5">
+                      <p className="text-sm font-medium text-white">{displayName}</p>
+                      <p className="text-xs text-gray-400">{displayAddress}</p>
+                    </div>
+                    <DropdownMenuSeparator className="bg-slate-700" />
 
-              {/* User Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
-                      <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-                        {displayName.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="hidden sm:block text-left">
-                      <div className="text-white text-sm font-medium">{displayName}</div>
-                      <div className="text-gray-400 text-xs">
-                        {displayAddress?.slice(0, 6)}...{displayAddress?.slice(-4)}
+                    {/* Mobile Stats */}
+                    <div className="lg:hidden px-2 py-2">
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div>
+                          <div className="text-yellow-400 font-bold">{userStats.xp}</div>
+                          <div className="text-gray-400">XP</div>
+                        </div>
+                        <div>
+                          <div className="text-blue-400 font-bold">L{userStats.level}</div>
+                          <div className="text-gray-400">Level</div>
+                        </div>
+                        <div>
+                          <div className="text-green-400 font-bold">#{userStats.rank}</div>
+                          <div className="text-gray-400">Rank</div>
+                        </div>
                       </div>
                     </div>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium text-white">{displayName}</p>
-                    <p className="text-xs text-gray-400">{displayAddress}</p>
-                  </div>
-                  <DropdownMenuSeparator className="bg-slate-700" />
+                    <DropdownMenuSeparator className="lg:hidden bg-slate-700" />
 
-                  {/* Mobile Stats */}
-                  <div className="lg:hidden px-2 py-2">
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div>
-                        <div className="text-yellow-400 font-bold">{userStats.xp}</div>
-                        <div className="text-gray-400">XP</div>
-                      </div>
-                      <div>
-                        <div className="text-blue-400 font-bold">L{userStats.level}</div>
-                        <div className="text-gray-400">Level</div>
-                      </div>
-                      <div>
-                        <div className="text-green-400 font-bold">#{userStats.rank}</div>
-                        <div className="text-gray-400">Rank</div>
-                      </div>
-                    </div>
-                  </div>
-                  <DropdownMenuSeparator className="lg:hidden bg-slate-700" />
+                    <DropdownMenuItem asChild className="text-white hover:bg-slate-700">
+                      <Link href="/profile">
+                        <User className="w-4 h-4 mr-2" />
+                        Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-white hover:bg-slate-700">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Settings
+                    </DropdownMenuItem>
 
-                  <DropdownMenuItem asChild className="text-white hover:bg-slate-700">
-                    <Link href="/profile">
-                      <User className="w-4 h-4 mr-2" />
-                      Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="text-white hover:bg-slate-700">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </DropdownMenuItem>
+                    {/* Always show Register Project link for authenticated users */}
+                    <DropdownMenuSeparator className="bg-slate-700" />
+                    <DropdownMenuItem asChild className="text-white hover:bg-slate-700">
+                      <Link href="/register-project">
+                        <Building2 className="w-4 h-4 mr-2" />
+                        Register Project
+                      </Link>
+                    </DropdownMenuItem>
 
-                  {/* Always show Register Project link for authenticated users */}
-                  <DropdownMenuSeparator className="bg-slate-700" />
-                  <DropdownMenuItem asChild className="text-white hover:bg-slate-700">
-                    <Link href="/register-project">
-                      <Building2 className="w-4 h-4 mr-2" />
-                      Register Project
-                    </Link>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator className="bg-slate-700" />
-                  <DropdownMenuItem
-                    onClick={handleSignOut}
-                    className="text-red-400 hover:bg-slate-700 hover:text-red-300"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : (
-            <Button
-              onClick={onAuthClick}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
-            >
-              Sign In
-            </Button>
-          )}
-
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="md:hidden text-white"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
-        </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-white/10">
-            <div className="space-y-2">
-              <Link
-                href="/"
-                className="block px-3 py-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
+                    <DropdownMenuSeparator className="bg-slate-700" />
+                    <DropdownMenuItem
+                      onClick={handleSignOut}
+                      className="text-red-400 hover:bg-slate-700 hover:text-red-300"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Button
+                onClick={onAuthClick}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
               >
-                <Home className="w-4 h-4 inline mr-2" />
-                Projects
-              </Link>
-              <Link
-                href="/dashboard"
-                className="block px-3 py-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <BarChart3 className="w-4 h-4 inline mr-2" />
-                Dashboard
-              </Link>
-              <Link
-                href="/leaderboard"
-                className="block px-3 py-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Trophy className="w-4 h-4 inline mr-2" />
-                Leaderboard
-              </Link>
+                Sign In
+              </Button>
+            )}
+
+            <div className="flex md:hidden items-center gap-2 ml-auto">
+              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </Button>
             </div>
+          </div>
+        </div>
+
+        {/* Mobile/Tablet Menu Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden fixed top-0 left-0 w-full h-full bg-slate-900/95 z-50 flex flex-col p-6 gap-6 animate-in fade-in">
+            <div className="flex justify-end">
+              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+                <X className="w-6 h-6" />
+              </Button>
+            </div>
+            <nav className="flex flex-col gap-4 mt-4">
+              <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                <Home className="w-4 h-4" /> Projects
+              </Link>
+              <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                <BarChart3 className="w-4 h-4" /> Dashboard
+              </Link>
+              <Link href="/leaderboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                <Trophy className="w-4 h-4" /> Leaderboard
+              </Link>
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  if (searchTerm.trim()) {
+                    setMobileMenuOpen(false);
+                    router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
+                  }
+                }}
+                className="relative flex items-center w-full mt-4"
+              >
+                <input
+                  type="text"
+                  placeholder="Search projects or quests..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-3 py-2 rounded-md bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+              </form>
+            </nav>
           </div>
         )}
       </div>

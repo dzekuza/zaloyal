@@ -143,10 +143,14 @@ export default function MyProjectsPage() {
   )
 }
 
+function getAbsoluteUrl(url: string) {
+  return url?.match(/^https?:\/\//i) ? url : `https://${url}`;
+}
+
 function IconLink({ href, icon: Icon }: { href: string; icon: any }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">
+    <a href={getAbsoluteUrl(href)} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">
       <Icon className="h-4 w-4" />
     </a>
-  )
+  );
 } 

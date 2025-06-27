@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import ImageUpload from "@/components/image-upload"
+import AvatarUpload from "@/components/avatar-upload"
 
 export default function EditProjectForm({ project, onSave }: { project: any, onSave?: () => void }) {
   const [name, setName] = useState(project.name || "")
@@ -78,14 +79,13 @@ export default function EditProjectForm({ project, onSave }: { project: any, onS
       <div className="space-y-6">
         <div className="space-y-2 flex flex-col items-start">
           <label className="text-white block mb-1">Project Logo</label>
-          <div className="w-16 h-16 mb-2">
-            <ImageUpload
-              onImageUploaded={setLogoUrl}
-              onImageRemoved={() => setLogoUrl("")}
-              currentImage={logoUrl}
-              maxSizeMB={2}
-              label="Upload Logo"
-              className="w-16 h-16 object-contain rounded bg-white"
+          <div className="mb-2">
+            <AvatarUpload
+              onAvatarUploaded={setLogoUrl}
+              currentAvatar={logoUrl}
+              userId={project.id}
+              size="md"
+              className="mx-auto"
             />
           </div>
         </div>

@@ -14,6 +14,7 @@ interface AvatarUploadProps {
   userId: string
   size?: "sm" | "md" | "lg"
   className?: string
+  uploadType?: "avatar" | "quest-image"
 }
 
 export default function AvatarUpload({
@@ -22,6 +23,7 @@ export default function AvatarUpload({
   userId,
   size = "md",
   className = "",
+  uploadType = "avatar",
 }: AvatarUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -72,7 +74,12 @@ export default function AvatarUpload({
         })
       }, 150)
 
-      const avatarUrl = await storageService.uploadUserAvatar(file, userId)
+      let avatarUrl: string | null = null;
+      if (uploadType === "quest-image") {
+        avatarUrl = await storageService.uploadQuestImage(file, userId)
+      } else {
+        avatarUrl = await storageService.uploadUserAvatar(file, userId)
+      }
 
       clearInterval(progressInterval)
       setUploadProgress(100)
@@ -133,6 +140,7 @@ export default function AvatarUpload({
           {!uploading && (
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <Button
+                type="button"
                 size="sm"
                 onClick={openFileDialog}
                 className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs"

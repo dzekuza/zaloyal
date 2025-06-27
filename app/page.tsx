@@ -177,7 +177,12 @@ export default function ProjectDiscovery() {
         setProjects(grouped)
         setLoading(false)
       } else {
-        console.error("Error fetching projects:", err)
+        console.error(
+          "Error fetching projects:",
+          err,
+          typeof err,
+          err && (err.message || JSON.stringify(err) || err)
+        )
         setLoading(false)
       }
     }
@@ -432,21 +437,19 @@ function ProjectGrid({ projects, currentUserId, editingProject, setEditingProjec
 /* ------------------------------------------------------------------ */
 /*  utility                                                            */
 /* ------------------------------------------------------------------ */
-function IconLink({
-  href,
-  icon: Icon,
-}: {
-  href: string
-  icon: typeof Globe
-}) {
+function getAbsoluteUrl(url: string) {
+  return url?.match(/^https?:\/\//i) ? url : `https://${url}`;
+}
+
+function IconLink({ href, icon: Icon }: { href: string; icon: any }) {
   return (
     <Button
       size="sm"
       variant="outline"
-      onClick={() => window.open(href, "_blank")}
+      onClick={() => window.open(getAbsoluteUrl(href), "_blank")}
       className="bg-white/10 border-white/20 text-white hover:bg-white/20"
     >
       <Icon className="h-3 w-3" />
     </Button>
-  )
+  );
 }

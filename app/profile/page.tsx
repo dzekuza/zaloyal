@@ -121,14 +121,6 @@ export default function ProfilePage() {
           {/* Wallet Linking UI */}
           <div>
             <WalletConnect />
-            {walletUser && (
-              <button
-                onClick={handleDisconnectWallet}
-                className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
-              >
-                Disconnect Wallet
-              </button>
-            )}
           </div>
           {error && <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">{error}</div>}
           {success && <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm">{success}</div>}

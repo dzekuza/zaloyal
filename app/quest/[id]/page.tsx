@@ -47,6 +47,8 @@ type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
   user_task_submissions?: Database["public"]["Tables"]["user_task_submissions"]["Row"] | null
 }
 
+const getAbsoluteUrl = (url: string) => url?.match(/^https?:\/\//i) ? url : `https://${url}`;
+
 export default function QuestDetail() {
   const params = useParams()
   const questId = params.id as string
@@ -390,7 +392,7 @@ export default function QuestDetail() {
           <Button
             size="sm"
             onClick={() => {
-              window.open(task.download_url || "", "_blank")
+              window.open(getAbsoluteUrl(task.download_url || ""), "_blank")
               setTimeout(() => handleTaskVerification(task), 2000)
             }}
             disabled={isVerifying}
@@ -405,7 +407,7 @@ export default function QuestDetail() {
           <Button
             size="sm"
             onClick={() => {
-              window.open(task.visit_url || "", "_blank")
+              window.open(getAbsoluteUrl(task.visit_url || ""), "_blank")
               setTimeout(() => handleTaskVerification(task), 3000)
             }}
             disabled={isVerifying}
@@ -420,7 +422,7 @@ export default function QuestDetail() {
           <Button
             size="sm"
             onClick={() => {
-              window.open(task.form_url || "", "_blank")
+              window.open(getAbsoluteUrl(task.form_url || ""), "_blank")
               setTimeout(() => handleTaskVerification(task), 5000)
             }}
             disabled={isVerifying}
@@ -542,7 +544,7 @@ export default function QuestDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full px-2 sm:px-4 py-8">
         {/* Back Button */}
         <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" />
@@ -552,7 +554,7 @@ export default function QuestDetail() {
         {/* Quest Header */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden">
+            <Card className="w-full bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
               <div className="relative">
                 <img
                   src={quest.image_url || "/placeholder.svg?height=300&width=600"}
@@ -614,9 +616,9 @@ export default function QuestDetail() {
             </Card>
           </div>
 
-          {/* Quest Stats Sidebar */}
-          <div className="space-y-6">
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+          {/* Quest Stats Sidebar (desktop only) */}
+          <div className="space-y-6 hidden lg:block">
+            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full">
               <CardHeader>
                 <CardTitle className="text-white">Quest Stats</CardTitle>
               </CardHeader>
@@ -639,8 +641,51 @@ export default function QuestDetail() {
                 </div>
               </CardContent>
             </Card>
-
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full">
+              <CardHeader>
+                <CardTitle className="text-white">Creator</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold">
+                      {quest.users?.username?.charAt(0).toUpperCase() || "A"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">{quest.users?.username || "Anonymous"}</p>
+                    <p className="text-gray-400 text-sm">Verified Creator</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          {/* Mobile sidebar below main card */}
+          <div className="space-y-2 block lg:hidden mt-8">
+            <Card className="w-full bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+              <CardHeader>
+                <CardTitle className="text-white">Quest Stats</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total Rewards</span>
+                  <span className="text-yellow-400 font-semibold">{quest.total_xp} XP</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Participants</span>
+                  <span className="text-white">{quest.participant_count}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Tasks</span>
+                  <span className="text-white">{tasks.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Status</span>
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">{quest.status}</Badge>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="w-full bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
               <CardHeader>
                 <CardTitle className="text-white">Creator</CardTitle>
               </CardHeader>
@@ -671,7 +716,7 @@ export default function QuestDetail() {
             <div className="space-y-4">
               {tasks.map((task, index) => (
                 <div key={task.id}>
-                  <div className="flex items-start gap-4 p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                  <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
                     <div className="flex-shrink-0 mt-1">
                       {task.user_task_submissions?.status === "verified" ? (
                         <CheckCircle className="w-6 h-6 text-green-400" />
@@ -679,39 +724,40 @@ export default function QuestDetail() {
                         <Circle className="w-6 h-6 text-gray-400" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            {getTaskIcon(task)}
-                            <h3
-                              className={`font-semibold ${task.user_task_submissions?.status === "verified" ? "text-green-400" : "text-white"}`}
-                            >
-                              {task.title}
-                            </h3>
-                            <Badge
-                              variant="outline"
-                              className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                            >
-                              +{task.xp_reward} XP
-                            </Badge>
-                            <Badge
-                              variant="outline"
-                              className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30"
-                            >
-                              {task.task_type}
-                            </Badge>
-                          </div>
-                          <p className="text-gray-400 text-sm mb-3">{task.description}</p>
-                          {task.social_url && (
-                            <p className="text-xs text-blue-400 hover:underline">
-                              <a href={task.social_url} target="_blank" rel="noopener noreferrer">
-                                {task.social_url}
-                              </a>
-                            </p>
-                          )}
+                    <div className="flex-1 min-w-0 w-full">
+                      <div className="flex flex-col gap-2 w-full">
+                        <div className="flex items-center gap-2 mb-2">
+                          {getTaskIcon(task)}
+                          <h3
+                            className={`font-semibold ${task.user_task_submissions?.status === "verified" ? "text-green-400" : "text-white"}`}
+                          >
+                            {task.title}
+                          </h3>
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                          >
+                            +{task.xp_reward} XP
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30"
+                          >
+                            {task.task_type}
+                          </Badge>
                         </div>
-                        <div className="flex-shrink-0">{getTaskActionButton(task)}</div>
+                        <p className="text-gray-400 text-sm mb-3">{task.description}</p>
+                        {task.social_url && (
+                          <p className="text-xs text-blue-400 hover:underline">
+                            <a href={task.social_url} target="_blank" rel="noopener noreferrer">
+                              {task.social_url}
+                            </a>
+                          </p>
+                        )}
+                        {/* Action button at the bottom on mobile, right on desktop */}
+                        <div className="mt-2 sm:mt-0 w-full sm:w-auto flex justify-end">
+                          {getTaskActionButton(task)}
+                        </div>
                       </div>
                     </div>
                   </div>
