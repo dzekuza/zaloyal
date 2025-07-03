@@ -12,6 +12,7 @@ import TelegramLoginWidget from "@/components/telegram-login-widget"
 import { useRouter } from "next/navigation"
 import { LogOut } from "lucide-react"
 import { SiDiscord } from "react-icons/si"
+import { SiX } from "react-icons/si"
 import AvatarUpload from "@/components/avatar-upload"
 
 export default function ProfilePage() {
@@ -34,6 +35,7 @@ export default function ProfilePage() {
 
   const [supabaseUser, setSupabaseUser] = useState<any>(null)
   const [unlinkingDiscord, setUnlinkingDiscord] = useState(false)
+  const [unlinkingTwitter, setUnlinkingTwitter] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSupabaseUser(data?.user))
@@ -42,6 +44,12 @@ export default function ProfilePage() {
     id: emailUser.profile.discord_id,
     username: emailUser.profile.discord_username,
     avatar: emailUser.profile.discord_avatar_url,
+  } : null
+
+  const twitterInfo = emailUser?.profile?.twitter_id ? {
+    id: emailUser.profile.twitter_id,
+    username: emailUser.profile.twitter_username,
+    avatar: emailUser.profile.twitter_avatar_url,
   } : null
 
   useEffect(() => {
@@ -180,6 +188,56 @@ export default function ProfilePage() {
     }
   }
 
+  const handleLinkTwitter = async () => {
+    const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' })
+    if (!error) {
+      // After linking, get Twitter identity info
+      const { data: identities } = await supabase.auth.getUserIdentities()
+      const twitterIdentity = identities?.identities?.find((identity: any) => identity.provider === 'twitter')
+      if (twitterIdentity) {
+        // Save Twitter info to users table
+        await supabase.from('users').update({
+          twitter_id: twitterIdentity.id,
+          twitter_username: twitterIdentity.identity_data?.user_name,
+          twitter_avatar_url: twitterIdentity.identity_data?.avatar_url,
+        }).eq('id', emailUser.profile.id)
+        // Refetch user info
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+          setEmailUser({ ...user, profile })
+        }
+      }
+    }
+  }
+
+  const handleUnlinkTwitter = async () => {
+    setUnlinkingTwitter(true)
+    try {
+      const { data: identities, error: identitiesError } = await supabase.auth.getUserIdentities()
+      if (!identitiesError) {
+        const twitterIdentity = identities.identities.find((identity: any) => identity.provider === 'twitter')
+        if (twitterIdentity) {
+          await supabase.auth.unlinkIdentity(twitterIdentity)
+          // Clear Twitter info from users table
+          await supabase.from('users').update({
+            twitter_id: null,
+            twitter_username: null,
+            twitter_avatar_url: null,
+          }).eq('id', emailUser.profile.id)
+          // Refetch user info
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+            setEmailUser({ ...user, profile })
+          }
+        }
+      }
+    } finally {
+      setUnlinkingTwitter(false)
+    }
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-white text-xl">Loading...</div>
   }
@@ -279,10 +337,34 @@ export default function ProfilePage() {
                   </Button>
                 )}
               </div>
-              {/* X (Twitter) Connect Button (placeholder) */}
+              {/* X (Twitter) Connect Button */}
               <div className="flex flex-col items-center w-full">
-                <Button disabled className="w-full bg-black text-white border-0 opacity-60 cursor-not-allowed mb-2">Connect X (coming soon)</Button>
-                <span className="text-xs text-gray-400">X (Twitter) integration coming soon</span>
+                {twitterInfo ? (
+                  <div className="flex flex-col items-center w-full gap-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      {twitterInfo.avatar && (
+                        <img src={twitterInfo.avatar} alt="X Avatar" className="w-8 h-8 rounded-full" />
+                      )}
+                      <span className="text-white font-medium">{twitterInfo.username}</span>
+                    </div>
+                    <Button
+                      className="w-full bg-red-600 hover:bg-red-700 text-white border-0 flex items-center justify-center gap-2 text-base font-medium py-3"
+                      onClick={handleUnlinkTwitter}
+                      disabled={unlinkingTwitter}
+                    >
+                      <SiX className="w-6 h-6" />
+                      {unlinkingTwitter ? 'Unlinking...' : 'Unlink X'}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full bg-black text-white border-0 mb-2 flex items-center justify-center gap-2 text-base font-medium py-3"
+                    onClick={handleLinkTwitter}
+                  >
+                    <SiX className="w-6 h-6" />
+                    Connect X
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
