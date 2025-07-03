@@ -108,6 +108,12 @@ export default function RegisterProject() {
     additionalInfo: "",
   })
   const router = useRouter()
+  const [unlinkingDiscord, setUnlinkingDiscord] = useState(false)
+  const discordInfo = emailUser?.profile?.discord_id ? {
+    id: emailUser.profile.discord_id,
+    username: emailUser.profile.discord_username,
+    avatar: emailUser.profile.discord_avatar_url,
+  } : null
 
   const currentUser = walletUser || emailUser
 
@@ -251,6 +257,27 @@ export default function RegisterProject() {
       alert("Failed to submit project application. Please try again.")
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleUnlinkDiscord = async () => {
+    setUnlinkingDiscord(true)
+    try {
+      const { data: identities, error: identitiesError } = await supabase.auth.getUserIdentities()
+      if (!identitiesError) {
+        const discordIdentity = identities.identities.find((identity: any) => identity.provider === 'discord')
+        if (discordIdentity) {
+          await supabase.auth.unlinkIdentity(discordIdentity)
+          // Refetch user info after unlink
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+            setEmailUser({ ...user, profile })
+          }
+        }
+      }
+    } finally {
+      setUnlinkingDiscord(false)
     }
   }
 
@@ -507,13 +534,28 @@ export default function RegisterProject() {
                         <MessageSquare className="w-4 h-4" />
                         Discord
                       </Label>
-                      <Input
-                        id="discord"
-                        value={formData.discordUrl}
-                        onChange={(e) => handleInputChange("discordUrl", e.target.value)}
-                        placeholder="https://discord.gg/yourproject"
-                        className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                      />
+                      {discordInfo ? (
+                        <div className="flex items-center gap-3">
+                          {discordInfo.avatar && (
+                            <img src={discordInfo.avatar} alt="Discord Avatar" className="w-8 h-8 rounded-full" />
+                          )}
+                          <span className="text-white font-medium">{discordInfo.username}</span>
+                          <Button
+                            className="bg-red-600 hover:bg-red-700 text-white border-0 ml-2"
+                            onClick={handleUnlinkDiscord}
+                            disabled={unlinkingDiscord}
+                          >
+                            {unlinkingDiscord ? 'Unlinking...' : 'Unlink Discord'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          className="bg-[#5865F2] text-white border-0"
+                          onClick={() => supabase.auth.linkIdentity({ provider: 'discord' })}
+                        >
+                          Connect Discord
+                        </Button>
+                      )}
                     </div>
 
                     <div className="space-y-2">

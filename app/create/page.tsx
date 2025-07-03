@@ -345,6 +345,26 @@ export default function CreateQuest() {
   }
 
   const renderTaskSpecificFields = () => {
+    // Find the selected project object
+    const selectedProject = userProjects.find((p) => p.id === selectedProjectId);
+    // Helper: does the project have the relevant social link?
+    const hasProjectSocial = (platform: string) => {
+      if (!selectedProject) return false;
+      if (platform === 'discord') return !!selectedProject.discord_url;
+      if (platform === 'twitter') return !!selectedProject.twitter_url;
+      if (platform === 'telegram') return !!selectedProject.telegram_url;
+      return false;
+    };
+    // Should we show the URL field?
+    const shouldShowUrlField = () => {
+      if (currentTask.socialPlatform === 'discord' && currentTask.socialAction === 'join' && hasProjectSocial('discord')) return false;
+      if (currentTask.socialPlatform === 'telegram' && currentTask.socialAction === 'join' && hasProjectSocial('telegram')) return false;
+      if (currentTask.socialPlatform === 'twitter' && currentTask.socialAction === 'follow' && hasProjectSocial('twitter')) return false;
+      // Always show for like/retweet
+      if (currentTask.socialAction === 'like' || currentTask.socialAction === 'retweet') return true;
+      // Default: show
+      return true;
+    };
     switch (currentTask.type) {
       case "social":
         return (
@@ -387,15 +407,17 @@ export default function CreateQuest() {
                 </Select>
               </div>
             </div>
-            <div>
-              <Label className="text-white">URL/Link</Label>
-              <Input
-                value={currentTask.socialUrl || ""}
-                onChange={(e) => setCurrentTask((prev) => ({ ...prev, socialUrl: e.target.value }))}
-                placeholder="https://twitter.com/username or https://t.me/groupname"
-                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-              />
-            </div>
+            {shouldShowUrlField() && (
+              <div>
+                <Label className="text-white">URL/Link</Label>
+                <Input
+                  value={currentTask.socialUrl || ""}
+                  onChange={(e) => setCurrentTask((prev) => ({ ...prev, socialUrl: e.target.value }))}
+                  placeholder="https://twitter.com/username or https://t.me/groupname"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                />
+              </div>
+            )}
             {currentTask.socialAction === "follow" && (
               <div>
                 <Label className="text-white">Username (without @)</Label>

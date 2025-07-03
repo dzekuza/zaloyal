@@ -7,6 +7,10 @@ import { ArrowLeft, Globe, Twitter, MessageSquare, Github, Users, Zap, Trophy, C
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import EditProjectForm from "@/components/edit-project-form"
 import EditQuestForm from "@/components/edit-quest-form"
+import { DiscordIcon } from '@/components/discord-icon'
+import { TelegramIcon } from '@/components/telegram-icon'
+import { MediumIcon } from '@/components/medium-icon'
+import { YoutubeIcon } from '@/components/youtube-icon'
 
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -35,6 +39,9 @@ type Project = {
   quest_count?: number;
   total_participants?: number;
   additional_info?: string | null;
+  telegram_url?: string | null;
+  medium_url?: string | null;
+  youtube_url?: string | null;
 };
 
 type Quest = {
@@ -182,7 +189,7 @@ export default function ProjectDetailPage() {
                   const url = project.discord_url.match(/^https?:\/\//i) ? project.discord_url : `https://${project.discord_url}`;
                   window.open(url, "_blank");
                 }} className="bg-white/10 border-white/20 text-white hover:bg-white/20">
-                  <MessageSquare className="w-4 h-4" />
+                  <DiscordIcon />
                 </Button>
               )}
               {project.github_url && (
@@ -191,6 +198,30 @@ export default function ProjectDetailPage() {
                   window.open(url, "_blank");
                 }} className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                   <Github className="w-4 h-4" />
+                </Button>
+              )}
+              {project.telegram_url && (
+                <Button size="sm" variant="outline" onClick={() => {
+                  const url = project.telegram_url.match(/^https?:\/\//i) ? project.telegram_url : `https://${project.telegram_url}`;
+                  window.open(url, "_blank");
+                }} className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                  <TelegramIcon />
+                </Button>
+              )}
+              {project.medium_url && (
+                <Button size="sm" variant="outline" onClick={() => {
+                  const url = project.medium_url.match(/^https?:\/\//i) ? project.medium_url : `https://${project.medium_url}`;
+                  window.open(url, "_blank");
+                }} className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                  <MediumIcon />
+                </Button>
+              )}
+              {project.youtube_url && (
+                <Button size="sm" variant="outline" onClick={() => {
+                  const url = project.youtube_url.match(/^https?:\/\//i) ? project.youtube_url : `https://${project.youtube_url}`;
+                  window.open(url, "_blank");
+                }} className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                  <YoutubeIcon />
                 </Button>
               )}
             </div>

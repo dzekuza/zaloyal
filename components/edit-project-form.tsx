@@ -102,13 +102,6 @@ export default function EditProjectForm({ project, onSave }: { project: any, onS
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input placeholder="Twitter URL" value={twitterUrl} onChange={e => setTwitterUrl(e.target.value)} className="bg-white/10 border-white/20 text-white" />
-        <Input placeholder="Discord URL" value={discordUrl} onChange={e => setDiscordUrl(e.target.value)} className="bg-white/10 border-white/20 text-white" />
-        <Input placeholder="Telegram URL" value={telegramUrl} onChange={e => setTelegramUrl(e.target.value)} className="bg-white/10 border-white/20 text-white" />
-        <Input placeholder="GitHub URL" value={githubUrl} onChange={e => setGithubUrl(e.target.value)} className="bg-white/10 border-white/20 text-white" />
-        <Input placeholder="Medium URL" value={mediumUrl} onChange={e => setMediumUrl(e.target.value)} className="bg-white/10 border-white/20 text-white" />
-      </div>
       <div className="flex justify-end">
         <Button type="submit" disabled={saving} className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
           {saving ? "Saving..." : "Save Changes"}

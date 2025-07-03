@@ -62,7 +62,7 @@ export default function WalletConnect({ onLinked }: { onLinked?: () => void } = 
           <div className="text-center">
             <p className="text-red-400 mb-4">You must be signed in to link your wallet.</p>
             <Button
-              onClick={() => router.push("/login")}
+              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
               className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
             >
               Go to Login
