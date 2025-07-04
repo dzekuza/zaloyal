@@ -54,7 +54,7 @@ export default function EditProjectForm({ project, onSave }: { project: any, onS
 
   return (
     <form
-      className="space-y-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto pr-2"
+      className="space-y-6 w-full max-w-2xl pr-2"
       style={{ scrollbarGutter: 'stable' }}
       onSubmit={e => { e.preventDefault(); handleSave(); }}
     >
@@ -91,7 +91,7 @@ export default function EditProjectForm({ project, onSave }: { project: any, onS
         </div>
         <div className="space-y-2 flex flex-col items-start">
           <label className="text-white block mb-1">Cover Image</label>
-          <div className="w-full max-w-md">
+          <div className="w-full">
             <ImageUpload
               onImageUploaded={setCoverImageUrl}
               onImageRemoved={() => setCoverImageUrl("")}

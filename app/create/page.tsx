@@ -85,7 +85,21 @@ interface QuestForm {
 export default function CreateQuest() {
   const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
   const [emailUser, setEmailUser] = useState<any>(null)
-  const [categories, setCategories] = useState<Database["public"]["Tables"]["quest_categories"]["Row"][]>([])
+  const questCategories = [
+    { value: "DeFi", label: "DeFi" },
+    { value: "NFT", label: "NFT" },
+    { value: "Gaming", label: "Gaming" },
+    { value: "Infrastructure", label: "Infrastructure" },
+    { value: "Social", label: "Social" },
+    { value: "Education", label: "Education" },
+    { value: "DAO", label: "DAO" },
+    { value: "Metaverse", label: "Metaverse" },
+    { value: "Trading", label: "Trading" },
+    { value: "RWA", label: "RWA" },
+    { value: "MEME", label: "MEME" },
+    { value: "TradeFi", label: "TradeFi" },
+    { value: "Other", label: "Other" },
+  ]
   const [questForm, setQuestForm] = useState<QuestForm>({
     title: "",
     description: "",
@@ -117,10 +131,9 @@ export default function CreateQuest() {
   ]
 
   const socialPlatforms = [
-    { value: "twitter", label: "Twitter", icon: "🐦" },
-    { value: "telegram", label: "Telegram", icon: "✈️" },
-    { value: "discord", label: "Discord", icon: "💬" },
-    { value: "youtube", label: "YouTube", icon: "📺" },
+    { value: "twitter", label: "Twitter / X", icon: "/x white.svg" },
+    { value: "telegram", label: "Telegram", icon: "/telegram 1.svg" },
+    { value: "discord", label: "Discord", icon: "/discord-icon 1.svg" },
   ]
 
   const socialActions = [
@@ -158,7 +171,6 @@ export default function CreateQuest() {
         setEmailUser(null)
       }
     })
-    fetchCategories()
     return () => {
       unsubscribeWallet()
       subscription.unsubscribe()
@@ -190,16 +202,6 @@ export default function CreateQuest() {
       }
     } catch (error) {
       console.error("Error fetching user projects:", error)
-    }
-  }
-
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase.from("quest_categories").select("*").order("name")
-      if (error) throw error
-      setCategories(data || [])
-    } catch (error) {
-      console.error("Error fetching categories:", error)
     }
   }
 
@@ -381,8 +383,9 @@ export default function CreateQuest() {
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700">
                     {socialPlatforms.map((platform) => (
-                      <SelectItem key={platform.value} value={platform.value} className="text-white hover:bg-slate-700">
-                        {platform.icon} {platform.label}
+                      <SelectItem key={platform.value} value={platform.value} className="text-white hover:bg-slate-700 flex items-center gap-2">
+                        <img src={platform.icon} alt={platform.label + ' logo'} className="w-5 h-5 p-1 inline-block align-middle" />
+                        {platform.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -699,9 +702,9 @@ export default function CreateQuest() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-800 border-slate-700">
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id} className="text-white hover:bg-slate-700">
-                            {category.icon} {category.name}
+                        {questCategories.map((category: { value: string; label: string }) => (
+                          <SelectItem key={category.value} value={category.value} className="text-white hover:bg-slate-700">
+                            {category.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -841,7 +844,7 @@ export default function CreateQuest() {
                 <div className="flex flex-wrap gap-2">
                   {questForm.categoryId && (
                     <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
-                      {categories.find((c) => c.id === questForm.categoryId)?.name}
+                      {questCategories.find((c: { value: string }) => c.value === questForm.categoryId)?.label}
                     </Badge>
                   )}
                   {questForm.featured && (

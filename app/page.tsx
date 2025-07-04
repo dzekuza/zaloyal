@@ -393,7 +393,7 @@ function ProjectGrid({ projects, currentUserId, editingProject, setEditingProjec
               <div className="flex gap-2 mb-2">
                 <Dialog open={editingProject?.id === project.id} onOpenChange={open => setEditingProject(open ? project : null)}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" onClick={() => setEditingProject(project)}>
+                    <Button size="sm" variant="outline" className="min-w-[96px]" onClick={() => setEditingProject(project)}>
                       Edit
                     </Button>
                   </DialogTrigger>
@@ -412,6 +412,7 @@ function ProjectGrid({ projects, currentUserId, editingProject, setEditingProjec
                 <Button
                   size="sm"
                   variant="destructive"
+                  className="min-w-[96px] border border-[#6c0a0a]"
                   onClick={() => handleDeleteProject(project.id)}
                 >
                   Delete

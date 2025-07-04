@@ -54,13 +54,13 @@ interface ProjectForm {
 }
 
 const blockchainNetworks = [
-  { value: "ethereum", label: "Ethereum", icon: "⟠" },
-  { value: "polygon", label: "Polygon", icon: "⬟" },
-  { value: "bsc", label: "Binance Smart Chain", icon: "🟡" },
-  { value: "arbitrum", label: "Arbitrum", icon: "🔵" },
-  { value: "optimism", label: "Optimism", icon: "🔴" },
-  { value: "avalanche", label: "Avalanche", icon: "🔺" },
-  { value: "solana", label: "Solana", icon: "🟣" },
+  { value: "solana", label: "Solana", icon: "/solana.svg" },
+  { value: "ethereum", label: "Ethereum", icon: "/ethereum.svg" },
+  { value: "polygon", label: "Polygon", icon: "/polygon.svg" },
+  { value: "bsc", label: "Binance Smart Chain", icon: "/bsc.svg" },
+  { value: "arbitrum", label: "Arbitrum", icon: "/arbitrum.svg" },
+  { value: "optimism", label: "Optimism", icon: "/optimism.svg" },
+  { value: "avalanche", label: "Avalanche", icon: "/avalanche.svg" },
 ]
 
 const projectCategories = [
@@ -73,7 +73,10 @@ const projectCategories = [
   "DAO",
   "Metaverse",
   "Trading",
-  "Staking",
+  "RWA",
+  "MEME",
+  "TradeFi",
+  "Other",
 ]
 
 const steps = [
@@ -322,7 +325,7 @@ export default function RegisterProject() {
             <p className="text-gray-300 mb-6">
               Your project application has been submitted for review. You'll be notified once it's approved.
             </p>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Link href="/dashboard">
                 <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
                   Go to Dashboard
@@ -482,9 +485,10 @@ export default function RegisterProject() {
                           <SelectItem
                             key={network.value}
                             value={network.value}
-                            className="text-white hover:bg-slate-700"
+                            className="text-white hover:bg-slate-700 flex items-center gap-2"
                           >
-                            {network.icon} {network.label}
+                            <img src={network.icon} alt={network.label + " logo"} className="w-5 h-5 mr-2 inline-block align-middle" />
+                            {network.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -654,7 +658,7 @@ export default function RegisterProject() {
               )}
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between pt-6">
+              <div className="flex justify-between pt-6 gap-2">
                 <Button
                   onClick={prevStep}
                   disabled={currentStep === 1}

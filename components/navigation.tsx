@@ -82,7 +82,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
   }
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-white/10 py-2 md:py-3">
+    <nav className="hidden md:block sticky top-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-white/10 py-2 md:py-3">
       <div className=" px-4">
         <div className="items-center h-auto md:h-16 gap-auto grid grid-cols-2 justify-end">
           {/* Left: Search bar */}
@@ -143,7 +143,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
+                  <DropdownMenuContent align="end" className="w-56 border-slate-700">
                     <div className="px-2 py-1.5">
                       <p className="text-sm font-medium text-white">{displayName}</p>
                       <p className="text-xs text-gray-400">{displayAddress}</p>
@@ -169,20 +169,20 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                     </div>
                     <DropdownMenuSeparator className="lg:hidden bg-slate-700" />
 
-                    <DropdownMenuItem asChild className="text-white hover:bg-slate-700">
+                    <DropdownMenuItem asChild>
                       <Link href="/profile">
                         <User className="w-4 h-4 mr-2" />
                         Profile
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-white hover:bg-slate-700">
+                    <DropdownMenuItem>
                       <Settings className="w-4 h-4 mr-2" />
                       Settings
                     </DropdownMenuItem>
 
                     {/* Always show Register Project link for authenticated users */}
                     <DropdownMenuSeparator className="bg-slate-700" />
-                    <DropdownMenuItem asChild className="text-white hover:bg-slate-700">
+                    <DropdownMenuItem asChild>
                       <Link href="/register-project">
                         <Building2 className="w-4 h-4 mr-2" />
                         Register Project
@@ -192,7 +192,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                     <DropdownMenuSeparator className="bg-slate-700" />
                     <DropdownMenuItem
                       onClick={handleSignOut}
-                      className="text-red-400 hover:bg-slate-700 hover:text-red-300"
+                      className="text-red-400 hover:text-red-300"
                     >
                       <LogOut className="w-4 h-4 mr-2" />
                       Sign Out

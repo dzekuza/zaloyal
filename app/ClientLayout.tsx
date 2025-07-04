@@ -26,6 +26,7 @@ import { Calendar, Home, Inbox, Search, Settings, Wallet, Mail, Users } from "lu
 import Navigation from "@/components/navigation"
 import EmailAuth from "@/components/email-auth"
 import { walletAuth } from "@/lib/wallet-auth"
+import MobileBottomNav from "@/components/mobile-bottom-nav"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -168,6 +169,7 @@ export default function ClientLayout({
             </DialogContent>
           </Dialog>
         </ThemeProvider>
+        <MobileBottomNav />
       </body>
     </html>
   )
