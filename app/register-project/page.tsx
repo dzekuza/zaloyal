@@ -74,8 +74,8 @@ const projectCategories = [
   "Metaverse",
   "Trading",
   "RWA",
-  "MEME",
-  "TradeFi",
+  "Meme",
+  "TradFi",
   "Other",
 ]
 
@@ -93,6 +93,7 @@ export default function RegisterProject() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<ProjectForm>({
     name: "",
@@ -153,7 +154,7 @@ export default function RegisterProject() {
       case 1:
         return formData.name && formData.description && formData.category && formData.websiteUrl
       case 2:
-        return formData.contractAddress && formData.blockchainNetwork
+        return formData.blockchainNetwork // Only blockchainNetwork is required
       case 3:
         return true // Social media is optional
       case 4:
@@ -229,15 +230,15 @@ export default function RegisterProject() {
       }
       userId = userData.id;
 
-      // Submit project directly to projects table
-      const { error: projectError } = await supabase.from("projects").insert({
+      // Submit project directly to projects table and return the new project
+      const { data: insertedProjects, error: projectError } = await supabase.from("projects").insert({
         owner_id: userId,
         name: formData.name,
         description: formData.description,
         website_url: formData.websiteUrl,
         logo_url: formData.logoUrl || null,
         cover_image_url: formData.coverImageUrl || null,
-        contract_address: formData.contractAddress,
+        contract_address: formData.contractAddress ? formData.contractAddress : null,
         blockchain_network: formData.blockchainNetwork,
         twitter_url: formData.twitterUrl || null,
         discord_url: formData.discordUrl || null,
@@ -246,7 +247,7 @@ export default function RegisterProject() {
         medium_url: formData.mediumUrl || null,
         category: formData.category,
         status: 'approved', // Make project live immediately
-      })
+      }).select().single();
 
       if (projectError) {
         console.error('Project registration error:', projectError);
@@ -254,6 +255,7 @@ export default function RegisterProject() {
         throw projectError;
       }
 
+      setCreatedProjectId(insertedProjects?.id || null);
       setSubmitted(true)
     } catch (error) {
       console.error("Project registration error:", error)
@@ -290,7 +292,7 @@ export default function RegisterProject() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
       </div>
     )
@@ -298,14 +300,14 @@ export default function RegisterProject() {
 
   if (!loading && !walletUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md">
           <div className="text-center">
             <Building2 className="w-16 h-16 mx-auto text-blue-400 mb-4" />
             <h2 className="text-2xl font-bold text-white mb-4">Wallet Required</h2>
             <p className="text-gray-300 mb-6">You need to link your wallet in your profile before you can register a project.</p>
             <Link href="/profile">
-              <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
+              <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
                 Go to Profile
               </Button>
             </Link>
@@ -317,7 +319,7 @@ export default function RegisterProject() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md">
           <div className="text-center">
             <CheckCircle className="w-16 h-16 mx-auto text-green-400 mb-4" />
@@ -326,8 +328,15 @@ export default function RegisterProject() {
               Your project application has been submitted for review. You'll be notified once it's approved.
             </p>
             <div className="flex flex-col gap-2">
+              {createdProjectId ? (
+                <Link href={`/project/${createdProjectId}`}>
+                  <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                    View My Project
+                  </Button>
+                </Link>
+              ) : null}
               <Link href="/dashboard">
-                <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
+                <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
                   Go to Dashboard
                 </Button>
               </Link>
@@ -346,7 +355,7 @@ export default function RegisterProject() {
   const progress = (currentStep / 4) * 100
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -369,7 +378,7 @@ export default function RegisterProject() {
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                     step.id <= currentStep
-                      ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
+                      ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
                       : "bg-gray-600 text-gray-400"
                   }`}
                 >
@@ -452,9 +461,9 @@ export default function RegisterProject() {
                         <SelectTrigger className="bg-white/10 border-white/20 text-white">
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
                           {projectCategories.map((category) => (
-                            <SelectItem key={category} value={category} className="text-white hover:bg-slate-700">
+                            <SelectItem key={category} value={category} className="text-white hover:bg-[#06351f]">
                               {category}
                             </SelectItem>
                           ))}
@@ -480,12 +489,12 @@ export default function RegisterProject() {
                       <SelectTrigger className="bg-white/10 border-white/20 text-white">
                         <SelectValue placeholder="Select blockchain" />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
                         {blockchainNetworks.map((network) => (
                           <SelectItem
                             key={network.value}
                             value={network.value}
-                            className="text-white hover:bg-slate-700 flex items-center gap-2"
+                            className="text-white hover:bg-[#06351f] flex items-center gap-2"
                           >
                             <img src={network.icon} alt={network.label + " logo"} className="w-5 h-5 mr-2 inline-block align-middle" />
                             {network.label}
@@ -498,7 +507,7 @@ export default function RegisterProject() {
                   <div className="space-y-2">
                     <Label htmlFor="contract" className="text-white flex items-center gap-2">
                       <LinkIcon className="w-4 h-4" />
-                      Contract Address *
+                      Contract Address {/* No asterisk, now optional */}
                     </Label>
                     <Input
                       id="contract"
@@ -509,7 +518,7 @@ export default function RegisterProject() {
                     />
                     <p className="text-xs text-gray-400 flex items-start gap-2">
                       <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                      Provide your main token or protocol contract address for verification
+                      Provide your main token or protocol contract address for verification (optional)
                     </p>
                   </div>
                 </div>
@@ -673,7 +682,7 @@ export default function RegisterProject() {
                   <Button
                     onClick={nextStep}
                     disabled={!validateStep(currentStep)}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
                   >
                     Next
                     <ArrowRight className="w-4 h-4 ml-2" />

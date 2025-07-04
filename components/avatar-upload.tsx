@@ -123,7 +123,7 @@ export default function AvatarUpload({
 
       <div className="relative group">
         <div
-          className={`${sizeClasses[size]} rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center relative`}
+          className={`${sizeClasses[size]} rounded-full overflow-hidden bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center relative`}
         >
           {currentAvatar ? (
             <img src={currentAvatar || "/placeholder.svg"} alt="Avatar" className="w-full h-full object-cover" />

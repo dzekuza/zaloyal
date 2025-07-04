@@ -84,7 +84,7 @@ export default function EmailVerification({ email, onVerified, onBack }: EmailVe
   return (
     <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full max-w-md">
       <CardHeader className="text-center">
-        <div className="w-16 h-16 mx-auto bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mb-4">
+        <div className="w-16 h-16 mx-auto bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mb-4">
           <Mail className="w-8 h-8 text-white" />
         </div>
         <CardTitle className="text-white">Verify Your Email</CardTitle>

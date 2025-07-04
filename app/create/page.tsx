@@ -85,21 +85,7 @@ interface QuestForm {
 export default function CreateQuest() {
   const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
   const [emailUser, setEmailUser] = useState<any>(null)
-  const questCategories = [
-    { value: "DeFi", label: "DeFi" },
-    { value: "NFT", label: "NFT" },
-    { value: "Gaming", label: "Gaming" },
-    { value: "Infrastructure", label: "Infrastructure" },
-    { value: "Social", label: "Social" },
-    { value: "Education", label: "Education" },
-    { value: "DAO", label: "DAO" },
-    { value: "Metaverse", label: "Metaverse" },
-    { value: "Trading", label: "Trading" },
-    { value: "RWA", label: "RWA" },
-    { value: "MEME", label: "MEME" },
-    { value: "TradeFi", label: "TradeFi" },
-    { value: "Other", label: "Other" },
-  ]
+  const [questCategories, setQuestCategories] = useState<{ id: string; name: string }[]>([])
   const [questForm, setQuestForm] = useState<QuestForm>({
     title: "",
     description: "",
@@ -181,15 +167,69 @@ export default function CreateQuest() {
   const fetchUserProjects = async (walletUser: WalletUser | null, emailProfile: any | null) => {
     try {
       let userId = null
+      let userData = null
+      let userError = null
+      let walletLookup = null
+      let emailLookup = null
       if (walletUser) {
-        const { data: userData } = await supabase
+        // Try wallet lookup
+        const walletAddress: string = walletUser.walletAddress.toLowerCase()
+        let userDataWallet, errorWallet
+        // 1. Try to fetch user
+        ({ data: userDataWallet, error: errorWallet } = await supabase
           .from("users")
-          .select("id")
-          .eq("wallet_address", walletUser.walletAddress.toLowerCase())
-          .single()
-        userId = userData?.id
+          .select("id,email")
+          .eq("wallet_address", walletAddress)
+          .single())
+        walletLookup = { userDataWallet, errorWallet }
+        // 2. If not found, upsert user via API
+        if ((!userDataWallet || errorWallet) && walletAddress) {
+          try {
+            const res = await fetch("/api/users/upsert", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ walletAddress }),
+            })
+            if (res.ok) {
+              const { user } = await res.json()
+              userDataWallet = user
+              errorWallet = null
+              // Optionally, you could show a toast here for user creation
+            }
+          } catch (e) {
+            // Optionally log error
+          }
+        }
+        if (userDataWallet && !errorWallet) {
+          userId = userDataWallet.id
+          userData = userDataWallet
+        } else if (emailUser?.email) {
+          // Fallback to email lookup
+          const { data: userDataEmail, error: errorEmail } = await supabase
+            .from("users")
+            .select("id,email")
+            .eq("email", emailUser.email.toLowerCase())
+            .single()
+          emailLookup = { userDataEmail, errorEmail }
+          if (userDataEmail && !errorEmail) {
+            userId = userDataEmail.id
+            userData = userDataEmail
+          }
+        }
       } else if (emailProfile) {
         userId = emailProfile.id
+        userData = emailProfile
+      }
+      if (!userId) {
+        // Log all relevant info for debugging
+        console.error("User not found for quest creation", {
+          walletUser,
+          emailUser,
+          walletLookup,
+          emailLookup,
+        })
+        alert("User not found. Please sign in again.")
+        return
       }
       if (userId) {
         const { data: projects, error } = await supabase
@@ -204,6 +244,15 @@ export default function CreateQuest() {
       console.error("Error fetching user projects:", error)
     }
   }
+
+  // Fetch quest categories from Supabase on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data, error } = await supabase.from("quest_categories").select("id, name")
+      if (!error && data) setQuestCategories(data)
+    }
+    fetchCategories()
+  }, [])
 
   const openTaskDialog = (taskIndex?: number) => {
     if (taskIndex !== undefined) {
@@ -267,17 +316,46 @@ export default function CreateQuest() {
     try {
       // Get user ID from database
       let userId = null
+      let userData = null
+      let userError = null
+      let walletLookup = null
+      let emailLookup = null
       if (walletUser) {
-        const { data: userData } = await supabase
+        // Try wallet lookup
+        const { data: userDataWallet, error: errorWallet } = await supabase
           .from("users")
-          .select("id")
+          .select("id,email")
           .eq("wallet_address", walletUser.walletAddress.toLowerCase())
           .single()
-        userId = userData?.id
+        walletLookup = { userDataWallet, errorWallet }
+        if (userDataWallet && !errorWallet) {
+          userId = userDataWallet.id
+          userData = userDataWallet
+        } else if (emailUser?.email) {
+          // Fallback to email lookup
+          const { data: userDataEmail, error: errorEmail } = await supabase
+            .from("users")
+            .select("id,email")
+            .eq("email", emailUser.email.toLowerCase())
+            .single()
+          emailLookup = { userDataEmail, errorEmail }
+          if (userDataEmail && !errorEmail) {
+            userId = userDataEmail.id
+            userData = userDataEmail
+          }
+        }
       } else if (emailUser?.profile) {
         userId = emailUser.profile.id
+        userData = emailUser.profile
       }
       if (!userId) {
+        // Log all relevant info for debugging
+        console.error("User not found for quest creation", {
+          walletUser,
+          emailUser,
+          walletLookup,
+          emailLookup,
+        })
         alert("User not found. Please sign in again.")
         return
       }
@@ -381,9 +459,9 @@ export default function CreateQuest() {
                   <SelectTrigger className="bg-white/10 border-white/20 text-white">
                     <SelectValue placeholder="Select platform" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
                     {socialPlatforms.map((platform) => (
-                      <SelectItem key={platform.value} value={platform.value} className="text-white hover:bg-slate-700 flex items-center gap-2">
+                      <SelectItem key={platform.value} value={platform.value} className="text-white hover:bg-[#06351f] flex items-center gap-2">
                         <img src={platform.icon} alt={platform.label + ' logo'} className="w-5 h-5 p-1 inline-block align-middle" />
                         {platform.label}
                       </SelectItem>
@@ -400,9 +478,9 @@ export default function CreateQuest() {
                   <SelectTrigger className="bg-white/10 border-white/20 text-white">
                     <SelectValue placeholder="Select action" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
                     {socialActions.map((action) => (
-                      <SelectItem key={action.value} value={action.value} className="text-white hover:bg-slate-700">
+                      <SelectItem key={action.value} value={action.value} className="text-white hover:bg-[#06351f]">
                         {action.label}
                       </SelectItem>
                     ))}
@@ -569,13 +647,13 @@ export default function CreateQuest() {
 
   if (!walletUser && !emailUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8">
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
+        <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-white mb-4">Sign In Required</h2>
             <p className="text-gray-300 mb-6">You need to sign in to create quests</p>
             <Link href="/">
-              <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
+              <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
                 Go Back
               </Button>
             </Link>
@@ -587,8 +665,8 @@ export default function CreateQuest() {
 
   if (userProjects.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
+        <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8 max-w-md">
           <div className="text-center">
             <Building2 className="w-16 h-16 mx-auto text-blue-400 mb-4" />
             <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
@@ -612,7 +690,7 @@ export default function CreateQuest() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -629,7 +707,7 @@ export default function CreateQuest() {
           {/* Quest Form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Information */}
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+            <Card className="bg-[#0b4b34c4] border-white/20">
               <CardHeader>
                 <CardTitle className="text-white">Basic Information</CardTitle>
                 <CardDescription className="text-gray-300">Set up the core details of your quest</CardDescription>
@@ -643,9 +721,9 @@ export default function CreateQuest() {
                     <SelectTrigger className="bg-white/10 border-white/20 text-white">
                       <SelectValue placeholder="Select your project" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
                       {userProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id} className="text-white hover:bg-slate-700">
+                        <SelectItem key={project.id} value={project.id} className="text-white hover:bg-[#06351f]">
                           {project.name}
                         </SelectItem>
                       ))}
@@ -701,10 +779,10 @@ export default function CreateQuest() {
                       <SelectTrigger className="bg-white/10 border-white/20 text-white">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {questCategories.map((category: { value: string; label: string }) => (
-                          <SelectItem key={category.value} value={category.value} className="text-white hover:bg-slate-700">
-                            {category.label}
+                      <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
+                        {questCategories.map((category) => (
+                          <SelectItem key={category.id} value={category.id} className="text-white hover:bg-[#06351f]">
+                            {category.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -739,7 +817,7 @@ export default function CreateQuest() {
             </Card>
 
             {/* Tasks Section */}
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+            <Card className="bg-[#0b4b34c4] border-white/20">
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
@@ -748,7 +826,7 @@ export default function CreateQuest() {
                   </div>
                   <Button
                     onClick={() => openTaskDialog()}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Task
@@ -766,7 +844,7 @@ export default function CreateQuest() {
                             {getTaskIcon(task.type)}
                             <Badge
                               variant="outline"
-                              className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30"
+                              className="text-xs bg-green-500/20 text-green-400 border-green-500/30"
                             >
                               {task.type}
                             </Badge>
@@ -783,7 +861,7 @@ export default function CreateQuest() {
                               size="sm"
                               variant="outline"
                               onClick={() => openTaskDialog(index)}
-                              className="text-blue-400 border-blue-400/30 hover:bg-blue-500/20"
+                              className="text-green-400 border-green-400/30 hover:bg-green-500/20"
                             >
                               Edit
                             </Button>
@@ -814,7 +892,7 @@ export default function CreateQuest() {
 
           {/* Preview Sidebar */}
           <div className="space-y-6">
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+            <Card className="bg-[#0b4b34c4] border-white/20">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
                   <Eye className="w-5 h-5" />
@@ -822,7 +900,7 @@ export default function CreateQuest() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="aspect-video bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg flex items-center justify-center overflow-hidden">
+                <div className="aspect-video bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center overflow-hidden">
                   {questForm.imageUrl ? (
                     <img
                       src={questForm.imageUrl || "/placeholder.svg"}
@@ -843,8 +921,8 @@ export default function CreateQuest() {
 
                 <div className="flex flex-wrap gap-2">
                   {questForm.categoryId && (
-                    <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
-                      {questCategories.find((c: { value: string }) => c.value === questForm.categoryId)?.label}
+                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
+                      {questCategories.find((c) => c.id === questForm.categoryId)?.name}
                     </Badge>
                   )}
                   {questForm.featured && (
@@ -875,7 +953,7 @@ export default function CreateQuest() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+            <Card className="bg-[#0b4b34c4] border-white/20">
               <CardHeader>
                 <CardTitle className="text-white">Publish Quest</CardTitle>
               </CardHeader>
@@ -901,7 +979,7 @@ export default function CreateQuest() {
 
         {/* Task Dialog */}
         <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
-          <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingTaskIndex !== null ? "Edit Task" : "Add New Task"}</DialogTitle>
               <DialogDescription className="text-gray-300">
@@ -920,9 +998,9 @@ export default function CreateQuest() {
                     <SelectTrigger className="bg-white/10 border-white/20 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
                       {taskTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value} className="text-white hover:bg-slate-700">
+                        <SelectItem key={type.value} value={type.value} className="text-white hover:bg-[#06351f]">
                           <div className="flex items-center gap-2">
                             <type.icon className="w-4 h-4" />
                             {type.label}
@@ -984,7 +1062,7 @@ export default function CreateQuest() {
                 <Button
                   onClick={saveTask}
                   disabled={!currentTask.title || !currentTask.description}
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
                 >
                   {editingTaskIndex !== null ? "Update Task" : "Add Task"}
                 </Button>

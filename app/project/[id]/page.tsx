@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import type { Database } from "@/lib/supabase"
+import { saveAs } from "file-saver"
 
 type Project = {
   id: string;
@@ -60,6 +61,40 @@ type Quest = {
   participants?: number;
 };
 
+function isQuestCompleted(quest: any) {
+  if (quest.status === "completed") return true;
+  if (quest.time_limit_days && quest.created_at) {
+    const created = new Date(quest.created_at)
+    const expires = new Date(created.getTime() + quest.time_limit_days * 24 * 60 * 60 * 1000)
+    return new Date() > expires
+  }
+  return false
+}
+
+async function exportParticipantsCSV(questId: any, questTitle: any) {
+  // Fetch participants for the quest
+  const { data, error } = await supabase
+    .from("user_quest_progress")
+    .select("user_id,total_xp_earned,users(id,email,wallet_address)")
+    .eq("quest_id", questId)
+  if (error) {
+    alert("Failed to fetch participants")
+    return
+  }
+  const rows = (data as any[]).map((row: any) => ({
+    id: row.users?.id || row.user_id,
+    email: row.users?.email || "",
+    xp_earned: row.total_xp_earned,
+    wallet_address: row.users?.wallet_address || ""
+  }))
+  const csv = [
+    ["id", "email", "xp_earned", "wallet_address"],
+    ...rows.map((r: any) => [r.id, r.email, r.xp_earned, r.wallet_address])
+  ].map(e => e.join(",")).join("\n")
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  saveAs(blob, `${questTitle.replace(/[^a-z0-9]/gi, '_')}_participants.csv`)
+}
+
 export default function ProjectDetailPage() {
   const params = useParams()
   const projectId = params.id as string
@@ -100,46 +135,51 @@ export default function ProjectDetailPage() {
   if (error || !project) return <div className="min-h-screen flex items-center justify-center text-white text-xl">{error || "Project not found"}</div>
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
       {/* Cover Image */}
       <div className="relative h-64 w-full bg-cover bg-center" style={{ backgroundImage: `url(${project.cover_image_url || "/placeholder.svg?height=256&width=1200"})` }}>
         <div className="absolute inset-0 bg-black/50" />
-        <div className="absolute bottom-0 left-0 right-0 w-full">
-          <div className="container mx-auto w-full max-w-full px-2 sm:px-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-6 p-2 sm:p-6">
-              <div className="flex flex-row items-center gap-3 w-full sm:w-auto">
+        {/* Top right: category and edit button */}
+        <div className="absolute top-4 right-6 flex flex-row items-center gap-3 z-10">
+          {project.category && (
+            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 whitespace-nowrap w-auto px-3 py-1 text-sm">{project.category}</Badge>
+          )}
+          {isOwner && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">Edit Project</Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+                <DialogHeader>
+                  <DialogTitle>Edit Project</DialogTitle>
+                </DialogHeader>
+                <EditProjectForm project={project} onSave={() => {}} />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+        {/* Bottom left: logo, title, description */}
+        <div className="absolute bottom-0 left-0 w-full">
+          <div className="container mx-auto w-full max-w-full px-2 sm:px-6 pb-4">
+            <div className="flex flex-row items-end gap-6">
+              {/* Logo */}
+              <div className="flex items-center h-20">
                 <img
                   src={project.logo_url || "/placeholder.svg?height=80&width=80"}
                   alt={`${project.name} logo`}
-                  className="w-12 h-12 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white"
+                  className="w-20 h-20 rounded-full border-4 border-white bg-white object-cover"
+                  style={{ objectFit: 'cover' }}
                 />
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                  <div className="flex flex-row items-center gap-2">
-                    <h1 className="text-xl sm:text-3xl font-bold text-white">{project.name}</h1>
-                    {project.verified && (
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 whitespace-nowrap">✓ Verified</Badge>
-                    )}
-                    {project.category && (
-                      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 whitespace-nowrap w-auto px-3 py-1 text-sm">{project.category}</Badge>
-                    )}
-                  </div>
-                  {isOwner && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="ml-0 sm:ml-2 mt-2 sm:mt-0 bg-gradient-to-r from-blue-500 to-purple-500 text-white">Edit Project</Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Edit Project</DialogTitle>
-                        </DialogHeader>
-                        <EditProjectForm project={project} onSave={() => {}} />
-                      </DialogContent>
-                    </Dialog>
+              </div>
+              {/* Title and description */}
+              <div className="flex flex-col justify-center gap-2">
+                <div className="flex flex-row items-center gap-2">
+                  <h1 className="text-3xl font-bold text-white text-left">{project.name}</h1>
+                  {project.verified && (
+                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30 whitespace-nowrap">✓ Verified</Badge>
                   )}
                 </div>
-              </div>
-              <div className="flex-1 w-full">
-                <p className="text-gray-300 text-base sm:text-lg max-w-full sm:max-w-2xl">{project.description}</p>
+                <p className="text-gray-300 text-base sm:text-lg max-w-full sm:max-w-2xl text-left mt-1">{project.description}</p>
               </div>
             </div>
           </div>
@@ -227,7 +267,7 @@ export default function ProjectDetailPage() {
             </div>
             {isOwner && (
               <Link href={`/create?projectId=${projectId}`} className="ml-0 sm:ml-2">
-                <Button size="sm" className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 w-full sm:w-auto">
+                <Button size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 w-full sm:w-auto">
                   + Create Quest
                 </Button>
               </Link>
@@ -245,13 +285,23 @@ export default function ProjectDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
           {quests.length > 0 ? (
             quests.map((quest) => (
-              <Card key={quest.id} className="group bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm hover:from-white/15 hover:to-white/10 transition overflow-hidden">
+              <Card key={quest.id} className="group bg-[#0b4b34c4] border-white/20 transition overflow-hidden">
                 <div className="relative overflow-hidden">
                   <img
                     src={quest.image_url || "/placeholder.svg?height=160&width=240"}
                     alt={quest.title}
                     className="h-40 w-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
+                  {isOwner && (
+                    <button
+                      className="absolute top-2 right-2 px-3 py-1 rounded bg-green-700 text-white text-xs font-semibold disabled:opacity-50"
+                      disabled={!isQuestCompleted(quest)}
+                      title={isQuestCompleted(quest) ? "Export participants" : "Available after quest completes"}
+                      onClick={() => exportParticipantsCSV(quest.id, quest.title)}
+                    >
+                      Export Participants
+                    </button>
+                  )}
                 </div>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg text-white group-hover:text-blue-400 transition-colors">{quest.title}</CardTitle>
@@ -269,23 +319,29 @@ export default function ProjectDetailPage() {
                     </span>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Link href={`/quest/${quest.id}`}>
-                      <Button size="sm" className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600">
-                        Start Quest
-                      </Button>
-                    </Link>
+                    {!isOwner && (
+                      <Link href={`/quest/${quest.id}`} className="w-full">
+                        <Button size="sm" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                          Start Quest
+                        </Button>
+                      </Link>
+                    )}
                     {isOwner && (
-                      <Dialog open={editingQuest?.id === quest.id} onOpenChange={open => setEditingQuest(open ? quest : null)}>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="w-full">Edit Quest</Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Edit Quest</DialogTitle>
-                          </DialogHeader>
-                          <EditQuestForm quest={quest} onSave={() => setEditingQuest(null)} />
-                        </DialogContent>
-                      </Dialog>
+                      <>
+                        <Dialog open={editingQuest?.id === quest.id} onOpenChange={open => setEditingQuest(open ? quest : null)}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">Edit Quest</Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+                            <DialogHeader>
+                              <DialogTitle>Edit Quest</DialogTitle>
+                            </DialogHeader>
+                            <CardContent className="p-0">
+                              <EditQuestForm quest={quest} onSave={() => setEditingQuest(null)} />
+                            </CardContent>
+                          </DialogContent>
+                        </Dialog>
+                      </>
                     )}
                   </div>
                 </CardContent>

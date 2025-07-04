@@ -52,16 +52,6 @@ const items = [
     url: "/leaderboard",
     icon: Calendar,
   },
-  {
-    title: "Search",
-    url: "#",
-    icon: Search,
-  },
-  {
-    title: "Settings",
-    url: "#",
-    icon: Settings,
-  },
 ]
 
 export default function ClientLayout({
@@ -100,21 +90,9 @@ export default function ClientLayout({
           <SidebarProvider>
             <Sidebar variant="inset">
               <SidebarHeader>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <a href="/">
-                        <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-                          <Home className="size-4" />
-                        </div>
-                        <div className="grid flex-1 text-left text-sm leading-tight">
-                          <span className="truncate font-semibold">Web3Quest</span>
-                          <span className="truncate text-xs">Platform</span>
-                        </div>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
+                <div className="flex items-center justify-start py-6 pl-4">
+                  <img src="/belinklogo.svg" alt="Belink Logo" className="h-8 w-auto" />
+                </div>
               </SidebarHeader>
               <SidebarContent>
                 <SidebarGroup>
@@ -151,7 +129,7 @@ export default function ClientLayout({
 
           {/* Auth Dialog */}
           <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
+            <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white max-w-md">
               <DialogHeader>
                 <DialogTitle>Authentication</DialogTitle>
                 <DialogDescription className="text-gray-300">

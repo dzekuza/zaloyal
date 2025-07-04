@@ -142,7 +142,7 @@ export default function ImageUpload({
       />
 
       {currentImage && !uploading ? (
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden">
+        <Card className="bg-[#0b4b34c4] border-white/20 overflow-hidden">
           <CardContent className="p-0 relative">
             <img src={currentImage || "/placeholder.svg"} alt="Quest image" className="w-full h-48 object-cover" />
             <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -166,8 +166,8 @@ export default function ImageUpload({
         </Card>
       ) : (
         <Card
-          className={`bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm transition-all cursor-pointer ${
-            dragOver ? "border-blue-400 bg-blue-500/20" : "hover:border-white/30"
+          className={`bg-[#0b4b34c4] border-white/20 transition-all cursor-pointer ${
+            dragOver ? "border-green-400 bg-green-500/20" : "hover:border-white/30"
           }`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -187,7 +187,7 @@ export default function ImageUpload({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <div className="w-16 h-16 mx-auto bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                     <ImageIcon className="w-8 h-8 text-white" />
                   </div>
                   <div>

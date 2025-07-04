@@ -59,7 +59,7 @@ export default function SidebarWalletConnect() {
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
             <User className="w-4 h-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -101,12 +101,12 @@ export default function SidebarWalletConnect() {
     <div className="space-y-2">
       <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
         <DialogTrigger asChild>
-          <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
+          <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
             <User className="w-4 h-4 mr-2" />
             Sign In
           </Button>
         </DialogTrigger>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
+        <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white max-w-md">
           <DialogHeader>
             <DialogTitle>Authentication</DialogTitle>
             <DialogDescription className="text-gray-300">Sign in or register with your email</DialogDescription>

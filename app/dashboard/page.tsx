@@ -102,7 +102,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading dashboard...</div>
       </div>
     )
@@ -128,10 +128,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
       <div className="container mx-auto px-4 py-8">
         {/* User Profile Header */}
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm mb-8">
+        <Card className="bg-[#0b4b34] border-[#0b4b34] mb-8">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="flex items-center gap-4">
@@ -141,7 +141,7 @@ export default function Dashboard() {
                     alt="Profile"
                     className="w-20 h-20 rounded-full border-2 border-white/20"
                   />
-                  <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                  <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
                     L{profile?.level}
                   </div>
                 </div>
@@ -203,19 +203,19 @@ export default function Dashboard() {
           <TabsContent value="overview" className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 border-blue-500/30 backdrop-blur-sm">
+              <Card className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30 backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-blue-200 text-sm">Total XP</p>
+                      <p className="text-green-200 text-sm">Total XP</p>
                       <p className="text-2xl font-bold text-white">{profile?.total_xp}</p>
                     </div>
-                    <Zap className="w-8 h-8 text-blue-400" />
+                    <Zap className="w-8 h-8 text-green-400" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-500/20 to-green-600/20 border-green-500/30 backdrop-blur-sm">
+              <Card className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30 backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -227,26 +227,26 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border-purple-500/30 backdrop-blur-sm">
+              <Card className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30 backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-purple-200 text-sm">Completed</p>
+                      <p className="text-green-200 text-sm">Completed</p>
                       <p className="text-2xl font-bold text-white">{profile?.completedQuests}</p>
                     </div>
-                    <CheckCircle className="w-8 h-8 text-purple-400" />
+                    <CheckCircle className="w-8 h-8 text-green-400" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 border-orange-500/30 backdrop-blur-sm">
+              <Card className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30 backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-orange-200 text-sm">Current Level</p>
+                      <p className="text-green-200 text-sm">Current Level</p>
                       <p className="text-2xl font-bold text-white">{profile?.level}</p>
                     </div>
-                    <Star className="w-8 h-8 text-orange-400" />
+                    <Star className="w-8 h-8 text-green-400" />
                   </div>
                 </CardContent>
               </Card>
@@ -314,7 +314,7 @@ export default function Dashboard() {
                           <Progress value={quest.completion_percentage} className="h-2" />
                         </div>
                       </div>
-                      <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0">
+                      <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
                         Continue Quest
                       </Button>
                     </div>

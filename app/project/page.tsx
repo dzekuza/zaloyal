@@ -7,11 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Users, Zap, Trophy, Star, Globe, Twitter, MessageSquare } from "lucide-react"
+import ProjectCard from "@/components/ProjectCard"
+import EditProjectForm from "@/components/edit-project-form"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export default function MyProjectsPage() {
   const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [editingProject, setEditingProject] = useState<any | null>(null)
 
   useEffect(() => {
     const fetchUserAndProjects = async () => {
@@ -35,7 +39,7 @@ export default function MyProjectsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
         <p className="text-white text-xl">Loading your projects...</p>
       </div>
     )
@@ -43,7 +47,7 @@ export default function MyProjectsPage() {
 
   if (!projects.length) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
         <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md">
           <div className="text-center">
             <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
@@ -60,85 +64,52 @@ export default function MyProjectsPage() {
     )
   }
 
+  const handleDelete = async (projectId: string) => {
+    if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
+      return;
+    }
+    const { error } = await supabase.from("projects").delete().eq("id", projectId);
+    if (error) {
+      alert("Failed to delete project: " + error.message);
+      return;
+    }
+    setProjects((prev: any[]) => prev.filter((p) => p.id !== projectId));
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold text-white mb-8">My Projects</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {projects.map((project) => (
-            <Card
+            <ProjectCard
               key={project.id}
-              className="group bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm hover:from-white/15 hover:to-white/10 transition overflow-hidden"
+              project={project}
+              currentUserId={currentUserId}
+              onEdit={() => setEditingProject(project)}
+              onDelete={() => handleDelete(project.id)}
             >
-              {/* Cover */}
-              <div className="relative overflow-hidden">
-                <img
-                  src={project.cover_image_url || "/placeholder.svg?height=160&width=240"}
-                  alt={project.name}
-                  className="h-40 w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 left-3 flex gap-2">
-                  {project.category && (
-                    <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0 text-xs">
-                      {project.category}
-                    </Badge>
-                  )}
-                  {project.verified && (
-                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 text-xs">✓</Badge>
-                  )}
-                </div>
-                <div className="absolute top-3 right-3">
-                  <img
-                    src={project.logo_url || "/placeholder.svg?height=24&width=24"}
-                    alt={`${project.name} logo`}
-                    className="h-6 w-6 rounded-full border border-white/30"
-                  />
-                </div>
-              </div>
-
-              {/* Body */}
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg text-white group-hover:text-blue-400 transition-colors">
-                  {project.name}
-                </CardTitle>
-                <CardDescription className="text-gray-300 text-sm line-clamp-2">{project.description}</CardDescription>
-              </CardHeader>
-
-              <CardContent className="pt-0">
-                <div className="mb-3 flex justify-between items-center text-xs text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <Trophy className="h-3 w-3 text-yellow-400" />
-                    {project.quest_count} Quests
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    {project.total_participants}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Zap className="h-3 w-3 text-yellow-400" />
-                    {project.total_xp_distributed} XP
-                  </span>
-                </div>
-
-                <div className="mb-3 flex items-center gap-2">
-                  {project.website_url && <IconLink href={project.website_url} icon={Globe} />}
-                  {project.twitter_url && <IconLink href={project.twitter_url} icon={Twitter} />}
-                  {project.discord_url && <IconLink href={project.discord_url} icon={MessageSquare} />}
-                </div>
-
-                <Link href={`/project/${project.id}`}>
-                  <Button
-                    size="sm"
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600"
-                  >
-                    View My Project
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+              <Link href={`/project/${project.id}`}>
+                <Button
+                  size="sm"
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
+                >
+                  View My Project
+                </Button>
+              </Link>
+            </ProjectCard>
           ))}
         </div>
       </div>
+      {/* Edit Project Dialog */}
+      <Dialog open={!!editingProject} onOpenChange={open => setEditingProject(open ? editingProject : null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+          </DialogHeader>
+          {editingProject && <EditProjectForm project={editingProject} onSave={() => setEditingProject(null)} />}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

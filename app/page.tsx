@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Search, Filter, Users, Zap, Trophy, Star, Globe, Twitter, MessageSquare } from "lucide-react"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import EditProjectForm from "@/components/edit-project-form"
+import ProjectCard from "@/components/ProjectCard"
 
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -196,19 +197,19 @@ export default function ProjectDiscovery() {
   /* ------------------------------------------------------------------ */
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
         <p className="text-white text-xl">Loading projects...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
       {/* Hero */}
       <header className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-emerald-600/20 backdrop-blur-3xl" />
         <div className="relative container mx-auto px-4 py-16 text-center space-y-6">
-          <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-emerald-600 bg-clip-text text-transparent">
             Web3 Projects
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
@@ -236,12 +237,13 @@ export default function ProjectDiscovery() {
       <section className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+            {/* Search icon, matching top navigation */}
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
             <Input
               placeholder="Search projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400 backdrop-blur-sm"
+              className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-gray-400 backdrop-blur-sm"
             />
           </div>
 
@@ -250,12 +252,12 @@ export default function ProjectDiscovery() {
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Category" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-white hover:bg-slate-700">
+            <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
+              <SelectItem value="all" className="text-white hover:bg-[#06351f]">
                 All Categories
               </SelectItem>
               {categories.map((c) => (
-                <SelectItem key={c} value={c.toLowerCase()} className="text-white hover:bg-slate-700">
+                <SelectItem key={c} value={c.toLowerCase()} className="text-white hover:bg-[#06351f]">
                   {c}
                 </SelectItem>
               ))}
@@ -329,107 +331,22 @@ function ProjectGrid({ projects, currentUserId, editingProject, setEditingProjec
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
       {projects.map((project) => (
-        <Card
+        <ProjectCard
           key={project.id}
-          className="group bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm hover:from-white/15 hover:to-white/10 transition overflow-hidden"
+          project={project}
+          currentUserId={currentUserId}
+          onEdit={currentUserId && project.owner_id === currentUserId ? () => setEditingProject(project) : undefined}
+          onDelete={currentUserId && project.owner_id === currentUserId ? () => handleDeleteProject(project.id) : undefined}
         >
-          {/* Cover */}
-          <div className="relative overflow-hidden">
-            <img
-              src={project.cover_image_url || "/placeholder.svg?height=160&width=240"}
-              alt={project.name}
-              className="h-40 w-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div className="absolute top-3 left-3 flex gap-2">
-              {project.category && (
-                <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0 text-xs">
-                  {project.category}
-                </Badge>
-              )}
-              {project.verified && (
-                <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 text-xs">✓</Badge>
-              )}
-            </div>
-            <div className="absolute top-3 right-3">
-              <img
-                src={project.logo_url || "/placeholder.svg?height=24&width=24"}
-                alt={`${project.name} logo`}
-                className="h-6 w-6 rounded-full border border-white/30"
-              />
-            </div>
-          </div>
-
-          {/* Body */}
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg text-white group-hover:text-blue-400 transition-colors">
-              {project.name}
-            </CardTitle>
-            <CardDescription className="text-gray-300 text-sm line-clamp-2">{project.description}</CardDescription>
-          </CardHeader>
-
-          <CardContent className="pt-0">
-            <div className="mb-3 flex justify-between items-center text-xs text-gray-400">
-              <span className="flex items-center gap-1">
-                <Trophy className="h-3 w-3 text-yellow-400" />
-                {project.quest_count} Quests
-              </span>
-              <span className="flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                {project.total_participants}
-              </span>
-              <span className="flex items-center gap-1">
-                <Zap className="h-3 w-3 text-yellow-400" />
-                {project.total_xp_distributed} XP
-              </span>
-            </div>
-
-            <div className="mb-3 flex items-center gap-2">
-              {project.website_url && <IconLink href={project.website_url} icon={Globe} />}
-              {project.twitter_url && <IconLink href={project.twitter_url} icon={Twitter} />}
-              {project.discord_url && <IconLink href={project.discord_url} icon={MessageSquare} />}
-            </div>
-
-            {currentUserId && project.owner_id === currentUserId && (
-              <div className="flex gap-2 mb-2">
-                <Dialog open={editingProject?.id === project.id} onOpenChange={open => setEditingProject(open ? project : null)}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" className="min-w-[96px]" onClick={() => setEditingProject(project)}>
-                      Edit
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Edit Project</DialogTitle>
-                    </DialogHeader>
-                    {editingProject && editingProject.id === project.id && (
-                      <EditProjectForm
-                        project={editingProject}
-                        onSave={() => setEditingProject(null)}
-                      />
-                    )}
-                  </DialogContent>
-                </Dialog>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="min-w-[96px] border border-[#6c0a0a]"
-                  onClick={() => handleDeleteProject(project.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            )}
-
-            <Link href={`/project/${project.id}`}>
-              <Button
-                size="sm"
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600"
-              >
-                {currentUserId && project.owner_id === currentUserId ? "View My Project" : "Explore Project"}
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+          <Link href={`/project/${project.id}`}>
+            <Button
+              size="sm"
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
+            >
+              {currentUserId && project.owner_id === currentUserId ? "View My Project" : "Explore Project"}
+            </Button>
+          </Link>
+        </ProjectCard>
       ))}
     </div>
   )

@@ -39,6 +39,23 @@ export default function EditQuestForm({ quest, onSave }: { quest: any, onSave?: 
     }
   }
 
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this quest? This action cannot be undone.")) return;
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const { error: deleteError } = await supabase.from("quests").delete().eq("id", quest.id);
+      if (deleteError) throw deleteError;
+      setSuccess("Quest deleted!");
+      if (onSave) onSave();
+    } catch (e: any) {
+      setError(e.message || "Failed to delete quest");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <form
       className="space-y-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto pr-2"
@@ -77,8 +94,11 @@ export default function EditQuestForm({ quest, onSave }: { quest: any, onSave?: 
           <option value="draft">Draft</option>
         </select>
       </div>
-      <div className="flex justify-end">
-        <Button type="submit" disabled={saving} className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="destructive" onClick={handleDelete} disabled={saving}>
+          Delete Quest
+        </Button>
+        <Button type="submit" disabled={saving} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
           {saving ? "Saving..." : "Save Changes"}
         </Button>
       </div>

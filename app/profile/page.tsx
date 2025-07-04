@@ -182,6 +182,8 @@ export default function ProfilePage() {
             const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
             setEmailUser({ ...user, profile })
           }
+          // Force reload to ensure UI updates
+          window.location.reload()
         }
       }
     } finally {
@@ -239,6 +241,51 @@ export default function ProfilePage() {
     }
   }
 
+  const handleAvatarUploaded = async (avatarUrl: string) => {
+    setAvatarUrl(avatarUrl); // update local state for preview
+    try {
+      let updateQuery = supabase.from("users").update({
+        avatar_url: avatarUrl, // full public URL
+      });
+      if (walletUser && walletUser.walletAddress) {
+        updateQuery = updateQuery.eq("wallet_address", walletUser.walletAddress.toLowerCase());
+      } else if (emailUser?.profile && emailUser.profile.id) {
+        updateQuery = updateQuery.eq("id", emailUser.profile.id);
+      } else {
+        throw new Error("User not found");
+      }
+      const { error: updateError } = await updateQuery;
+      if (updateError) {
+        setError("Failed to update avatar in profile: " + updateError.message);
+        return;
+      }
+
+      // Refetch the user profile and update local state
+      if (walletUser && walletUser.walletAddress) {
+        const { data } = await supabase.from("users").select("*").eq("wallet_address", walletUser.walletAddress.toLowerCase()).single();
+        if (data) {
+          setProfile(data);
+          setAvatarUrl(data.avatar_url || "");
+          setUsername(data.username || "");
+          setBio(data.bio || "");
+          setSocialLinks(data.social_links || {});
+        }
+      } else if (emailUser?.email) {
+        const { data: profile } = await supabase.from("users").select("*").eq("email", emailUser.email).single();
+        if (profile) {
+          setProfile(profile);
+          setAvatarUrl(profile.avatar_url || "");
+          setUsername(profile.username || "");
+          setBio(profile.bio || "");
+          setSocialLinks(profile.social_links || {});
+          setEmailUser((prev: any) => ({ ...prev, profile }));
+        }
+      }
+    } catch (e: any) {
+      setError(e.message || "Failed to update avatar in profile");
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-white text-xl">Loading...</div>
   }
@@ -246,7 +293,7 @@ export default function ProfilePage() {
   // If not signed in, show sign-in prompt
   if (!walletUser && !emailUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
         <div className="bg-white/10 border-white/20 backdrop-blur-sm p-8 rounded-lg flex flex-col items-center">
           <h2 className="text-2xl text-white mb-4 font-bold">Sign In Required</h2>
           <p className="text-gray-300 mb-6">Please sign in with your email or wallet to access your profile and connect social accounts.</p>
@@ -257,9 +304,9 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center py-12" style={{ margin: 0 }}>
-      <div className="w-full max-w-2xl space-y-8">
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full max-w-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 py-12">
+      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 px-2">
+        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full">
           <CardHeader>
             <CardTitle className="text-white">Edit Profile</CardTitle>
             <CardDescription className="text-gray-300">Manage your profile information</CardDescription>
@@ -285,7 +332,7 @@ export default function ProfilePage() {
                 <div className="flex flex-col items-center mb-4">
                   <AvatarUpload
                     currentAvatar={avatarUrl}
-                    onAvatarUploaded={setAvatarUrl}
+                    onAvatarUploaded={handleAvatarUploaded}
                     userId={walletUser ? walletUser.walletAddress.toLowerCase() : emailUser?.profile?.id}
                     size="md"
                   />
@@ -307,8 +354,7 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-        {/* Connected Account Section */}
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full">
           <CardHeader>
             <CardTitle className="text-white">Connected Account</CardTitle>
             <CardDescription className="text-gray-300">Connect your social accounts to the app</CardDescription>

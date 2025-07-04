@@ -97,14 +97,14 @@ export default function Leaderboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading leaderboard...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -117,7 +117,7 @@ export default function Leaderboard() {
           {/* Hydration-safe: Only show after mount */}
           {mounted && currentUser && (
             <Link href="/register-project">
-              <button className="mt-6 px-6 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold shadow-lg hover:from-blue-600 hover:to-purple-600 transition-colors">
+              <button className="mt-6 px-6 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold shadow-lg hover:from-green-600 hover:to-emerald-600 transition-colors">
                 Create Project
               </button>
             </Link>
@@ -152,7 +152,7 @@ export default function Leaderboard() {
                       </span>
                     ))}
                   </div>
-                  <Badge className="bg-gradient-to-r from-gray-400 to-gray-500 text-white border-0">
+                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
                     {users[1].total_xp} XP
                   </Badge>
                 </div>

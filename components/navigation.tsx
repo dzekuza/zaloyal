@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User, LogOut, Settings, Trophy, Zap, Building2, Home, BarChart3, Users, Menu, X, Search } from "lucide-react"
+import { User, LogOut, Settings, Trophy, Zap, Building2, Home, BarChart3, Users, Menu, X, Search, Wallet, Copy, Check } from "lucide-react"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
@@ -27,6 +27,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
   const [emailUser, setEmailUser] = useState<any>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [copied, setCopied] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
   }
 
   return (
-    <nav className="hidden md:block sticky top-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-white/10 py-2 md:py-3">
+    <nav className="hidden md:block sticky top-0 z-50 bg-[#094a35] backdrop-blur-sm border-b border-white/10 py-2 md:py-3">
       <div className=" px-4">
         <div className="items-center h-auto md:h-16 gap-auto grid grid-cols-2 justify-end">
           {/* Left: Search bar */}
@@ -132,22 +133,88 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                     <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10">
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
-                        <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                        <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
                           {displayName.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="hidden sm:block text-left">
                         <div className="text-white text-sm font-medium">{displayName}</div>
-                        <div className="text-gray-400 text-xs">
-                          {displayAddress?.slice(0, 6)}...{displayAddress?.slice(-4)}
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          {user?.walletAddress
+                            ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
+                            : emailUser?.email}
+                          {user?.walletAddress && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                await navigator.clipboard.writeText(user.walletAddress);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 1200);
+                              }}
+                              onKeyDown={async (e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  await navigator.clipboard.writeText(user.walletAddress);
+                                  setCopied(true);
+                                  setTimeout(() => setCopied(false), 1200);
+                                }
+                              }}
+                              className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
+                              title="Copy wallet address"
+                            >
+                              {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 border-slate-700">
+                  <DropdownMenuContent align="end" className="w-56 border-slate-700 bg-[#0b4b34]">
                     <div className="px-2 py-1.5">
                       <p className="text-sm font-medium text-white">{displayName}</p>
-                      <p className="text-xs text-gray-400">{displayAddress}</p>
+                      <div className="flex items-center gap-1 text-xs text-gray-400">
+                        {user?.walletAddress
+                          ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
+                          : emailUser?.email}
+                        {user?.walletAddress && (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              await navigator.clipboard.writeText(user.walletAddress);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 1200);
+                            }}
+                            onKeyDown={async (e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                await navigator.clipboard.writeText(user.walletAddress);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 1200);
+                              }
+                            }}
+                            className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
+                            title="Copy wallet address"
+                          >
+                            {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </span>
+                        )}
+                      </div>
+                      {/* Wallet connect/disconnect button (moved here) */}
+                      {user ? (
+                        <Button variant="ghost" className="w-full mt-2 flex items-center justify-start px-2 py-1 text-sm text-red-500 hover:bg-red-500/10" onClick={async () => { await walletAuth.disconnectWallet(); window.location.reload(); }}>
+                          <LogOut className="w-4 h-4 mr-2" />
+                          Disconnect Wallet
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" className="w-full mt-2 flex items-center justify-start px-2 py-1 text-sm text-blue-500 hover:bg-blue-500/10" onClick={async () => { await walletAuth.connectWallet(); window.location.reload(); }}>
+                          <Wallet className="w-4 h-4 mr-2" />
+                          Connect Wallet
+                        </Button>
+                      )}
                     </div>
                     <DropdownMenuSeparator className="bg-slate-700" />
 
@@ -176,10 +243,6 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                         Profile
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="w-4 h-4 mr-2" />
-                      Settings
-                    </DropdownMenuItem>
 
                     {/* Always show Register Project link for authenticated users */}
                     <DropdownMenuSeparator className="bg-slate-700" />
@@ -190,7 +253,6 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                       </Link>
                     </DropdownMenuItem>
 
-                    <DropdownMenuSeparator className="bg-slate-700" />
                     <DropdownMenuItem
                       onClick={handleSignOut}
                       className="text-red-400 hover:text-red-300"

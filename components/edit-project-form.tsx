@@ -103,7 +103,7 @@ export default function EditProjectForm({ project, onSave }: { project: any, onS
         </div>
       </div>
       <div className="flex justify-end">
-        <Button type="submit" disabled={saving} className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
+        <Button type="submit" disabled={saving} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
           {saving ? "Saving..." : "Save Changes"}
         </Button>
       </div>

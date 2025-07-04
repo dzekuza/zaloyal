@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabase } from "@/lib/supabase"
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "walletAddress is required" }, { status: 400 })
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("users")
       .upsert(
         {

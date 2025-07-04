@@ -34,7 +34,7 @@ export default function SearchPage() {
   }, [query])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 py-8">
       <div className="container mx-auto px-4">
         <h1 className="text-3xl font-bold text-white mb-6">Search Results for "{query}"</h1>
         {loading ? (
@@ -79,7 +79,7 @@ export default function SearchPage() {
                           {project.discord_url && <IconLink href={project.discord_url} icon={MessageSquare} />}
                         </div>
                         <Link href={`/project/${project.id}`}>
-                          <Button size="sm" className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white">View Project</Button>
+                          <Button size="sm" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white">View Project</Button>
                         </Link>
                       </CardContent>
                     </Card>
@@ -108,7 +108,7 @@ export default function SearchPage() {
                       </CardHeader>
                       <CardContent className="pt-0">
                         <Link href={`/quest/${quest.id}`}>
-                          <Button size="sm" className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white">View Quest</Button>
+                          <Button size="sm" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white">View Quest</Button>
                         </Link>
                       </CardContent>
                     </Card>

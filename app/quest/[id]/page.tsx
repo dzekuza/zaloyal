@@ -298,12 +298,12 @@ export default function QuestDetail() {
                 <Button
                   size="sm"
                   disabled={isVerifying}
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
                 >
                   {isVerifying ? "Verifying..." : "Verify"} <ExternalLink className="w-3 h-3 ml-1" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-slate-800 border-slate-700 text-white">
+              <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white">
                 <DialogHeader>
                   <DialogTitle>Verify Telegram Group Membership</DialogTitle>
                   <DialogDescription className="text-gray-300">
@@ -314,7 +314,7 @@ export default function QuestDetail() {
                   <div className="text-center">
                     <Button
                       onClick={() => window.open(task.social_url || "", "_blank")}
-                      className="bg-blue-500 hover:bg-blue-600 text-white mb-4"
+                      className="bg-green-500 hover:bg-green-600 text-white mb-4"
                     >
                       Join Telegram Group
                     </Button>
@@ -339,12 +339,12 @@ export default function QuestDetail() {
               <Button
                 size="sm"
                 disabled={isVerifying}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
               >
                 {isVerifying ? "Verifying..." : "Verify"} <ExternalLink className="w-3 h-3 ml-1" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-800 border-slate-700 text-white">
+            <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white">
               <DialogHeader>
                 <DialogTitle>Verify Social Task</DialogTitle>
                 <DialogDescription className="text-gray-300">
@@ -377,7 +377,7 @@ export default function QuestDetail() {
                   <Button
                     onClick={() => handleTaskVerification(task)}
                     disabled={!submissionData[task.id]?.username}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500"
+                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500"
                   >
                     Verify
                   </Button>
@@ -396,7 +396,7 @@ export default function QuestDetail() {
               setTimeout(() => handleTaskVerification(task), 2000)
             }}
             disabled={isVerifying}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
           >
             {isVerifying ? "Verifying..." : "Download"} <Download className="w-3 h-3 ml-1" />
           </Button>
@@ -411,7 +411,7 @@ export default function QuestDetail() {
               setTimeout(() => handleTaskVerification(task), 3000)
             }}
             disabled={isVerifying}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
           >
             {isVerifying ? "Verifying..." : "Visit"} <ExternalLink className="w-3 h-3 ml-1" />
           </Button>
@@ -426,7 +426,7 @@ export default function QuestDetail() {
               setTimeout(() => handleTaskVerification(task), 5000)
             }}
             disabled={isVerifying}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
           >
             {isVerifying ? "Verifying..." : "Complete Form"} <ExternalLink className="w-3 h-3 ml-1" />
           </Button>
@@ -439,12 +439,12 @@ export default function QuestDetail() {
               <Button
                 size="sm"
                 disabled={isVerifying}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
               >
                 {isVerifying ? "Submitting..." : "Take Quiz"}
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Learn & Quiz</DialogTitle>
                 <DialogDescription className="text-gray-300">
@@ -461,7 +461,7 @@ export default function QuestDetail() {
                   {/* Quiz questions would be rendered here */}
                   <Button
                     onClick={() => handleTaskVerification(task)}
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-500"
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500"
                   >
                     Submit Quiz
                   </Button>
@@ -477,7 +477,7 @@ export default function QuestDetail() {
             size="sm"
             onClick={() => handleTaskVerification(task)}
             disabled={isVerifying}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
           >
             {isVerifying ? "Verifying..." : "Complete"}
           </Button>
@@ -565,7 +565,7 @@ export default function QuestDetail() {
                   <Badge
                     className="text-white border-0"
                     style={{
-                      background: `linear-gradient(to right, ${quest.quest_categories?.color || "#3B82F6"}, ${quest.quest_categories?.color || "#8B5CF6"})`,
+                      background: `linear-gradient(to right, ${quest.quest_categories?.color || '#10b981'}, ${quest.quest_categories?.color || '#059669'})`,
                     }}
                   >
                     {quest.quest_categories?.icon} {quest.quest_categories?.name}
@@ -647,7 +647,7 @@ export default function QuestDetail() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold">
                       {quest.users?.username?.charAt(0).toUpperCase() || "A"}
                     </span>
@@ -691,7 +691,7 @@ export default function QuestDetail() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold">
                       {quest.users?.username?.charAt(0).toUpperCase() || "A"}
                     </span>
@@ -741,14 +741,14 @@ export default function QuestDetail() {
                           </Badge>
                           <Badge
                             variant="outline"
-                            className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            className="text-xs bg-green-500/20 text-green-400 border-green-500/30"
                           >
                             {task.task_type}
                           </Badge>
                         </div>
                         <p className="text-gray-400 text-sm mb-3">{task.description}</p>
                         {task.social_url && (
-                          <p className="text-xs text-blue-400 hover:underline">
+                          <p className="text-xs text-green-400 hover:underline">
                             <a href={task.social_url} target="_blank" rel="noopener noreferrer">
                               {task.social_url}
                             </a>
