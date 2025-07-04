@@ -69,6 +69,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
     }
     if (emailUser) {
       await supabase.auth.signOut()
+      window.location.reload()
     }
   }
 

@@ -1,7 +1,7 @@
 import { supabase } from "./supabase"
 
 export class StorageService {
-  private bucketName = "quest-assets"
+  private bucketName = "publicprofile"
 
   async uploadQuestImage(file: File, questId?: string): Promise<string | null> {
     try {
@@ -35,7 +35,7 @@ export class StorageService {
   async uploadUserAvatar(file: File, userId: string): Promise<string | null> {
     try {
       const fileExt = file.name.split(".").pop()
-      const fileName = `avatars/${userId}.${fileExt}`
+      const fileName = `profile/${userId}-${Date.now()}.${fileExt}`
 
       // Upload file (upsert to replace existing)
       const { data, error } = await supabase.storage.from(this.bucketName).upload(fileName, file, {

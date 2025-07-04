@@ -86,6 +86,7 @@ export default function ClientLayout({
     console.log("Email auth success:", authUser)
     setShowAuthDialog(false)
     setAuthError("")
+    window.location.reload()
   }
 
   const handleEmailAuthError = (error: string) => {
@@ -101,7 +102,7 @@ export default function ClientLayout({
               <SidebarHeader>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" asChild>
+                    <SidebarMenuButton asChild>
                       <a href="/">
                         <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white">
                           <Home className="size-4" />

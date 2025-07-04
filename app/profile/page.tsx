@@ -105,26 +105,27 @@ export default function ProfilePage() {
     setSuccess("")
     setError("")
     try {
-      let userId = null
-      if (walletUser) {
-        const { data } = await supabase.from("users").select("id").eq("wallet_address", walletUser.walletAddress.toLowerCase()).single()
-        userId = data?.id
-      } else if (emailUser?.profile) {
-        userId = emailUser.profile.id
-      }
-      if (!userId) throw new Error("User not found")
-      const { error: updateError } = await supabase.from("users").update({
+      let updateQuery = supabase.from("users").update({
         username,
         avatar_url: avatarUrl,
         bio,
         social_links: socialLinks,
-      }).eq("id", userId)
-      if (updateError) throw updateError
-      setSuccess("Profile updated!")
+      });
+      if (walletUser && walletUser.walletAddress) {
+        updateQuery = updateQuery.eq("wallet_address", walletUser.walletAddress.toLowerCase());
+      } else if (emailUser?.profile && emailUser.profile.id) {
+        updateQuery = updateQuery.eq("id", emailUser.profile.id);
+      } else {
+        throw new Error("User not found");
+      }
+      const { error: updateError } = await updateQuery;
+      if (updateError) throw updateError;
+      setSuccess("Profile updated!");
+      window.location.reload();
     } catch (e: any) {
-      setError(e.message || "Failed to update profile")
+      setError(e.message || "Failed to update profile");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
