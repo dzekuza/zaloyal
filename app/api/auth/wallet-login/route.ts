@@ -34,8 +34,9 @@ export async function POST(req: NextRequest) {
     const token = sign(payload, SUPABASE_JWT_SECRET, { expiresIn: "1h" });
 
     return NextResponse.json({ token });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Wallet login error:", e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const message = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 } 

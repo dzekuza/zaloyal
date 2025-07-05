@@ -44,9 +44,10 @@ export default function QuestImageManager({ questId, currentImageUrl, onImageUpd
       }
 
       onImageUpdated(imageUrl)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Image update error:", error)
-      setError(error.message || "Failed to update quest image")
+      const message = error instanceof Error ? error.message : "Failed to update quest image"
+      setError(message)
     } finally {
       setUpdating(false)
     }

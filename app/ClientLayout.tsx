@@ -21,11 +21,9 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Home, Inbox, Search, Settings, Wallet, Mail, Users } from "lucide-react"
+import { Calendar, Home, Inbox, Users } from "lucide-react"
 import Navigation from "@/components/navigation"
 import EmailAuth from "@/components/email-auth"
-import { walletAuth } from "@/lib/wallet-auth"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -62,25 +60,15 @@ export default function ClientLayout({
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [authError, setAuthError] = useState("")
 
-  const connectWallet = async () => {
-    try {
-      await walletAuth.connectWallet()
-      setShowAuthDialog(false)
-    } catch (error: any) {
-      console.error("Connection failed:", error)
-      setAuthError(error.message)
-    }
-  }
-
-  const handleEmailAuthSuccess = (authUser: any) => {
+  const handleEmailAuthSuccess = (authUser: unknown) => {
     console.log("Email auth success:", authUser)
     setShowAuthDialog(false)
     setAuthError("")
     window.location.reload()
   }
 
-  const handleEmailAuthError = (error: string) => {
-    setAuthError(error)
+  const handleEmailAuthError = (errorMessage: string) => {
+    setAuthError(errorMessage)
   }
 
   return (
@@ -91,6 +79,7 @@ export default function ClientLayout({
             <Sidebar variant="inset">
               <SidebarHeader>
                 <div className="flex items-center justify-start py-6 pl-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/belinklogo.svg" alt="Belink Logo" className="h-8 w-auto" />
                 </div>
               </SidebarHeader>
