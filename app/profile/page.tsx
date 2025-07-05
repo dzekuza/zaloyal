@@ -11,9 +11,14 @@ import WalletConnect from "@/components/wallet-connect"
 import TelegramLoginWidget from "@/components/telegram-login-widget"
 import { useRouter } from "next/navigation"
 import { LogOut } from "lucide-react"
-import { SiDiscord } from "react-icons/si"
-import { SiX } from "react-icons/si"
+import { SiDiscord, SiX } from "react-icons/si"
 import AvatarUpload from "@/components/avatar-upload"
+
+// react-icons currently returns `ReactNode`, which is incompatible with React 19's
+// stricter JSX.Element return type expectations. Cast the icon components to
+// a compatible functional component signature.
+const DiscordIcon: React.FC<React.SVGProps<SVGSVGElement>> = SiDiscord as unknown as React.FC<React.SVGProps<SVGSVGElement>>
+const XIcon: React.FC<React.SVGProps<SVGSVGElement>> = SiX as unknown as React.FC<React.SVGProps<SVGSVGElement>>
 
 export default function ProfilePage() {
   const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
@@ -370,7 +375,7 @@ export default function ProfilePage() {
                       onClick={handleUnlinkDiscord}
                       disabled={unlinkingDiscord}
                     >
-                      <SiDiscord className="w-6 h-6" />
+                      <DiscordIcon className="w-6 h-6" />
                       {unlinkingDiscord ? 'Unlinking...' : 'Unlink Discord'}
                     </Button>
                   </div>
@@ -379,7 +384,7 @@ export default function ProfilePage() {
                     className="w-full bg-[#5865F2] text-white border-0 mb-2 flex items-center justify-center gap-2 text-base font-medium py-3"
                     onClick={handleLinkDiscord}
                   >
-                    <SiDiscord className="w-6 h-6" />
+                    <DiscordIcon className="w-6 h-6" />
                     Connect Discord
                   </Button>
                 )}
@@ -399,7 +404,7 @@ export default function ProfilePage() {
                       onClick={handleUnlinkTwitter}
                       disabled={unlinkingTwitter}
                     >
-                      <SiX className="w-6 h-6" />
+                      <XIcon className="w-6 h-6" />
                       {unlinkingTwitter ? 'Unlinking...' : 'Unlink X'}
                     </Button>
                   </div>
@@ -408,7 +413,7 @@ export default function ProfilePage() {
                     className="w-full bg-black text-white border-0 mb-2 flex items-center justify-center gap-2 text-base font-medium py-3"
                     onClick={handleLinkTwitter}
                   >
-                    <SiX className="w-6 h-6" />
+                    <XIcon className="w-6 h-6" />
                     Connect X
                   </Button>
                 )}

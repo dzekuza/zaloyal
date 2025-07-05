@@ -16,7 +16,7 @@ export default function QuestImageManager({ questId, currentImageUrl, onImageUpd
   const [error, setError] = useState<string | null>(null)
 
   const handleImageUpload = async (imageUrl: string) => {
-    const user = walletAuth.getCurrentUser()
+    const user = await walletAuth.getCurrentUser()
     if (!user) {
       setError("Please connect your wallet")
       return
