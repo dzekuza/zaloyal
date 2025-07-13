@@ -1,6 +1,5 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -30,13 +29,13 @@ import {
   FileText,
   Eye,
   BookOpen,
+  Trash,
 } from "lucide-react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
-import { supabase } from "@/lib/supabase"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import type { Database } from "@/lib/supabase"
 import TelegramLoginWidget from "@/components/telegram-login-widget"
+import QuestStatsBar from "@/components/QuestStatsBar"
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
@@ -49,87 +48,44 @@ type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
 
 const getAbsoluteUrl = (url: string) => url?.match(/^https?:\/\//i) ? url : `https://${url}`;
 
-export default function QuestDetail() {
-  const params = useParams()
-  const questId = params.id as string
-
-  const [quest, setQuest] = useState<Quest | null>(null)
-  const [tasks, setTasks] = useState<Task[]>([])
+function QuestDetailClient({ quest, tasks, userSubmissions, userProfile }: any) {
+  const { useState } = require("react")
   const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
   const [emailUser, setEmailUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [verifyingTask, setVerifyingTask] = useState<string | null>(null)
   const [submissionData, setSubmissionData] = useState<{ [key: string]: any }>({})
 
-  useEffect(() => {
-    if (questId) {
-      fetchQuest()
-      fetchTasks()
+  // Wallet user
+  const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
+    setWalletUser(user)
+    if (user && quest?.id) {
+      // fetchTasks() // This will be handled by the parent
     }
-    // Wallet user
-    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
-      setWalletUser(user)
-      if (user && questId) {
-        fetchTasks()
+  })
+  // Email user
+  const checkEmailAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+      setEmailUser({ ...user, profile })
+      if (profile && quest?.id) {
+        // fetchTasks() // This will be handled by the parent
       }
-    })
-    // Email user
-    const checkEmailAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-        setEmailUser({ ...user, profile })
-        if (profile && questId) {
-          fetchTasks()
-        }
-      }
-    }
-    checkEmailAuth()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        checkEmailAuth()
-      } else if (event === "SIGNED_OUT") {
-        setEmailUser(null)
-      }
-    })
-    return () => {
-      unsubscribeWallet()
-      subscription.unsubscribe()
-    }
-  }, [questId])
-
-  const fetchQuest = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("quests")
-        .select(`
-          *,
-          quest_categories (
-            id,
-            name,
-            description,
-            icon,
-            color
-          ),
-          users (
-            id,
-            username,
-            wallet_address
-          )
-        `)
-        .eq("id", questId)
-        .single()
-
-      if (error) throw error
-      setQuest(data)
-    } catch (error) {
-      console.error("Error fetching quest:", error)
     }
   }
+  checkEmailAuth()
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_IN" && session?.user) {
+      checkEmailAuth()
+    } else if (event === "SIGNED_OUT") {
+      setEmailUser(null)
+    }
+  })
 
   const fetchTasks = async () => {
     try {
-      const query = supabase.from("tasks").select("*").eq("quest_id", questId).order("order_index")
+      const query = supabase.from("tasks").select("*").eq("quest_id", quest?.id).order("order_index")
       const { data: tasksData, error } = await query
       if (error) throw error
       // If user is connected, fetch their submissions
@@ -150,19 +106,19 @@ export default function QuestDetail() {
           const { data: submissions } = await supabase
             .from("user_task_submissions")
             .select("*")
-            .eq("quest_id", questId)
+            .eq("quest_id", quest?.id)
             .eq("user_id", userId)
           // Merge submissions with tasks
           const tasksWithSubmissions = tasksData?.map((task) => ({
             ...task,
             user_task_submissions: submissions?.find((sub) => sub.task_id === task.id) || null,
           }))
-          setTasks(tasksWithSubmissions || [])
+          // setTasks(tasksWithSubmissions || []) // This will be handled by the parent
         } else {
-          setTasks(tasksData || [])
+          // setTasks(tasksData || []) // This will be handled by the parent
         }
       } else {
-        setTasks(tasksData || [])
+        // setTasks(tasksData || []) // This will be handled by the parent
       }
     } catch (error) {
       console.error("Error fetching tasks:", error)
@@ -249,7 +205,7 @@ export default function QuestDetail() {
         const result = await response.json()
         if (result.verified) {
           alert(`Task completed! You earned ${result.xpEarned} XP`)
-          fetchTasks()
+          // fetchTasks() // This will be handled by the parent
         } else {
           alert(result.message || "Verification failed")
         }
@@ -358,7 +314,7 @@ export default function QuestDetail() {
                     placeholder="username"
                     value={submissionData[task.id]?.username || ""}
                     onChange={(e) =>
-                      setSubmissionData((prev) => ({
+                      setSubmissionData((prev: any) => ({
                         ...prev,
                         [task.id]: { ...prev[task.id], username: e.target.value },
                       }))
@@ -508,7 +464,7 @@ export default function QuestDetail() {
       const result = await response.json()
       if (result.verified) {
         alert(`Task completed! You earned ${result.xpEarned} XP`)
-        fetchTasks()
+        // fetchTasks() // This will be handled by the parent
       } else {
         alert(result.message || "Verification failed")
       }
@@ -522,7 +478,7 @@ export default function QuestDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading quest...</div>
       </div>
     )
@@ -530,20 +486,20 @@ export default function QuestDetail() {
 
   if (!quest) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <div className="text-white text-xl">Quest not found</div>
       </div>
     )
   }
 
-  const completedTasks = tasks.filter((task) => task.user_task_submissions?.status === "verified").length
+  const completedTasks = tasks.filter((task: Task) => task.user_task_submissions?.status === "verified").length
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0
   const userXP = tasks
-    .filter((task) => task.user_task_submissions?.status === "verified")
-    .reduce((sum, task) => sum + task.xp_reward, 0)
+    .filter((task: Task) => task.user_task_submissions?.status === "verified")
+    .reduce((sum: number, task: Task) => sum + task.xp_reward, 0)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
       <div className="w-full px-2 sm:px-4 py-8">
         {/* Back Button */}
         <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors">
@@ -554,7 +510,7 @@ export default function QuestDetail() {
         {/* Quest Header */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
-            <Card className="w-full bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+            <Card className="w-full bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
               <div className="relative">
                 <img
                   src={quest.image_url || "/placeholder.svg?height=300&width=600"}
@@ -583,42 +539,14 @@ export default function QuestDetail() {
                 <CardDescription className="text-gray-300 text-base">{quest.description}</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
-                  <span className="flex items-center gap-1">
-                    <Zap className="w-4 h-4 text-yellow-400" />
-                    {quest.total_xp} Total XP
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    {quest.participant_count} Participants
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Trophy className="w-4 h-4" />
-                    {tasks.length} Tasks
-                  </span>
-                </div>
-                {(walletUser || emailUser) && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Your Progress</span>
-                      <span className="text-white">
-                        {completedTasks}/{tasks.length} tasks completed
-                      </span>
-                    </div>
-                    <Progress value={progressPercentage} className="h-2" />
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Your XP</span>
-                      <span className="text-yellow-400 font-semibold">{userXP} XP earned</span>
-                    </div>
-                  </div>
-                )}
+                <QuestStatsBar totalXP={quest.total_xp} participants={quest.participant_count} taskCount={tasks.length} />
               </CardContent>
             </Card>
           </div>
 
           {/* Quest Stats Sidebar (desktop only) */}
           <div className="space-y-6 hidden lg:block">
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full">
+            <Card className="bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm w-full">
               <CardHeader>
                 <CardTitle className="text-white">Quest Stats</CardTitle>
               </CardHeader>
@@ -641,7 +569,7 @@ export default function QuestDetail() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full">
+            <Card className="bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm w-full">
               <CardHeader>
                 <CardTitle className="text-white">Creator</CardTitle>
               </CardHeader>
@@ -662,7 +590,7 @@ export default function QuestDetail() {
           </div>
           {/* Mobile sidebar below main card */}
           <div className="space-y-2 block lg:hidden mt-8">
-            <Card className="w-full bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+            <Card className="w-full bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
               <CardHeader>
                 <CardTitle className="text-white">Quest Stats</CardTitle>
               </CardHeader>
@@ -685,7 +613,7 @@ export default function QuestDetail() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="w-full bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+            <Card className="w-full bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
               <CardHeader>
                 <CardTitle className="text-white">Creator</CardTitle>
               </CardHeader>
@@ -707,16 +635,16 @@ export default function QuestDetail() {
         </div>
 
         {/* Tasks Section */}
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+        <Card className="bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-white">Quest Tasks</CardTitle>
             <CardDescription className="text-gray-300">Complete all tasks to earn the full XP reward</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {tasks.map((task, index) => (
+              {tasks.map((task: Task, index: number) => (
                 <div key={task.id}>
-                  <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                  <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-lg bg-green-900/80 hover:bg-emerald-800/80 transition-colors">
                     <div className="flex-shrink-0 mt-1">
                       {task.user_task_submissions?.status === "verified" ? (
                         <CheckCircle className="w-6 h-6 text-green-400" />
@@ -770,4 +698,36 @@ export default function QuestDetail() {
       </div>
     </div>
   )
+}
+
+export default async function QuestDetail({ params }: { params: { id: string } }) {
+  const questId = params.id
+  // Fetch quest and related data
+  const { data: quest } = await supabase
+    .from("quests")
+    .select(`*, quest_categories(*), users(*)`)
+    .eq("id", questId)
+    .single()
+  // Fetch tasks for the quest
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("quest_id", questId)
+    .order("order_index")
+  // Fetch user (if authenticated)
+  const { data: { user } } = await supabase.auth.getUser()
+  let userProfile = null
+  let userSubmissions = []
+  if (user) {
+    const { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
+    userProfile = profile
+    // Fetch user submissions for this quest
+    const { data: submissions } = await supabase
+      .from("user_task_submissions")
+      .select("*")
+      .eq("quest_id", questId)
+      .eq("user_id", user.id)
+    userSubmissions = submissions || []
+  }
+  return <QuestDetailClient quest={quest} tasks={tasks || []} userSubmissions={userSubmissions} userProfile={userProfile} />
 }

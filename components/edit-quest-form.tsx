@@ -58,7 +58,7 @@ export default function EditQuestForm({ quest, onSave }: { quest: any, onSave?: 
 
   return (
     <form
-      className="space-y-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto pr-2"
+      className="space-y-6 w-full max-w-2xl pr-2"
       style={{ scrollbarGutter: 'stable' }}
       onSubmit={e => { e.preventDefault(); handleSave(); }}
     >
@@ -70,7 +70,7 @@ export default function EditQuestForm({ quest, onSave }: { quest: any, onSave?: 
       </div>
       <div className="space-y-2">
         <label className="text-white block mb-1">Description</label>
-        <Textarea value={description} onChange={e => setDescription(e.target.value)} className="bg-white/10 border-white/20 text-white" rows={3} required />
+        <Textarea value={description} onChange={e => setDescription(e.target.value)} className="bg-white/10 border-white/20 text-white" rows={3} />
       </div>
       <div className="space-y-2 flex flex-col items-start">
         <label className="text-white block mb-1">Quest Image</label>

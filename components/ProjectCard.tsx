@@ -10,12 +10,14 @@ export default function ProjectCard({
   onEdit,
   onDelete,
   children,
+  xpToCollect,
 }: {
   project: any,
   currentUserId?: string | null,
   onEdit?: () => void,
   onDelete?: () => void,
   children?: React.ReactNode,
+  xpToCollect?: number,
 }) {
   const isOwner = currentUserId && project.owner_id === currentUserId;
   return (
@@ -78,7 +80,7 @@ export default function ProjectCard({
           </span>
           <span className="flex items-center gap-1">
             <Zap className="h-3 w-3 text-yellow-400" />
-            {project.total_xp_distributed} XP
+            {(typeof xpToCollect === 'number' ? xpToCollect : project.total_xp_distributed) || 0} XP to Collect
           </span>
         </div>
         <div className="mb-3 flex items-center gap-2">

@@ -25,6 +25,7 @@ interface NavigationProps {
 export default function Navigation({ onAuthClick }: NavigationProps) {
   const [user, setUser] = useState<WalletUser | null>(null)
   const [emailUser, setEmailUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [copied, setCopied] = useState(false)
@@ -32,7 +33,10 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
 
   useEffect(() => {
     // Check for wallet user
-    const unsubscribeWallet = walletAuth.onAuthStateChange(setUser)
+    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
+      setUser(user)
+      setLoading(false)
+    })
 
     // Check for email user
     const checkEmailAuth = async () => {
@@ -44,6 +48,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
 
         setEmailUser({ ...user, profile })
       }
+      setLoading(false)
     }
 
     checkEmailAuth()
@@ -55,6 +60,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
         checkEmailAuth()
       } else if (event === "SIGNED_OUT") {
         setEmailUser(null)
+        setLoading(false)
       }
     })
 
@@ -83,6 +89,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
     rank: user?.rank || emailUser?.profile?.rank || "---",
   }
 
+  // Only render sign-in/profile button after loading is false
   return (
     <nav className="hidden md:block sticky top-0 z-50 bg-[#094a35] backdrop-blur-sm border-b border-white/10 py-2 md:py-3">
       <div className=" px-4">
@@ -108,7 +115,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
           </div>
           {/* Right: Profile/User and Hamburger */}
           <div className="flex items-center justify-end gap-4 w-full col-span-2 md:col-span-1">
-            {currentUser ? (
+            {!loading && (currentUser ? (
               <>
                 {/* User Stats - Desktop */}
                 <div className="hidden lg:flex items-center space-x-4 text-sm">
@@ -270,7 +277,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
               >
                 Sign In
               </Button>
-            )}
+            ))}
 
             <div className="flex md:hidden items-center gap-2 ml-auto">
               <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>

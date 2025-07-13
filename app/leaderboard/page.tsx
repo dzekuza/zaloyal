@@ -1,106 +1,159 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trophy, Medal, Award, Crown } from "lucide-react"
-import Link from "next/link"
-import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
-import { supabase } from "@/lib/supabase"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Trophy, Medal, Award, Crown } from "lucide-react";
+import Link from "next/link";
+import { walletAuth, type WalletUser } from "@/lib/wallet-auth";
+import { supabase } from "@/lib/supabase";
+
+function getPeriodRange(period: string) {
+  const now = new Date();
+  let start: Date | null = null;
+  switch (period) {
+    case "daily":
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    case "weekly":
+      start = new Date(now);
+      start.setDate(now.getDate() - now.getDay());
+      start.setHours(0, 0, 0, 0);
+      break;
+    case "monthly":
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    default:
+      start = null;
+  }
+  return start;
+}
 
 export default function Leaderboard() {
-  const [mounted, setMounted] = useState(false)
-  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
-  const [emailUser, setEmailUser] = useState<any>(null)
-  const [selectedPeriod, setSelectedPeriod] = useState("all-time")
-  const [selectedQuest, setSelectedQuest] = useState("all")
-  const [users, setUsers] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false);
+  const [walletUser, setWalletUser] = useState<WalletUser | null>(null);
+  const [emailUser, setEmailUser] = useState<any>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState("all-time");
+  const [selectedQuest, setSelectedQuest] = useState("all");
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [quests, setQuests] = useState<any[]>([]);
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   // Hydration-safe user detection
   useEffect(() => {
     const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
-      setWalletUser(user)
-    })
+      setWalletUser(user);
+    });
     const checkEmailAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-        setEmailUser({ ...user, profile })
+        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single();
+        setEmailUser({ ...user, profile });
       }
-    }
-    checkEmailAuth()
-    return () => unsubscribeWallet()
-  }, [])
+    };
+    checkEmailAuth();
+    return () => unsubscribeWallet();
+  }, []);
 
+  // Fetch all quests for filter dropdown
+  useEffect(() => {
+    const fetchQuests = async () => {
+      const { data, error } = await supabase.from("quests").select("id, title").order("created_at", { ascending: false });
+      if (!error && data) setQuests(data);
+    };
+    fetchQuests();
+  }, []);
+
+  // Fetch leaderboard data with filters
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      setLoading(true)
-      // Fetch top users by total_xp
-      const { data, error } = await supabase
+      setLoading(true);
+      // 1. Get all users
+      const { data: usersRaw, error: usersError } = await supabase
         .from("users")
-        .select("*")
+        .select("id, wallet_address, username, email, avatar_url, total_xp, level, rank")
         .order("total_xp", { ascending: false })
-        .limit(50)
-      if (error) {
-        setUsers([])
-        setLoading(false)
-        return
+        .limit(100);
+      if (usersError || !usersRaw) {
+        setUsers([]);
+        setLoading(false);
+        return;
       }
-      // For each user, fetch badges (optional, can be optimized)
-      const usersWithBadges = await Promise.all(
-        (data || []).map(async (user, idx) => {
-          const { data: badges } = await supabase
-            .from("user_badges")
-            .select("badge_icon")
-            .eq("user_id", user.id)
-            .order("earned_at", { ascending: false })
-          return {
-            ...user,
-            rank: idx + 1,
-            badges: (badges || []).map((b) => b.badge_icon).filter(Boolean),
-          }
-        })
-      )
-      setUsers(usersWithBadges)
-      setLoading(false)
-    }
-    fetchLeaderboard()
-  }, [])
+      // 2. Get all completed quest progress for period/quest
+      let questProgressQuery = supabase
+        .from("user_quest_progress")
+        .select("user_id, quest_id, completed_at")
+        .eq("status", "completed");
+      const periodStart = getPeriodRange(selectedPeriod);
+      if (periodStart) {
+        questProgressQuery = questProgressQuery.gte("completed_at", periodStart.toISOString());
+      }
+      if (selectedQuest !== "all") {
+        questProgressQuery = questProgressQuery.eq("quest_id", selectedQuest);
+      }
+      const { data: questProgress, error: qpError } = await questProgressQuery;
+      // 3. Aggregate completed quests per user
+      const completedMap: Record<string, number> = {};
+      (questProgress || []).forEach((row) => {
+        completedMap[row.user_id] = (completedMap[row.user_id] || 0) + 1;
+      });
+      // 4. Fetch badges for all users
+      const userIds = usersRaw.map((u) => u.id);
+      const { data: badgesRaw } = await supabase
+        .from("user_badges")
+        .select("user_id, badge_icon, badge_rarity")
+        .in("user_id", userIds);
+      const badgesMap: Record<string, any[]> = {};
+      (badgesRaw || []).forEach((b) => {
+        if (!badgesMap[b.user_id]) badgesMap[b.user_id] = [];
+        badgesMap[b.user_id].push({ icon: b.badge_icon, rarity: b.badge_rarity });
+      });
+      // 5. Compose leaderboard users
+      const leaderboardUsers = usersRaw.map((user, idx) => ({
+        ...user,
+        completed_quests: completedMap[user.id] || 0,
+        badges: badgesMap[user.id] || [],
+        rank: idx + 1,
+      }));
+      setUsers(leaderboardUsers);
+      setLoading(false);
+    };
+    fetchLeaderboard();
+  }, [selectedPeriod, selectedQuest]);
 
-  const currentUser = walletUser || emailUser
+  const currentUser = walletUser?.walletAddress || emailUser?.profile?.wallet_address;
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Crown className="w-6 h-6 text-yellow-400" />
+        return <Crown className="w-6 h-6 text-green-400" />;
       case 2:
-        return <Medal className="w-6 h-6 text-gray-400" />
+        return <Medal className="w-6 h-6 text-gray-400" />;
       case 3:
-        return <Award className="w-6 h-6 text-amber-600" />
+        return <Award className="w-6 h-6 text-green-600" />;
       default:
-        return <span className="w-6 h-6 flex items-center justify-center text-gray-400 font-bold">#{rank}</span>
+        return <span className="w-6 h-6 flex items-center justify-center text-gray-400 font-bold">#{rank}</span>;
     }
-  }
+  };
 
   const getRankBadgeColor = (rank: number) => {
-    if (rank <= 3) return "from-yellow-400 to-orange-500"
-    if (rank <= 10) return "from-purple-400 to-pink-500"
-    if (rank <= 50) return "from-blue-400 to-cyan-500"
-    return "from-gray-400 to-gray-500"
-  }
+    if (rank <= 3) return "from-green-400 to-emerald-500";
+    if (rank <= 10) return "from-purple-400 to-pink-500";
+    if (rank <= 50) return "from-blue-400 to-cyan-500";
+    return "from-gray-400 to-gray-500";
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading leaderboard...</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -108,7 +161,7 @@ export default function Leaderboard() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-green-400 bg-clip-text text-transparent mb-4">
             Leaderboard
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
@@ -126,11 +179,11 @@ export default function Leaderboard() {
 
         {/* Top 3 Podium */}
         {users.length >= 3 && (
-          <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm mb-8">
+          <Card className="bg-[#0b4b34] border-green-700 backdrop-blur-sm mb-8">
             <CardContent className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                 {/* 2nd Place */}
-                <div className="text-center order-1 md:order-1">
+                <div className={`text-center order-1 md:order-1 ${users[1].wallet_address === currentUser ? "ring-4 ring-green-400" : ""}`}>
                   <div className="relative mb-4">
                     <img
                       src={users[1].avatar_url || "/placeholder.svg"}
@@ -146,9 +199,9 @@ export default function Leaderboard() {
                     {(users[1].wallet_address || users[1].email || "").slice(0, 10)}...
                   </p>
                   <div className="flex justify-center gap-1 my-2">
-                    {users[1].badges.map((badge: string, i: number) => (
-                      <span key={i} className="text-lg">
-                        {badge}
+                    {users[1].badges.map((badge: any, i: number) => (
+                      <span key={i} className="text-lg" title={badge.rarity}>
+                        {badge.icon}
                       </span>
                     ))}
                   </div>
@@ -158,43 +211,43 @@ export default function Leaderboard() {
                 </div>
 
                 {/* 1st Place */}
-                <div className="text-center order-2 md:order-2">
+                <div className={`text-center order-2 md:order-2 ${users[0].wallet_address === currentUser ? "ring-4 ring-green-400" : ""}`}>
                   <div className="relative mb-4">
                     <img
                       src={users[0].avatar_url || "/placeholder.svg"}
                       alt="1st place"
-                      className="w-24 h-24 rounded-full mx-auto border-4 border-yellow-400"
+                      className="w-24 h-24 rounded-full mx-auto border-4 border-green-400"
                     />
-                    <div className="absolute -top-3 -right-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold">
+                    <div className="absolute -top-3 -right-3 bg-gradient-to-r from-green-400 to-emerald-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold">
                       1
                     </div>
-                    <Crown className="absolute -top-8 left-1/2 transform -translate-x-1/2 w-8 h-8 text-yellow-400" />
+                    <Crown className="absolute -top-8 left-1/2 transform -translate-x-1/2 w-8 h-8 text-green-400" />
                   </div>
                   <h3 className="text-white font-bold text-xl">{users[0].username}</h3>
                   <p className="text-gray-400 text-sm font-mono">
                     {(users[0].wallet_address || users[0].email || "").slice(0, 10)}...
                   </p>
                   <div className="flex justify-center gap-1 my-2">
-                    {users[0].badges.map((badge: string, i: number) => (
-                      <span key={i} className="text-xl">
-                        {badge}
+                    {users[0].badges.map((badge: any, i: number) => (
+                      <span key={i} className="text-xl" title={badge.rarity}>
+                        {badge.icon}
                       </span>
                     ))}
                   </div>
-                  <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 text-lg px-4 py-1">
+                  <Badge className="bg-gradient-to-r from-green-400 to-emerald-500 text-white border-0 text-lg px-4 py-1">
                     {users[0].total_xp} XP
                   </Badge>
                 </div>
 
                 {/* 3rd Place */}
-                <div className="text-center order-3 md:order-3">
+                <div className={`text-center order-3 md:order-3 ${users[2].wallet_address === currentUser ? "ring-4 ring-green-400" : ""}`}>
                   <div className="relative mb-4">
                     <img
                       src={users[2].avatar_url || "/placeholder.svg"}
                       alt="3rd place"
-                      className="w-20 h-20 rounded-full mx-auto border-4 border-amber-600"
+                      className="w-20 h-20 rounded-full mx-auto border-4 border-green-600"
                     />
-                    <div className="absolute -top-2 -right-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                    <div className="absolute -top-2 -right-2 bg-gradient-to-r from-green-600 to-green-700 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
                       3
                     </div>
                   </div>
@@ -203,13 +256,13 @@ export default function Leaderboard() {
                     {(users[2].wallet_address || users[2].email || "").slice(0, 10)}...
                   </p>
                   <div className="flex justify-center gap-1 my-2">
-                    {users[2].badges.map((badge: string, i: number) => (
-                      <span key={i} className="text-lg">
-                        {badge}
+                    {users[2].badges.map((badge: any, i: number) => (
+                      <span key={i} className="text-lg" title={badge.rarity}>
+                        {badge.icon}
                       </span>
                     ))}
                   </div>
-                  <Badge className="bg-gradient-to-r from-amber-600 to-amber-700 text-white border-0">
+                  <Badge className="bg-gradient-to-r from-green-600 to-green-700 text-white border-0">
                     {users[2].total_xp} XP
                   </Badge>
                 </div>
@@ -218,7 +271,7 @@ export default function Leaderboard() {
           </Card>
         )}
 
-        {/* Filters (UI only, not yet wired to backend) */}
+        {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
             <SelectTrigger className="w-full md:w-48 bg-white/10 border-white/20 text-white backdrop-blur-sm">
@@ -248,16 +301,20 @@ export default function Leaderboard() {
               <SelectItem value="all" className="text-white hover:bg-slate-700">
                 All Quests
               </SelectItem>
-              {/* Add dynamic quest options here if needed */}
+              {quests.map((quest) => (
+                <SelectItem key={quest.id} value={quest.id} className="text-white hover:bg-slate-700">
+                  {quest.title}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
         {/* Leaderboard Table */}
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+        <Card className="bg-[#0b4b34] border-green-700 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-yellow-400" />
+              <Trophy className="w-5 h-5 text-green-400" />
               Global Rankings
             </CardTitle>
             <CardDescription className="text-gray-300">Top performers across all quests</CardDescription>
@@ -267,7 +324,7 @@ export default function Leaderboard() {
               {users.slice(3).map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                  className={`flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors ${user.wallet_address === currentUser ? "ring-2 ring-green-400" : ""}`}
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex items-center justify-center w-10 h-10">{getRankIcon(user.rank)}</div>
@@ -284,7 +341,7 @@ export default function Leaderboard() {
 
                   <div className="flex items-center gap-6">
                     <div className="text-center">
-                      <p className="text-yellow-400 font-bold">{user.total_xp}</p>
+                      <p className="text-green-400 font-bold">{user.total_xp}</p>
                       <p className="text-gray-400 text-xs">XP</p>
                     </div>
                     <div className="text-center">
@@ -292,13 +349,13 @@ export default function Leaderboard() {
                       <p className="text-gray-400 text-xs">Quests</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-blue-400 font-semibold">L{user.level}</p>
+                      <p className="text-green-400 font-semibold">L{user.level}</p>
                       <p className="text-gray-400 text-xs">Level</p>
                     </div>
                     <div className="flex gap-1">
-                      {user.badges.map((badge: string, i: number) => (
-                        <span key={i} className="text-sm">
-                          {badge}
+                      {user.badges.map((badge: any, i: number) => (
+                        <span key={i} className="text-sm" title={badge.rarity}>
+                          {badge.icon}
                         </span>
                       ))}
                     </div>
@@ -313,5 +370,5 @@ export default function Leaderboard() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
