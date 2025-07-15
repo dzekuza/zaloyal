@@ -51,10 +51,12 @@ export default function ProfilePage() {
     avatar: emailUser.profile.discord_avatar_url,
   } : null
 
-  const twitterInfo = emailUser?.profile?.twitter_id ? {
-    id: emailUser.profile.twitter_id,
-    username: emailUser.profile.twitter_username,
-    avatar: emailUser.profile.twitter_avatar_url,
+  // X (Twitter) info from new fields
+  const xInfo = emailUser?.profile?.x_id ? {
+    id: emailUser.profile.x_id,
+    username: emailUser.profile.x_username,
+    avatar: emailUser.profile.x_avatar_url,
+    profileUrl: emailUser.profile.x_username ? `https://x.com/${emailUser.profile.x_username}` : null,
   } : null
 
   useEffect(() => {
@@ -196,18 +198,24 @@ export default function ProfilePage() {
     }
   }
 
-  const handleLinkTwitter = async () => {
+  // Replace handleLinkTwitter to update x_* fields
+  const handleLinkX = async () => {
+    // Use Supabase Auth OAuth, but store in x_* fields
     const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' })
     if (!error) {
       // After linking, get Twitter identity info
       const { data: identities } = await supabase.auth.getUserIdentities()
       const twitterIdentity = identities?.identities?.find((identity: any) => identity.provider === 'twitter')
       if (twitterIdentity) {
-        // Save Twitter info to users table
+        const x_username = twitterIdentity.identity_data?.user_name
+        const x_id = twitterIdentity.id
+        const x_avatar_url = twitterIdentity.identity_data?.avatar_url
+        const x_profile_url = x_username ? `https://x.com/${x_username}` : null
         await supabase.from('users').update({
-          twitter_id: twitterIdentity.id,
-          twitter_username: twitterIdentity.identity_data?.user_name,
-          twitter_avatar_url: twitterIdentity.identity_data?.avatar_url,
+          x_id,
+          x_username,
+          x_avatar_url,
+          x_profile_url,
         }).eq('id', emailUser.profile.id)
         // Refetch user info
         const { data: { user } } = await supabase.auth.getUser()
@@ -229,9 +237,10 @@ export default function ProfilePage() {
           await supabase.auth.unlinkIdentity(twitterIdentity)
           // Clear Twitter info from users table
           await supabase.from('users').update({
-            twitter_id: null,
-            twitter_username: null,
-            twitter_avatar_url: null,
+            x_id: null,
+            x_username: null,
+            x_avatar_url: null,
+            x_profile_url: null,
           }).eq('id', emailUser.profile.id)
           // Refetch user info
           const { data: { user } } = await supabase.auth.getUser()
@@ -409,13 +418,16 @@ export default function ProfilePage() {
               </div>
               {/* X (Twitter) Connect Button */}
               <div className="flex flex-col items-center w-full">
-                {twitterInfo ? (
+                {xInfo ? (
                   <div className="flex flex-col items-center w-full gap-2">
                     <div className="flex items-center gap-2 mb-2">
-                      {twitterInfo.avatar && (
-                        <img src={twitterInfo.avatar} alt="X Avatar" className="w-8 h-8 rounded-full" />
+                      {xInfo.avatar && (
+                        <img src={xInfo.avatar} alt="X Avatar" className="w-8 h-8 rounded-full" />
                       )}
-                      <span className="text-white font-medium">{twitterInfo.username}</span>
+                      <span className="text-white font-medium">{xInfo.username}</span>
+                      {xInfo.profileUrl && (
+                        <a href={xInfo.profileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline ml-2">View Profile</a>
+                      )}
                     </div>
                     <Button
                       className="w-full bg-red-600 hover:bg-red-700 text-white border-0 flex items-center justify-center gap-2 text-base font-medium py-3"
@@ -429,7 +441,7 @@ export default function ProfilePage() {
                 ) : (
                   <Button
                     className="w-full bg-black text-white border-0 mb-2 flex items-center justify-center gap-2 text-base font-medium py-3"
-                    onClick={handleLinkTwitter}
+                    onClick={handleLinkX}
                   >
                     <XIcon className="w-6 h-6" />
                     Connect X
