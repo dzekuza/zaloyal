@@ -279,7 +279,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
             ) : (
               <Button
                 onClick={onAuthClick}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
               >
                 Sign In
               </Button>

@@ -73,6 +73,9 @@ export default function ClientLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>BeLink Web3 Quest Platform</title>
+      </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <SidebarProvider>

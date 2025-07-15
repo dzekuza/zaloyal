@@ -51,16 +51,17 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
                 <div>
                   <h1 className="text-2xl font-bold text-white">{profile?.username}</h1>
                   <p className="text-gray-400 text-sm font-mono">{profile?.walletAddress}</p>
+                  <p className="text-gray-200 text-sm font-mono">{profile?.walletAddress}</p>
                   <div className="flex items-center gap-4 mt-2 text-sm">
-                    <span className="flex items-center gap-1 text-yellow-400">
+                    <span className="flex items-center gap-1 text-yellow-200">
                       <Zap className="w-4 h-4" />
                       {profile?.total_xp} XP
                     </span>
-                    <span className="flex items-center gap-1 text-green-400">
+                    <span className="flex items-center gap-1 text-green-200">
                       <Trophy className="w-4 h-4" />
                       Rank #{profile?.rank}
                     </span>
-                    <span className="flex items-center gap-1 text-green-400">
+                    <span className="flex items-center gap-1 text-green-200">
                       <CheckCircle className="w-4 h-4" />
                       {profile?.completedQuests} Quests
                     </span>

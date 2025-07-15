@@ -131,7 +131,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: { proje
               placeholder="Search projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-gray-400 backdrop-blur-sm"
+              className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-gray-200 backdrop-blur-sm"
             />
           </div>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
