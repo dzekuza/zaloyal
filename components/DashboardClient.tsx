@@ -24,7 +24,7 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
       case "epic":
         return "from-purple-400 to-pink-500";
       case "rare":
-        return "from-blue-400 to-cyan-500";
+        return "from-green-400 to-emerald-500"; // changed from blue/cyan to green/emerald
       default:
         return "from-gray-400 to-gray-500";
     }
@@ -60,7 +60,7 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
                       <Trophy className="w-4 h-4" />
                       Rank #{profile?.rank}
                     </span>
-                    <span className="flex items-center gap-1 text-blue-400">
+                    <span className="flex items-center gap-1 text-green-400">
                       <CheckCircle className="w-4 h-4" />
                       {profile?.completedQuests} Quests
                     </span>

@@ -303,7 +303,7 @@ export default function RegisterProject() {
       <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md">
           <div className="text-center">
-            <Building2 className="w-16 h-16 mx-auto text-blue-400 mb-4" />
+            <Building2 className="w-16 h-16 mx-auto text-green-400 mb-4" />
             <h2 className="text-2xl font-bold text-white mb-4">Wallet Required</h2>
             <p className="text-gray-300 mb-6">You need to link your wallet in your profile before you can register a project.</p>
             <Link href="/profile">
@@ -356,7 +356,7 @@ export default function RegisterProject() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pb-20">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/" className="text-gray-400 hover:text-white transition-colors">
@@ -379,13 +379,13 @@ export default function RegisterProject() {
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                     step.id <= currentStep
                       ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
-                      : "bg-gray-600 text-gray-400"
+                      : "bg-emerald-900 text-emerald-400"
                   }`}
                 >
                   {step.id < currentStep ? <CheckCircle className="w-4 h-4" /> : step.id}
                 </div>
                 <div className="ml-2 hidden sm:block">
-                  <div className={`text-sm font-medium ${step.id <= currentStep ? "text-white" : "text-gray-400"}`}>
+                  <div className={`text-sm font-medium ${step.id <= currentStep ? "text-white" : "text-emerald-400"}`}>
                     {step.title}
                   </div>
                 </div>
@@ -563,7 +563,7 @@ export default function RegisterProject() {
                         </div>
                       ) : (
                         <Button
-                          className="bg-[#5865F2] text-white border-0"
+                          className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
                           onClick={() => supabase.auth.linkIdentity({ provider: 'discord' })}
                         >
                           Connect Discord

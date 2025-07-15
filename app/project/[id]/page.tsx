@@ -139,11 +139,9 @@ export default function ProjectDetailPage() {
       }
       setProject(project as Project);
       setQuests((questsData || []) as Quest[]);
-      // Fetch all tasks for these quests
+      // Sum quest.total_xp for all quests
       if (questsData && questsData.length > 0) {
-        const questIds = (questsData as Quest[]).map((q) => q.id);
-        const { data: tasksData } = await supabase.from("tasks").select('id, quest_id, title, description, xp_reward, status, created_at').in("quest_id", questIds);
-        const totalXP = (tasksData || []).reduce((sum: number, t: any) => sum + (t.xp_reward || 0), 0);
+        const totalXP = (questsData as Quest[]).reduce((sum, q) => sum + (q.total_xp || 0), 0);
         setXpToCollect(totalXP);
       } else {
         setXpToCollect(0);

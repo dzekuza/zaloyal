@@ -1,3 +1,5 @@
+"use client"
+
 import { supabase } from "@/lib/supabase"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -36,6 +38,7 @@ import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import type { Database } from "@/lib/supabase"
 import TelegramLoginWidget from "@/components/telegram-login-widget"
 import QuestStatsBar from "@/components/QuestStatsBar"
+import { useState } from 'react'
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
@@ -49,7 +52,6 @@ type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
 const getAbsoluteUrl = (url: string) => url?.match(/^https?:\/\//i) ? url : `https://${url}`;
 
 function QuestDetailClient({ quest, tasks, userSubmissions, userProfile }: any) {
-  const { useState } = require("react")
   const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
   const [emailUser, setEmailUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)

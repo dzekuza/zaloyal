@@ -137,7 +137,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                 {/* User Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10">
+                    <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10 py-3 h-14">
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
                         <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
@@ -171,7 +171,10 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                               className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
                               title="Copy wallet address"
                             >
-                              {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
+                              </svg>
                             </span>
                           )}
                         </div>
@@ -206,7 +209,10 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                             className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
                             title="Copy wallet address"
                           >
-                            {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
+                            </svg>
                           </span>
                         )}
                       </div>
@@ -223,7 +229,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                         </Button>
                       )}
                     </div>
-                    <DropdownMenuSeparator className="bg-slate-700" />
+                    <DropdownMenuSeparator className="bg-emerald-700" />
 
                     {/* Mobile Stats */}
                     <div className="lg:hidden px-2 py-2">
@@ -242,7 +248,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                         </div>
                       </div>
                     </div>
-                    <DropdownMenuSeparator className="lg:hidden bg-slate-700" />
+                    <DropdownMenuSeparator className="lg:hidden bg-emerald-700" />
 
                     <DropdownMenuItem asChild>
                       <Link href="/profile">
@@ -252,7 +258,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                     </DropdownMenuItem>
 
                     {/* Always show Register Project link for authenticated users */}
-                    <DropdownMenuSeparator className="bg-slate-700" />
+                    <DropdownMenuSeparator className="bg-emerald-700" />
                     <DropdownMenuItem asChild>
                       <Link href="/register-project">
                         <Building2 className="w-4 h-4 mr-2" />

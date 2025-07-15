@@ -292,7 +292,7 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-white text-xl">Loading...</div>
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 text-white text-xl">Loading...</div>
   }
 
   // If not signed in, show sign-in prompt
@@ -320,7 +320,25 @@ export default function ProfilePage() {
                 <div className="text-sm text-white/80">Email: <span className="font-semibold">{emailUser.email}</span></div>
               )}
               {walletUser && (
-                <div className="text-sm text-white/80">Wallet: <span className="font-semibold">{walletUser.walletAddress}</span></div>
+                <div className="text-sm text-white/80 flex items-center gap-2">
+                  Wallet:
+                  <span className="font-semibold">
+                    {walletUser.walletAddress.slice(0, 8)}...{walletUser.walletAddress.slice(-12)}
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(walletUser.walletAddress)
+                    }}
+                    className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
+                    title="Copy wallet address"
+                    type="button"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
+                    </svg>
+                  </button>
+                </div>
               )}
             </div>
           </CardHeader>
@@ -353,7 +371,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
+              <Button onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
                 {saving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
@@ -381,7 +399,7 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <Button
-                    className="w-full bg-[#5865F2] text-white border-0 mb-2 flex items-center justify-center gap-2 text-base font-medium py-3"
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 mb-2 flex items-center justify-center gap-2 text-base font-medium py-3"
                     onClick={handleLinkDiscord}
                   >
                     <DiscordIcon className="w-6 h-6" />
