@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import ProjectCard from "@/components/ProjectCard";
+import BackgroundWrapper from "@/components/BackgroundWrapper";
 
 interface Project {
   id: string;
@@ -95,7 +96,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: { proje
   }, [searchTerm, selectedCategory, projects]);
 
   return (
-    <div className="min-h-screen bg-[#181818]">
+    <BackgroundWrapper>
       {/* Hero */}
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 bg-black/30 backdrop-blur-3xl" />
@@ -175,6 +176,6 @@ export default function ProjectDiscoveryClient({ projects, categories }: { proje
           </div>
         )}
       </section>
-    </div>
+    </BackgroundWrapper>
   );
 } 

@@ -28,6 +28,7 @@ import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import ImageUpload from "@/components/image-upload"
 import WalletConnect from "@/components/wallet-connect"
 import { useRouter } from "next/navigation"
+import BackgroundWrapper from "@/components/BackgroundWrapper";
 
 interface ProjectForm {
   // Step 1: Basic Info
@@ -355,7 +356,7 @@ export default function RegisterProject() {
   const progress = (currentStep / 4) * 100
 
   return (
-    <div className="min-h-screen bg-[#181818]">
+    <BackgroundWrapper>
       <div className="container mx-auto px-4 py-8 pb-20">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -702,6 +703,6 @@ export default function RegisterProject() {
           </Card>
         </div>
       </div>
-    </div>
+    </BackgroundWrapper>
   )
 }

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { saveAs } from "file-saver"
 import ProjectStatsBar from "@/components/ProjectStatsBar"
 import ImageUpload from "@/components/image-upload"
+import BackgroundWrapper from "@/components/BackgroundWrapper";
 
 interface Project {
   id: string;
@@ -194,7 +195,7 @@ export default function ProjectDetailPage() {
   if (error || !project) return <div className="min-h-screen bg-[#181818] flex items-center justify-center text-white text-xl">{error || "Project not found"}</div>
 
   return (
-    <div className="min-h-screen bg-[#181818]">
+    <BackgroundWrapper>
       {/* Cover Image */}
       <div className="relative h-64 w-full bg-cover bg-center" style={{ backgroundImage: `url(${project.cover_image_url || "/placeholder.svg?height=256&width=1200"})` }}>
         <div className="absolute inset-0 bg-black/50" />
@@ -370,6 +371,6 @@ export default function ProjectDetailPage() {
           )}
         </div>
       </div>
-    </div>
+    </BackgroundWrapper>
   )
 }

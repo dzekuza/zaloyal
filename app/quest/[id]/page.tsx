@@ -1,5 +1,6 @@
 import QuestDetailClient from "./QuestDetailClient"
 import { supabase } from "@/lib/supabase"
+import BackgroundWrapper from "@/components/BackgroundWrapper";
 
 export default async function QuestDetail({ params }: { params: { id: string } }) {
   const { id: questId } = await params
@@ -16,5 +17,9 @@ export default async function QuestDetail({ params }: { params: { id: string } }
     .eq("quest_id", questId)
     .order("order_index")
   // Do NOT fetch user on the server; let the client handle user/session
-  return <QuestDetailClient quest={quest} tasks={tasks || []} />
+  return (
+    <BackgroundWrapper>
+      <QuestDetailClient quest={quest} tasks={tasks || []} />
+    </BackgroundWrapper>
+  )
 }
