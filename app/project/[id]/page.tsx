@@ -190,11 +190,11 @@ export default function ProjectDetailPage() {
     }
   }
 
-  if (loading) return <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center text-white text-xl">Loading...</div>
-  if (error || !project) return <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center text-white text-xl">{error || "Project not found"}</div>
+  if (loading) return <div className="min-h-screen bg-[#181818] flex items-center justify-center text-white text-xl">Loading...</div>
+  if (error || !project) return <div className="min-h-screen bg-[#181818] flex items-center justify-center text-white text-xl">{error || "Project not found"}</div>
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+    <div className="min-h-screen bg-[#181818]">
       {/* Cover Image */}
       <div className="relative h-64 w-full bg-cover bg-center" style={{ backgroundImage: `url(${project.cover_image_url || "/placeholder.svg?height=256&width=1200"})` }}>
         <div className="absolute inset-0 bg-black/50" />

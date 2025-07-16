@@ -21,7 +21,7 @@ export default function ProjectCard({
 }) {
   const isOwner = currentUserId && project.owner_id === currentUserId;
   return (
-    <Card className="group bg-[#0b4b34c4] border-white/20 transition overflow-hidden">
+    <Card className="group bg-[#111111] border-white/20 transition overflow-hidden">
       {/* Cover */}
       <div className="relative overflow-hidden">
         <img
