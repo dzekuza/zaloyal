@@ -33,10 +33,16 @@ export async function POST(request: NextRequest) {
       console.log('DEBUG: Error fetching identities:', twitterIdentityError);
       return NextResponse.json({ error: "Failed to fetch user identities", twitterIdentityError }, { status: 500 });
     }
-    const x_username = identityData && identityData[0]?.user_name;
+    let x_username = identityData && identityData[0]?.user_name;
     console.log('DEBUG: get_twitter_identity result:', identityData, 'x_username:', x_username);
+    // Fallback: try users.x_username if not found in identities
     if (!x_username) {
-      return NextResponse.json({ error: "No X (Twitter) username found in identity data" }, { status: 400 });
+      const { data: userProfile } = await supabase.from("users").select("x_username").eq("id", user.id).single();
+      x_username = userProfile?.x_username;
+      console.log('DEBUG: Fallback users.x_username:', x_username);
+    }
+    if (!x_username) {
+      return NextResponse.json({ error: "No X (Twitter) username found. Please link your Twitter account in your profile before verifying this task." }, { status: 400 });
     }
 
     // Get task from database
@@ -60,8 +66,9 @@ export async function POST(request: NextRequest) {
     let verified = false;
     let message = "";
     if (task.social_action === "follow") {
-      verified = await verifyTwitterFollow(xUsername, task.social_username);
-      message = verified ? "Follow verified!" : "Please follow the account first";
+      const result = await verifyTwitterFollow(xUsername, task.social_username);
+      verified = result.verified;
+      message = verified ? "Follow verified!" : result.error || "Please follow the account first";
     } else if (task.social_action === "like") {
       verified = await verifyTwitterLike(xUsername, task.social_post_id);
       message = verified ? "Like verified!" : "Please like the tweet first";
@@ -106,7 +113,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper: Twitter API v2 follow verification
-async function verifyTwitterFollow(userHandle: string, targetHandle: string): Promise<boolean> {
+async function verifyTwitterFollow(userHandle: string, targetHandle: string): Promise<{ verified: boolean, error?: string }> {
   try {
     const bearerToken = process.env.TWITTER_BEARER_TOKEN
     if (!bearerToken) throw new Error("Twitter Bearer Token not configured")
@@ -115,31 +122,36 @@ async function verifyTwitterFollow(userHandle: string, targetHandle: string): Pr
       headers: { Authorization: `Bearer ${bearerToken}` },
     })
     const userData = await userResponse.json()
-    if (!userResponse.ok) throw new Error("User not found on Twitter")
+    console.log('DEBUG: Twitter user lookup status:', userResponse.status)
+    console.log('DEBUG: Twitter user lookup body:', userData)
+    if (!userResponse.ok) return { verified: false, error: `Twitter user lookup failed: ${userResponse.status} ${JSON.stringify(userData)}` }
     const userId = userData.data?.id
-    if (!userId) return false
+    if (!userId) return { verified: false, error: "User ID not found in Twitter response" }
     // Get target user ID
     const targetResponse = await fetch(`https://api.twitter.com/2/users/by/username/${targetHandle}`, {
       headers: { Authorization: `Bearer ${bearerToken}` },
     })
     const targetData = await targetResponse.json()
-    if (!targetResponse.ok) throw new Error("Target user not found on Twitter")
+    console.log('DEBUG: Twitter target lookup status:', targetResponse.status)
+    console.log('DEBUG: Twitter target lookup body:', targetData)
+    if (!targetResponse.ok) return { verified: false, error: `Twitter target lookup failed: ${targetResponse.status} ${JSON.stringify(targetData)}` }
     const targetUserId = targetData.data?.id
-    if (!targetUserId) return false
+    if (!targetUserId) return { verified: false, error: "Target user ID not found in Twitter response" }
     // Check if user follows target
     const followResponse = await fetch(`https://api.twitter.com/2/users/${userId}/following`, {
       headers: { Authorization: `Bearer ${bearerToken}` },
     })
     const followData = await followResponse.json()
-    // Add detailed logging
     console.log('DEBUG: Twitter /following response status:', followResponse.status)
     console.log('DEBUG: Twitter /following response body:', followData)
-    if (!followResponse.ok) throw new Error(`Failed to check following status: ${followResponse.status} ${JSON.stringify(followData)}`)
+    if (!followResponse.ok) return { verified: false, error: `Failed to check following status: ${followResponse.status} ${JSON.stringify(followData)}` }
     const following = followData.data || []
-    return following.some((user: any) => user.id === targetUserId)
-  } catch (error) {
+    const isFollowing = following.some((user: any) => user.id === targetUserId)
+    if (!isFollowing) return { verified: false, error: `User is not following the target account.` }
+    return { verified: true }
+  } catch (error: any) {
     console.error("Twitter API error (follow):", error)
-    return false
+    return { verified: false, error: error.message || String(error) }
   }
 }
 

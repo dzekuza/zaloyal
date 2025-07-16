@@ -2,7 +2,13 @@ import QuestDetailClient from "./QuestDetailClient"
 import { supabase } from "@/lib/supabase"
 import BackgroundWrapper from "@/components/BackgroundWrapper";
 
-export default async function QuestDetail({ params }: { params: { id: string } }) {
+export default async function QuestDetail({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams?: Promise<any>
+}) {
   const { id: questId } = await params
   // Fetch quest and related data
   const { data: quest } = await supabase
