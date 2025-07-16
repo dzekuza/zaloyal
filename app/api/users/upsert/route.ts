@@ -1,35 +1,19 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
-export async function POST(req: NextRequest) {
-  try {
-    const { walletAddress, username } = await req.json()
-
-    if (!walletAddress) {
-      return NextResponse.json({ error: "walletAddress is required" }, { status: 400 })
-    }
-
-    const { data, error } = await supabase
-      .from("users")
-      .upsert(
-        {
-          wallet_address: walletAddress.toLowerCase(),
-          username: username || `User${walletAddress.slice(-6)}`,
-          total_xp: 0,
-          level: 1,
-          completed_quests: 0,
-          role: "participant",
-        },
-        { onConflict: "wallet_address" },
-      )
-      .select()
-      .single()
-
-    if (error) throw error
-
-    return NextResponse.json({ user: data })
-  } catch (e: any) {
-    console.error("User upsert failed:", e)
-    return NextResponse.json({ error: e.message }, { status: 500 })
+export async function POST(request: NextRequest) {
+  const { walletAddress } = await request.json();
+  if (!walletAddress) {
+    return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
   }
+  // Upsert user by wallet address
+  const { data, error } = await supabase
+    .from("users")
+    .upsert({ wallet_address: walletAddress })
+    .select()
+    .single();
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ user: data });
 }
