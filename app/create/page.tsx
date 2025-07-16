@@ -707,7 +707,7 @@ export default function CreateQuest() {
           {/* Quest Form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Information */}
-            <Card className="bg-[#0b4b34c4] border-white/20">
+            <Card className="bg-[#111111] border-white/20">
               <CardHeader>
                 <CardTitle className="text-white">Basic Information</CardTitle>
                 <CardDescription className="text-gray-300">Set up the core details of your quest</CardDescription>
@@ -817,7 +817,7 @@ export default function CreateQuest() {
             </Card>
 
             {/* Tasks Section */}
-            <Card className="bg-[#0b4b34c4] border-white/20">
+            <Card className="bg-[#111111] border-white/20">
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
@@ -838,7 +838,7 @@ export default function CreateQuest() {
                   <div className="space-y-3">
                     {questForm.tasks.map((task, index) => (
                       <div key={task.id || index}>
-                        <div className="flex items-center gap-4 p-4 rounded-lg bg-white/5">
+                        <div className="flex items-center gap-4 p-4 rounded-lg bg-[#111111]">
                           <GripVertical className="w-4 h-4 text-gray-400 cursor-move" />
                           <div className="flex items-center gap-2">
                             {getTaskIcon(task.type)}
@@ -892,7 +892,7 @@ export default function CreateQuest() {
 
           {/* Preview Sidebar */}
           <div className="space-y-6">
-            <Card className="bg-[#0b4b34c4] border-white/20">
+            <Card className="bg-[#111111] border-white/20">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
                   <Eye className="w-5 h-5" />
@@ -953,7 +953,7 @@ export default function CreateQuest() {
               </CardContent>
             </Card>
 
-            <Card className="bg-[#0b4b34c4] border-white/20">
+            <Card className="bg-[#111111] border-white/20">
               <CardHeader>
                 <CardTitle className="text-white">Publish Quest</CardTitle>
               </CardHeader>

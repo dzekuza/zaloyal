@@ -48,7 +48,7 @@ export default function SearchPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {projects.map((project) => (
-                    <Card key={project.id} className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden">
+                    <Card key={project.id} className="bg-[#111111] border-white/20 backdrop-blur-sm overflow-hidden">
                       <div className="relative overflow-hidden">
                         <img
                           src={project.cover_image_url || "/placeholder.svg?height=160&width=240"}
@@ -94,7 +94,7 @@ export default function SearchPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {quests.map((quest) => (
-                    <Card key={quest.id} className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm overflow-hidden">
+                    <Card key={quest.id} className="bg-[#111111] border-white/20 backdrop-blur-sm overflow-hidden">
                       <div className="relative overflow-hidden">
                         <img
                           src={quest.image_url || "/placeholder.svg?height=160&width=240"}

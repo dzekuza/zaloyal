@@ -440,10 +440,13 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <Button
-                    className="w-full bg-black text-white border-0 mb-2 flex items-center justify-center gap-2 text-base font-medium py-3"
-                    onClick={handleLinkX}
+                    onClick={() => supabase.auth.signInWithOAuth({ provider: 'twitter' })}
+                    className="w-full bg-blue-600 text-white flex items-center justify-center gap-2 mt-2"
                   >
-                    <XIcon className="w-6 h-6" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75v-1.5A2.25 2.25 0 0015 3h-6A2.25 2.25 0 006.75 5.25v13.5A2.25 2.25 0 009 21h6a2.25 2.25 0 002.25-2.25v-1.5" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 8.25h2.25m0 0v2.25m0-2.25l-6 6" />
+                    </svg>
                     Connect X
                   </Button>
                 )}

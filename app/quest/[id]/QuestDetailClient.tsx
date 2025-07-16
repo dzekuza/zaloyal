@@ -338,7 +338,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     const answers = quizAnswers[task.id] || Array(questions.length).fill("")
     return (
       <Dialog open={!!showQuiz[task.id]} onOpenChange={open => setShowQuiz(s => ({ ...s, [task.id]: open }))}>
-        <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white max-w-lg">
+        <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-lg">
           <DialogHeader>
             <DialogTitle>Quiz: {task.title}</DialogTitle>
             <DialogDescription>Answer all questions to complete the quiz.</DialogDescription>
@@ -561,7 +561,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                       </SelectTrigger>
                       <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
                         <SelectItem value="social" className="text-white">Social</SelectItem>
-                        <SelectItem value="download" className="text-white">Download</SelectItem>
+                        <SelectItem value="download" className="text-white">Upload</SelectItem>
                         <SelectItem value="form" className="text-white">Form</SelectItem>
                         <SelectItem value="visit" className="text-white">Visit</SelectItem>
                         <SelectItem value="learn" className="text-white">Quiz</SelectItem>
@@ -576,27 +576,36 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                         <SelectTrigger className="bg-white/10 border-white/20 text-white">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
+                        <SelectContent className="bg-[#111111] border-[#282828]">
                           <SelectItem value="twitter" className="text-white">Twitter / X</SelectItem>
                           <SelectItem value="telegram" className="text-white">Telegram</SelectItem>
                           <SelectItem value="discord" className="text-white">Discord</SelectItem>
                         </SelectContent>
                       </Select>
-                      <label className="text-white block mb-1">Action</label>
-                      <Select value={newTask.socialAction} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
-                          <SelectItem value="follow" className="text-white">Follow</SelectItem>
-                          <SelectItem value="join" className="text-white">Join</SelectItem>
-                          <SelectItem value="like" className="text-white">Like</SelectItem>
-                          <SelectItem value="retweet" className="text-white">Retweet</SelectItem>
-                          <SelectItem value="subscribe" className="text-white">Subscribe</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <label className="text-white block mb-1">URL/Link</label>
-                      <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                      {newTask.socialPlatform === 'telegram' ? (
+                        <div>
+                          <label className="text-white block mb-1">Channel Link</label>
+                          <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                        </div>
+                      ) : (
+                        <>
+                          <label className="text-white block mb-1">Action</label>
+                          <Select value={newTask.socialAction} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
+                            <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#111111] border-[#282828]">
+                              <SelectItem value="follow" className="text-white">Follow</SelectItem>
+                              <SelectItem value="join" className="text-white">Join</SelectItem>
+                              <SelectItem value="like" className="text-white">Like</SelectItem>
+                              <SelectItem value="retweet" className="text-white">Retweet</SelectItem>
+                              <SelectItem value="subscribe" className="text-white">Subscribe</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <label className="text-white block mb-1">URL/Link</label>
+                          <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                        </>
+                      )}
                     </div>
                   )}
                   {newTask.type === "social" && newTask.socialPlatform === "twitter" && (
@@ -777,7 +786,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                                 Edit Quiz
                               </Button>
                               <Dialog open={!!editingQuizTask && editingQuizTask.id === task.id} onOpenChange={open => open ? setEditingQuizTask(task) : setEditingQuizTask(null)}>
-                                <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white max-w-2xl">
+                                <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-2xl">
                                   <DialogHeader>
                                     <DialogTitle>Edit Quiz Task</DialogTitle>
                                   </DialogHeader>

@@ -307,7 +307,7 @@ export default function ProjectDetailPage() {
           {quests.length > 0 ? (
             quests.map((quest) => (
               <Link key={quest.id} href={`/quest/${quest.id}`} className="block group">
-                <Card className="group bg-[#0b4b34c4] border-white/20 transition overflow-hidden cursor-pointer hover:border-green-400">
+                <Card className="group bg-[#111111] border-white/20 transition overflow-hidden cursor-pointer hover:border-green-400">
                   <div className="relative overflow-hidden">
                     <img
                       src={quest.image_url || "/placeholder.svg?height=160&width=240"}
