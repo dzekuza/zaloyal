@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Globe, Twitter, MessageSquare, Github, Users, Zap, Trophy, Star } from "lucide-react"
+import { ArrowLeft, Globe, Twitter, MessageSquare, Github, Users, Zap, Trophy, Star, Plus } from "lucide-react"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import EditProjectForm from "@/components/edit-project-form"
 import EditQuestForm from "@/components/edit-quest-form"
@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { saveAs } from "file-saver"
 import ProjectStatsBar from "@/components/ProjectStatsBar"
+import ImageUpload from "@/components/image-upload"
 
 interface Project {
   id: string;
@@ -115,6 +116,16 @@ export default function ProjectDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null)
   const [xpToCollect, setXpToCollect] = useState(0)
+  const [showCreateQuest, setShowCreateQuest] = useState(false)
+  const [creatingQuest, setCreatingQuest] = useState(false)
+  const [createQuestError, setCreateQuestError] = useState("")
+  const [newQuest, setNewQuest] = useState({
+    title: "",
+    description: "",
+    image_url: "",
+    total_xp: 0,
+    status: "active"
+  })
 
   useEffect(() => {
     const checkSessionAndFetch = async () => {
@@ -152,6 +163,32 @@ export default function ProjectDetailPage() {
   }, [projectId]);
 
   const isOwner = currentUserId && project && project.owner_id === currentUserId
+
+  const handleCreateQuest = async () => {
+    setCreatingQuest(true)
+    setCreateQuestError("")
+    try {
+      const { error } = await supabase.from("quests").insert({
+        title: newQuest.title,
+        description: newQuest.description,
+        image_url: newQuest.image_url,
+        total_xp: newQuest.total_xp,
+        status: newQuest.status,
+        project_id: projectId,
+        creator_id: currentUserId
+      })
+      if (error) throw error
+      setShowCreateQuest(false)
+      setNewQuest({ title: "", description: "", image_url: "", total_xp: 0, status: "active" })
+      // Refresh quests
+      const { data: questsData } = await supabase.from("quests").select('id, project_id, title, description, total_xp, status, created_at, time_limit_days, image_url').eq("project_id", projectId)
+      setQuests((questsData || []) as Quest[])
+    } catch (e: any) {
+      setCreateQuestError(e.message || "Failed to create quest")
+    } finally {
+      setCreatingQuest(false)
+    }
+  }
 
   if (loading) return <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center text-white text-xl">Loading...</div>
   if (error || !project) return <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center text-white text-xl">{error || "Project not found"}</div>
@@ -210,76 +247,120 @@ export default function ProjectDetailPage() {
 
       {/* Stats Bar */}
       <ProjectStatsBar questCount={quests.length} participants={project.total_participants || 0} xpToCollect={xpToCollect} />
-
       {/* Featured Quests */}
       <div className="container mx-auto w-full max-w-full py-8 px-2 sm:px-6">
-        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-          <Star className="w-6 h-6 text-yellow-400" />
-          Featured Quests
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Star className="w-6 h-6 text-yellow-400" />
+            Featured Quests
+          </h2>
+          {isOwner && (
+            <Button onClick={() => setShowCreateQuest(true)} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add Quest
+            </Button>
+          )}
+        </div>
+        {/* Create Quest Dialog */}
+        <Dialog open={showCreateQuest} onOpenChange={setShowCreateQuest}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+            <DialogHeader>
+              <DialogTitle>Create New Quest</DialogTitle>
+            </DialogHeader>
+            <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleCreateQuest(); }}>
+              {createQuestError && <div className="p-2 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-sm">{createQuestError}</div>}
+              <div>
+                <label className="text-white block mb-1">Title</label>
+                <input type="text" value={newQuest.title} onChange={e => setNewQuest(q => ({ ...q, title: e.target.value }))} className="w-full bg-white/10 border-white/20 text-white rounded px-3 py-2" required />
+              </div>
+              <div>
+                <label className="text-white block mb-1">Description</label>
+                <textarea value={newQuest.description} onChange={e => setNewQuest(q => ({ ...q, description: e.target.value }))} className="w-full bg-white/10 border-white/20 text-white rounded px-3 py-2" rows={3} />
+              </div>
+              <div>
+                <label className="text-white block mb-1">Quest Image</label>
+                <ImageUpload
+                  onImageUploaded={url => setNewQuest(q => ({ ...q, image_url: url }))}
+                  onImageRemoved={() => setNewQuest(q => ({ ...q, image_url: "" }))}
+                  currentImage={newQuest.image_url}
+                  label="Upload Quest Image"
+                />
+              </div>
+              <div>
+                <label className="text-white block mb-1">Total XP</label>
+                <input type="number" value={newQuest.total_xp} onChange={e => setNewQuest(q => ({ ...q, total_xp: Number(e.target.value) }))} className="w-full bg-white/10 border-white/20 text-white rounded px-3 py-2" min={0} required />
+              </div>
+              <div>
+                <label className="text-white block mb-1">Status</label>
+                <select value={newQuest.status} onChange={e => setNewQuest(q => ({ ...q, status: e.target.value }))} className="w-full bg-white/10 border-white/20 text-white rounded px-3 py-2">
+                  <option value="active">Active</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowCreateQuest(false)} className="bg-white/10 border-white/20 text-white">Cancel</Button>
+                <Button type="submit" disabled={creatingQuest} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">{creatingQuest ? "Creating..." : "Create Quest"}</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
           {quests.length > 0 ? (
             quests.map((quest) => (
-              <Card key={quest.id} className="group bg-[#0b4b34c4] border-white/20 transition overflow-hidden">
-                <div className="relative overflow-hidden">
-                  <img
-                    src={quest.image_url || "/placeholder.svg?height=160&width=240"}
-                    alt={quest.title}
-                    className="h-40 w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {isOwner && (
-                    <button
-                      className="absolute top-2 right-2 px-3 py-1 rounded bg-green-700 text-white text-xs font-semibold disabled:opacity-50"
-                      disabled={!isQuestCompleted(quest)}
-                      title={isQuestCompleted(quest) ? "Export participants" : "Available after quest completes"}
-                      onClick={() => exportParticipantsCSV(quest.id, quest.title)}
-                    >
-                      Export Participants
-                    </button>
-                  )}
-                </div>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-white group-hover:text-blue-400 transition-colors">{quest.title}</CardTitle>
-                  <CardDescription className="text-gray-300 text-sm line-clamp-2">{quest.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="mb-3 flex justify-between items-center text-xs text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <Zap className="w-3 h-3 text-yellow-400" />
-                      {quest.total_xp} XP
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {/* You can add participants count if available */}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {!isOwner && (
-                      <Link href={`/quest/${quest.id}`} className="w-full">
-                        <Button size="sm" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                          Start Quest
-                        </Button>
-                      </Link>
-                    )}
+              <Link key={quest.id} href={`/quest/${quest.id}`} className="block group">
+                <Card className="group bg-[#0b4b34c4] border-white/20 transition overflow-hidden cursor-pointer hover:border-green-400">
+                  <div className="relative overflow-hidden">
+                    <img
+                      src={quest.image_url || "/placeholder.svg?height=160&width=240"}
+                      alt={quest.title}
+                      className="h-40 w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                     {isOwner && (
-                      <Dialog open={editingQuest?.id === quest.id} onOpenChange={open => setEditingQuest(open ? quest : null)}>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">Edit Quest</Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
-                          <DialogHeader>
-                            <DialogTitle>Edit Quest</DialogTitle>
-                            <DialogDescription>
-                              Update the quest details and image below, then save your changes.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <EditQuestForm quest={quest} onSave={() => { setEditingQuest(null); router.push(`/project/${projectId}`); }} />
-                        </DialogContent>
-                      </Dialog>
+                      <button
+                        className="absolute top-2 right-2 px-3 py-1 rounded bg-green-700 text-white text-xs font-semibold disabled:opacity-50"
+                        disabled={!isQuestCompleted(quest)}
+                        title={isQuestCompleted(quest) ? "Export participants" : "Available after quest completes"}
+                        onClick={e => { e.preventDefault(); exportParticipantsCSV(quest.id, quest.title); }}
+                      >
+                        Export Participants
+                      </button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg text-white group-hover:text-blue-400 transition-colors">{quest.title}</CardTitle>
+                    <CardDescription className="text-gray-300 text-sm line-clamp-2">{quest.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="mb-3 flex justify-between items-center text-xs text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <Zap className="w-3 h-3 text-yellow-400" />
+                        {quest.total_xp} XP
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {/* You can add participants count if available */}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {isOwner && (
+                        <Dialog open={editingQuest?.id === quest.id} onOpenChange={open => setEditingQuest(open ? quest : null)}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0" onClick={e => e.preventDefault()}>Edit Quest</Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+                            <DialogHeader>
+                              <DialogTitle>Edit Quest</DialogTitle>
+                              <DialogDescription>
+                                Update the quest details and image below, then save your changes.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <EditQuestForm quest={quest} onSave={() => { setEditingQuest(null); router.push(`/project/${projectId}`); }} />
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))
           ) : (
             <div className="text-center py-12 col-span-3">

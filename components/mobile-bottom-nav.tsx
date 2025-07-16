@@ -11,7 +11,7 @@ const navItems = [
 
 export default function MobileBottomNav() {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-[#0b4b34] border-t-2 border-emerald-400 flex justify-between px-2 py-1">
+    <nav className="md:hidden fixed bottom-0 left-0 w-full z-50" style={{ background: '#181818', borderTop: '2px solid #282828' }}>
       {navItems.map(({ href, label, icon: Icon }) => (
         <Link
           key={label}

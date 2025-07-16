@@ -98,7 +98,7 @@ export default function MyProjectsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
         <p className="text-white text-xl">Loading your projects...</p>
       </div>
     )
@@ -106,7 +106,7 @@ export default function MyProjectsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
         <p className="text-white text-xl">{error}</p>
       </div>
     )
@@ -114,7 +114,7 @@ export default function MyProjectsPage() {
 
   if (!myProjects.length) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
         <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md">
           <div className="text-center">
             <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
@@ -144,7 +144,7 @@ export default function MyProjectsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+    <div className="min-h-screen bg-[#181818]">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold text-white mb-8">My Projects</h1>
         {myProjects.length === 0 ? (

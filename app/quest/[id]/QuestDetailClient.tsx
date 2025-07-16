@@ -31,6 +31,7 @@ import {
   Eye,
   BookOpen,
   Trash,
+  Plus,
 } from "lucide-react"
 import Link from "next/link"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
@@ -39,6 +40,8 @@ import TelegramLoginWidget from "@/components/telegram-login-widget"
 import QuestStatsBar from "@/components/QuestStatsBar"
 import { supabase } from "@/lib/supabase"
 import EditQuestForm from "@/components/edit-quest-form"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
@@ -49,7 +52,7 @@ type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
 }
 const getAbsoluteUrl = (url: string) => url?.match(/^https?:\/\//i) ? url : `https://${url}`;
 
-export default function QuestDetailClient({ quest, tasks }: { quest: Quest, tasks: Task[] }) {
+export default function QuestDetailClient({ quest, tasks: initialTasks }: { quest: Quest, tasks: Task[] }) {
   // --- Begin full client logic and UI ---
   const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
   const [emailUser, setEmailUser] = useState<any>(null)
@@ -60,6 +63,22 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
   const [showQuiz, setShowQuiz] = useState<{ [taskId: string]: boolean }>({})
   const [quizAnswers, setQuizAnswers] = useState<{ [taskId: string]: any[] }>({})
   const [editingQuizTask, setEditingQuizTask] = useState<Task | null>(null)
+  const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [showAddTask, setShowAddTask] = useState(false)
+  const [creatingTask, setCreatingTask] = useState(false)
+  const [createTaskError, setCreateTaskError] = useState("")
+  const [newTask, setNewTask] = useState<any>({
+    type: "social",
+    title: "",
+    description: "",
+    xpReward: 100,
+    socialAction: "follow",
+    socialPlatform: "twitter",
+    socialUrl: "",
+    socialUsername: "",
+    socialPostId: "",
+    // ... other fields as needed
+  })
 
   useEffect(() => {
     setMounted(true)
@@ -211,6 +230,57 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
     }
   }
 
+  // In handleCreateTask, set the title automatically based on the selected Twitter task type
+  const getTwitterTaskHeading = (twitterTaskType: string) => {
+    switch (twitterTaskType) {
+      case "tweet_reaction": return "Tweet reaction";
+      case "twitter_follow": return "Twitter follow";
+      case "tweet": return "Tweet";
+      case "twitter_space": return "Twitter space";
+      default: return "Twitter";
+    }
+  };
+
+  const handleCreateTask = async () => {
+    setCreatingTask(true)
+    setCreateTaskError("")
+    try {
+      let title = newTask.title;
+      if (newTask.type === "social" && newTask.socialPlatform === "twitter" && newTask.twitterTaskType) {
+        title = getTwitterTaskHeading(newTask.twitterTaskType);
+      }
+      const { error } = await supabase.from("tasks").insert({
+        quest_id: quest.id,
+        title,
+        description: "",
+        task_type: newTask.type,
+        xp_reward: 0, // Not used, but required by schema
+        order_index: tasks.length,
+        social_action: newTask.socialAction || null,
+        social_platform: newTask.socialPlatform || null,
+        social_url: newTask.socialUrl || newTask.tweetUrl || newTask.spaceUrl || null,
+        social_username: newTask.twitterUsername || null,
+        social_post_id: null,
+        // ... add other fields as needed
+        tweet_actions: newTask.tweetActions || null,
+        tweet_words: newTask.tweetWords || null,
+        default_tweet: newTask.defaultTweet || null,
+        space_password: newTask.spacePassword || null,
+        show_after_end: newTask.showAfterEnd || null,
+      })
+      if (error) throw error
+      setShowAddTask(false)
+      setNewTask({ type: "social", title: "", description: "", xpReward: 100, socialAction: "follow", socialPlatform: "twitter", socialUrl: "", twitterTaskType: undefined })
+      // Refresh tasks
+      const { data: updatedTasks } = await supabase.from("tasks").select("*").eq("quest_id", quest.id).order("order_index")
+      setTasks(updatedTasks || [])
+    } catch (e: any) {
+      setCreateTaskError(e.message || "Failed to create task")
+    } finally {
+      setCreatingTask(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
@@ -311,8 +381,20 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
     )
   }
 
+  const TWITTER_TASK_TYPES = [
+    { value: "tweet_reaction", label: "Tweet reaction" },
+    { value: "twitter_follow", label: "Twitter follow" },
+    { value: "tweet", label: "Tweet" },
+    { value: "twitter_space", label: "Twitter space" },
+  ];
+  const TWEET_REACTION_ACTIONS = [
+    { value: "like", label: "Like" },
+    { value: "retweet", label: "Retweet" },
+    { value: "reply", label: "Reply" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+    <div className="min-h-screen" style={{ background: '#181818' }}>
       <div className="w-full px-2 sm:px-4 py-8">
         {/* Back Button */}
         <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors">
@@ -323,7 +405,7 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
         {/* Quest Header */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
-            <Card className="w-full bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
               <div className="relative">
                 <img
                   src={quest.image_url || "/placeholder.svg?height=300&width=600"}
@@ -347,11 +429,11 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
                   </Badge>
                 </div>
               </div>
-              <CardHeader>
+              <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-2xl text-white">{quest.title}</CardTitle>
                 <CardDescription className="text-gray-300 text-base">{quest.description}</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-[#111111]">
                 <QuestStatsBar totalXP={quest.total_xp} participants={quest.participant_count} taskCount={tasks.length} />
               </CardContent>
             </Card>
@@ -359,11 +441,11 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
 
           {/* Quest Stats Sidebar (desktop only) */}
           <div className="space-y-6 hidden lg:block">
-            <Card className="bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm w-full">
-              <CardHeader>
+            <Card className="bg-[#111111] border-[#282828] rounded-lg">
+              <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Quest Stats</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="bg-[#111111] space-y-4">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Rewards</span>
                   <span className="text-yellow-400 font-semibold">{quest.total_xp} XP</span>
@@ -382,11 +464,11 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm w-full">
-              <CardHeader>
+            <Card className="bg-[#111111] border-[#282828] rounded-lg">
+              <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Creator</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-[#111111]">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold">
@@ -403,11 +485,11 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
           </div>
           {/* Mobile sidebar below main card */}
           <div className="space-y-2 block lg:hidden mt-8">
-            <Card className="w-full bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
-              <CardHeader>
+            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+              <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Quest Stats</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="bg-[#111111] space-y-4">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Rewards</span>
                   <span className="text-yellow-400 font-semibold">{quest.total_xp} XP</span>
@@ -426,11 +508,11 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
                 </div>
               </CardContent>
             </Card>
-            <Card className="w-full bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
-              <CardHeader>
+            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+              <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Creator</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-[#111111]">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold">
@@ -448,16 +530,166 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
         </div>
 
         {/* Tasks Section */}
-        <Card className="bg-[#0b4b34] border-[#0b4b34] backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-white">Quest Tasks</CardTitle>
-            <CardDescription className="text-gray-300">Complete all tasks to earn the full XP reward</CardDescription>
+        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm rounded-lg">
+          <CardHeader className="bg-[#111111] border-b border-[#282828]">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-white">Quest Tasks</CardTitle>
+                <CardDescription className="text-gray-300">Complete all tasks to earn the full XP reward</CardDescription>
+              </div>
+              {isAdminOrCreator() && (
+                <Button onClick={() => setShowAddTask(true)} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Add Task
+                </Button>
+              )}
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="bg-[#111111]">
+            {/* Add Task Dialog */}
+            <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
+              <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+                <DialogHeader>
+                  <DialogTitle>Add New Task</DialogTitle>
+                </DialogHeader>
+                <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleCreateTask(); }}>
+                  {createTaskError && <div className="p-2 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-sm">{createTaskError}</div>}
+                  <div>
+                    <label className="text-white block mb-1">Task Type</label>
+                    <Select value={newTask.type} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, type: val }))}>
+                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
+                        <SelectItem value="social" className="text-white">Social</SelectItem>
+                        <SelectItem value="download" className="text-white">Download</SelectItem>
+                        <SelectItem value="form" className="text-white">Form</SelectItem>
+                        <SelectItem value="visit" className="text-white">Visit</SelectItem>
+                        <SelectItem value="learn" className="text-white">Quiz</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Only show social platform, action, and URL for social tasks */}
+                  {newTask.type === "social" && (
+                    <div className="space-y-2">
+                      <label className="text-white block mb-1">Social Platform</label>
+                      <Select value={newTask.socialPlatform} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialPlatform: val }))}>
+                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
+                          <SelectItem value="twitter" className="text-white">Twitter / X</SelectItem>
+                          <SelectItem value="telegram" className="text-white">Telegram</SelectItem>
+                          <SelectItem value="discord" className="text-white">Discord</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <label className="text-white block mb-1">Action</label>
+                      <Select value={newTask.socialAction} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
+                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
+                          <SelectItem value="follow" className="text-white">Follow</SelectItem>
+                          <SelectItem value="join" className="text-white">Join</SelectItem>
+                          <SelectItem value="like" className="text-white">Like</SelectItem>
+                          <SelectItem value="retweet" className="text-white">Retweet</SelectItem>
+                          <SelectItem value="subscribe" className="text-white">Subscribe</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <label className="text-white block mb-1">URL/Link</label>
+                      <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                    </div>
+                  )}
+                  {newTask.type === "social" && newTask.socialPlatform === "twitter" && (
+                    <div className="space-y-4">
+                      <label className="text-white block mb-1">Task type</label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {TWITTER_TASK_TYPES.map((tt) => (
+                          <button
+                            key={tt.value}
+                            type="button"
+                            className={`px-4 py-2 rounded border ${newTask.twitterTaskType === tt.value ? "bg-green-700 text-white border-green-500" : "bg-white/10 text-white border-white/20"}`}
+                            onClick={() => setNewTask((t: typeof newTask) => ({ ...t, twitterTaskType: tt.value }))}
+                          >
+                            {tt.label}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Tweet Reaction */}
+                      {newTask.twitterTaskType === "tweet_reaction" && (
+                        <>
+                          <label className="text-white block mb-1">Tweet URL</label>
+                          <Input value={newTask.tweetUrl || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, tweetUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/username/status/123456789" />
+                          {/* Validation: show error if invalid */}
+                          {/* Actions */}
+                          <label className="text-white block mb-1 mt-2">Actions</label>
+                          <div className="flex gap-4">
+                            {TWEET_REACTION_ACTIONS.map((action) => (
+                              <label key={action.value} className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={Array.isArray(newTask.tweetActions) && newTask.tweetActions.includes(action.value)}
+                                  onChange={e => {
+                                    setNewTask((t: typeof newTask) => {
+                                      const arr = Array.isArray(t.tweetActions) ? [...t.tweetActions] : [];
+                                      if (e.target.checked) {
+                                        if (!arr.includes(action.value)) arr.push(action.value);
+                                      } else {
+                                        const idx = arr.indexOf(action.value);
+                                        if (idx > -1) arr.splice(idx, 1);
+                                      }
+                                      return { ...t, tweetActions: arr };
+                                    });
+                                  }}
+                                />
+                                {action.label}
+                              </label>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      {/* Twitter Follow */}
+                      {newTask.twitterTaskType === "twitter_follow" && (
+                        <>
+                          <label className="text-white block mb-1">Twitter username</label>
+                          <Input value={newTask.twitterUsername || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, twitterUsername: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="@username" />
+                        </>
+                      )}
+                      {/* Tweet */}
+                      {newTask.twitterTaskType === "tweet" && (
+                        <>
+                          <label className="text-white block mb-1">Tweet words (can include mentions, hashtags, or any type of text)</label>
+                          <Input value={newTask.tweetWords || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, tweetWords: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="@zealy_io" />
+                          <label className="text-white block mb-1 mt-2">Default tweet <span className="text-gray-400 text-xs">(Optional)</span></label>
+                          <Textarea value={newTask.defaultTweet || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, defaultTweet: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="Provide a default tweet for your members." />
+                        </>
+                      )}
+                      {/* Twitter Space */}
+                      {newTask.twitterTaskType === "twitter_space" && (
+                        <>
+                          <label className="text-white block mb-1">Space URL</label>
+                          <Input value={newTask.spaceUrl || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, spaceUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/i/spaces/1mnGeRkQwqQJX" />
+                          <label className="text-white block mb-1 mt-2">Password <span className="text-gray-400 text-xs">(Optional)</span></label>
+                          <Input value={newTask.spacePassword || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, spacePassword: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="Enter password" />
+                          <div className="flex items-center gap-2 mt-2">
+                            <input type="checkbox" checked={!!newTask.showAfterEnd} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, showAfterEnd: e.target.checked }))} />
+                            <span className="text-white text-sm">Show quest visible after the space ends</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {/* Add more type-specific fields as needed, but do not show XP, title, description, username */}
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setShowAddTask(false)} className="bg-white/10 border-white/20 text-white">Cancel</Button>
+                    <Button type="submit" disabled={creatingTask} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">{creatingTask ? "Creating..." : "Add Task"}</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
             <div className="space-y-4">
               {tasks.map((task: Task, index: number) => (
                 <div key={task.id}>
-                  <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-lg bg-green-900/80 hover:bg-emerald-800/80 transition-colors">
+                  <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-lg bg-[#111111] border border-[#282828] hover:bg-emerald-800/80 transition-colors">
                     <div className="flex-shrink-0 mt-1">
                       {task.user_task_submissions?.status === "verified" ? (
                         <CheckCircle className="w-6 h-6 text-green-400" />
@@ -467,25 +699,13 @@ export default function QuestDetailClient({ quest, tasks }: { quest: Quest, task
                     </div>
                     <div className="flex-1 min-w-0 w-full">
                       <div className="flex flex-col gap-2 w-full">
+                        {/* Heading and Complete Task button */}
                         <div className="flex items-center gap-2 mb-2">
                           {getTaskIcon(task)}
-                          <h3
-                            className={`font-semibold ${task.user_task_submissions?.status === "verified" ? "text-green-400" : "text-white"}`}
-                          >
-                            {task.title}
-                          </h3>
-                          <Badge
-                            variant="outline"
-                            className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                          >
-                            +{task.xp_reward} XP
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className="text-xs bg-green-500/20 text-green-400 border-green-500/30"
-                          >
-                            {task.task_type}
-                          </Badge>
+                          <h3 className={`font-semibold ${task.user_task_submissions?.status === "verified" ? "text-green-400" : "text-white"}`}>{task.title}</h3>
+                          <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/30">+{quest.total_xp} XP</Badge>
+                          <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">{task.task_type}</Badge>
+                          <Button size="sm" className="ml-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">Complete Task</Button>
                         </div>
                         <p className="text-gray-400 text-sm mb-3">{task.description}</p>
                         {task.social_url && (

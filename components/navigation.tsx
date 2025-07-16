@@ -91,7 +91,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
 
   // Only render sign-in/profile button after loading is false
   return (
-    <nav className="hidden md:block sticky top-0 z-50 bg-[#094a35] backdrop-blur-sm border-b border-white/10 py-2 md:py-3">
+    <nav className="hidden md:block sticky top-0 z-50" style={{ background: '#111111' }}>
       <div className=" px-4">
         <div className="items-center h-auto md:h-16 gap-auto grid grid-cols-2 justify-end">
           {/* Left: Search bar */}
@@ -181,7 +181,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 border-slate-700 bg-[#0b4b34]">
+                  <DropdownMenuContent align="end" className="w-56 border-[#282828] bg-[#111111]">
                     <div className="px-2 py-1.5">
                       <p className="text-sm font-medium text-white">{displayName}</p>
                       <div className="flex items-center gap-1 text-xs text-gray-400">
@@ -229,7 +229,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                         </Button>
                       )}
                     </div>
-                    <DropdownMenuSeparator className="bg-emerald-700" />
+                    <DropdownMenuSeparator className="bg-[#282828]" />
 
                     {/* Mobile Stats */}
                     <div className="lg:hidden px-2 py-2">
@@ -250,7 +250,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                     </div>
                     <DropdownMenuSeparator className="lg:hidden bg-emerald-700" />
 
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
                       <Link href="/profile">
                         <User className="w-4 h-4 mr-2" />
                         Profile
@@ -259,7 +259,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
 
                     {/* Always show Register Project link for authenticated users */}
                     <DropdownMenuSeparator className="bg-emerald-700" />
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
                       <Link href="/register-project">
                         <Building2 className="w-4 h-4 mr-2" />
                         Register Project
@@ -302,13 +302,13 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
               </Button>
             </div>
             <nav className="flex flex-col gap-4 mt-4">
-              <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
                 <Home className="w-4 h-4" /> Projects
               </Link>
-              <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
                 <BarChart3 className="w-4 h-4" /> Dashboard
               </Link>
-              <Link href="/leaderboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/leaderboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
                 <Trophy className="w-4 h-4" /> Leaderboard
               </Link>
               <form

@@ -98,7 +98,7 @@ export default function SidebarWalletConnect() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" style={{ background: '#181818' }}>
       <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
         <DialogTrigger asChild>
           <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
