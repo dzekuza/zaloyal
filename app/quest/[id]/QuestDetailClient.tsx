@@ -441,11 +441,11 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
           {/* Quest Stats Sidebar (desktop only) */}
           <div className="space-y-6 hidden lg:block">
-            <Card className="bg-[#111111] border-[#282828] rounded-lg">
+            <Card className="text-card-foreground shadow-sm bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
               <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Quest Stats</CardTitle>
               </CardHeader>
-              <CardContent className="bg-[#111111] space-y-4">
+              <CardContent className="bg-[#111111] space-y-4 p-6">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Rewards</span>
                   <span className="text-yellow-400 font-semibold">{quest.total_xp} XP</span>
@@ -464,7 +464,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-[#111111] border-[#282828] rounded-lg">
+            <Card className="text-card-foreground shadow-sm bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
               <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Creator</CardTitle>
               </CardHeader>
@@ -530,7 +530,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         </div>
 
         {/* Tasks Section */}
-        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm rounded-lg">
+        <Card className="text-card-foreground shadow-sm bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
           <CardHeader className="bg-[#111111] border-b border-[#282828]">
             <div className="flex items-center justify-between">
               <div>
@@ -740,40 +740,46 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           )}
                           {/* Twitter (X) social task action: require X auth, show Go to X and Verify buttons */}
                           {mounted && task.task_type === "social" && task.social_platform === "twitter" && !task.user_task_submissions?.status && (
-                            <>
-                              {!(emailUser?.profile?.twitter_id) ? (
-                                <Button
-                                  className="bg-black text-white border-0"
-                                  onClick={() => window.location.href = '/profile'}
-                                >
-                                  Connect X in Profile to Complete
-                                </Button>
-                              ) : (
-                                <>
-                                  {/* Go to X button: profile or post */}
-                                  <a
-                                    href={task.social_action === 'follow' && task.social_username ? `https://x.com/${task.social_username}` :
-                                      (task.social_action === 'like' || task.social_action === 'retweet') && task.social_username && task.social_post_id ? `https://x.com/${task.social_username}/status/${task.social_post_id}` : task.social_url || '#'}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    <Button
-                                      variant="outline"
-                                      className="border-blue-500 text-blue-400 hover:bg-blue-900/40 mb-2"
-                                    >
-                                      Go to X
-                                    </Button>
-                                  </a>
+                            (() => {
+                              // Find Twitter identity from Supabase identities
+                              const [twitterIdentity] = (emailUser?.identities || []).filter((i: any) => i.provider === 'twitter');
+                              if (!twitterIdentity) {
+                                return (
                                   <Button
-                                    onClick={() => handleTaskVerification(task)}
-                                    disabled={verifyingTask === task.id}
-                                    className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
+                                    className="bg-black text-white border-0"
+                                    onClick={() => window.location.href = '/profile'}
                                   >
-                                    {verifyingTask === task.id ? "Verifying..." : "Verify"}
+                                    Connect X in Profile to Complete
                                   </Button>
-                                </>
-                              )}
-                            </>
+                                );
+                              } else {
+                                return (
+                                  <>
+                                    {/* Go to X button: profile or post */}
+                                    <a
+                                      href={task.social_action === 'follow' && task.social_username ? `https://x.com/${task.social_username}` :
+                                        (task.social_action === 'like' || task.social_action === 'retweet') && task.social_username && task.social_post_id ? `https://x.com/${task.social_username}/status/${task.social_post_id}` : task.social_url || '#'}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <Button
+                                        variant="outline"
+                                        className="border-blue-500 text-blue-400 hover:bg-blue-900/40 mb-2"
+                                      >
+                                        Go to X
+                                      </Button>
+                                    </a>
+                                    <Button
+                                      onClick={() => handleTaskVerification(task)}
+                                      disabled={verifyingTask === task.id}
+                                      className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
+                                    >
+                                      {verifyingTask === task.id ? "Verifying..." : "Verify"}
+                                    </Button>
+                                  </>
+                                );
+                              }
+                            })()
                           )}
                           {/* Admin/creator edit button for quiz */}
                           {mounted && task.task_type === "learn" && isAdminOrCreator() && (
