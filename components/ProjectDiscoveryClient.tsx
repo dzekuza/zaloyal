@@ -95,10 +95,10 @@ export default function ProjectDiscoveryClient({ projects, categories }: { proje
   }, [searchTerm, selectedCategory, projects]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+    <div className="min-h-screen bg-[#181818]">
       {/* Hero */}
       <header className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-emerald-600/20 backdrop-blur-3xl" />
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-3xl" />
         <div className="relative container mx-auto px-4 py-16 text-center space-y-6">
           <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-emerald-600 bg-clip-text text-transparent">
             Web3 Projects

@@ -76,7 +76,7 @@ export default function ClientLayout({
       <head>
         <title>BeLink Web3 Quest Platform</title>
       </head>
-      <body className={inter.className}>
+      <body className={inter.className + " bg-[#181818]"}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <SidebarProvider>
             <Sidebar variant="inset">

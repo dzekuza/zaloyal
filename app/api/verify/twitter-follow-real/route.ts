@@ -108,13 +108,12 @@ async function verifyTwitterFollow(userHandle: string, targetHandle: string): Pr
       },
     })
 
+    const userData = await userResponse.json()
+    console.log('DEBUG: Twitter user lookup response:', userData)
     if (!userResponse.ok) {
       throw new Error("User not found on Twitter")
     }
-
-    const userData = await userResponse.json()
     const userId = userData.data?.id
-
     if (!userId) {
       return false
     }
@@ -126,13 +125,12 @@ async function verifyTwitterFollow(userHandle: string, targetHandle: string): Pr
       },
     })
 
+    const targetData = await targetResponse.json()
+    console.log('DEBUG: Twitter target lookup response:', targetData)
     if (!targetResponse.ok) {
       throw new Error("Target user not found on Twitter")
     }
-
-    const targetData = await targetResponse.json()
     const targetUserId = targetData.data?.id
-
     if (!targetUserId) {
       return false
     }
@@ -147,11 +145,11 @@ async function verifyTwitterFollow(userHandle: string, targetHandle: string): Pr
       },
     )
 
+    const followData = await followResponse.json()
+    console.log('DEBUG: Twitter following list response:', followData)
     if (!followResponse.ok) {
       throw new Error("Failed to check following status")
     }
-
-    const followData = await followResponse.json()
     const following = followData.data || []
 
     // Check if target user is in the following list

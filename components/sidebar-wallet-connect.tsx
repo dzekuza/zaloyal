@@ -106,12 +106,7 @@ export default function SidebarWalletConnect() {
             Sign In
           </Button>
         </DialogTrigger>
-        <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white max-w-md">
-          <DialogHeader>
-            <DialogTitle>Authentication</DialogTitle>
-            <DialogDescription className="text-gray-300">Sign in or register with your email</DialogDescription>
-          </DialogHeader>
-
+        <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-md">
           {/* Only show email authentication */}
           <EmailAuth onSuccess={handleEmailAuthSuccess} onError={handleEmailAuthError} />
 

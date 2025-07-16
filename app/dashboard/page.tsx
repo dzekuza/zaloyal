@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import DashboardClient from "@/components/DashboardClient";
+import BackgroundWrapper from "@/components/BackgroundWrapper";
 
 export default function DashboardPage() {
   // Fix useState types
@@ -48,18 +49,32 @@ export default function DashboardPage() {
   }, []);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900"><p className="text-white text-xl">Loading your dashboard...</p></div>;
+    return (
+      <BackgroundWrapper>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-white text-xl">Loading your dashboard...</p>
+        </div>
+      </BackgroundWrapper>
+    );
   }
   if (!profile) {
-    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900"><p className="text-white text-xl">Please sign in to view your dashboard.</p></div>;
+    return (
+      <BackgroundWrapper>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-white text-xl">Please sign in to view your dashboard.</p>
+        </div>
+      </BackgroundWrapper>
+    );
   }
   return (
-    <DashboardClient
-      profile={profile}
-      activeQuests={activeQuests}
-      completedQuests={completedQuests}
-      badges={badges}
-      achievements={achievements}
-    />
+    <BackgroundWrapper>
+      <DashboardClient
+        profile={profile}
+        activeQuests={activeQuests}
+        completedQuests={completedQuests}
+        badges={badges}
+        achievements={achievements}
+      />
+    </BackgroundWrapper>
   );
 }

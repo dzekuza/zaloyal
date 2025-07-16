@@ -115,7 +115,7 @@ export default function MyProjectsPage() {
   if (!myProjects.length) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#181818]">
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md">
+        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md">
           <div className="text-center">
             <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
             <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>

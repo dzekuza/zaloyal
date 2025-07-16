@@ -8,6 +8,7 @@ import { Trophy, Medal, Award, Crown } from "lucide-react";
 import Link from "next/link";
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth";
 import { supabase } from "@/lib/supabase";
+import BackgroundWrapper from "@/components/BackgroundWrapper";
 
 function getPeriodRange(period: string) {
   const now = new Date();
@@ -150,14 +151,16 @@ export default function Leaderboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading leaderboard...</div>
-      </div>
+      <BackgroundWrapper>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-white text-xl">Loading leaderboard...</div>
+        </div>
+      </BackgroundWrapper>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+    <BackgroundWrapper>
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -179,7 +182,7 @@ export default function Leaderboard() {
 
         {/* Top 3 Podium */}
         {users.length >= 3 && (
-          <Card className="bg-[#0b4b34] border-green-700 backdrop-blur-sm mb-8">
+          <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm mb-8">
             <CardContent className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                 {/* 2nd Place */}
@@ -311,7 +314,7 @@ export default function Leaderboard() {
         </div>
 
         {/* Leaderboard Table */}
-        <Card className="bg-[#0b4b34] border-green-700 backdrop-blur-sm">
+        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Trophy className="w-5 h-5 text-green-400" />
@@ -324,7 +327,7 @@ export default function Leaderboard() {
               {users.slice(3).map((user) => (
                 <div
                   key={user.id}
-                  className={`flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors ${user.wallet_address === currentUser ? "ring-2 ring-green-400" : ""}`}
+                  className={`flex items-center justify-between p-4 rounded-lg bg-black/30 hover:bg-black/40 transition-colors ${user.wallet_address === currentUser ? "ring-2 ring-green-400" : ""}`}
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex items-center justify-center w-10 h-10">{getRankIcon(user.rank)}</div>
@@ -369,6 +372,6 @@ export default function Leaderboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </BackgroundWrapper>
   );
 }

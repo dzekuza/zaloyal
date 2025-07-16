@@ -280,6 +280,20 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     }
   }
 
+  // Delete a task (admin or creator only)
+  const handleDeleteTask = async (taskId: string) => {
+    if (!window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) return;
+    try {
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+      if (error) throw error;
+      // Refresh tasks
+      const { data: updatedTasks } = await supabase.from("tasks").select("*").eq("quest_id", quest.id).order("order_index");
+      setTasks(updatedTasks || []);
+    } catch (e: any) {
+      alert(e.message || "Failed to delete task");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
@@ -715,6 +729,26 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           <h3 className={`font-semibold ${task.user_task_submissions?.status === "verified" ? "text-green-400" : "text-white"}`}>{task.title}</h3>
                           <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/30">+{quest.total_xp} XP</Badge>
                           <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">{task.task_type}</Badge>
+                          {isAdminOrCreator() && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {/* TODO: Implement edit task modal */}}
+                                className="text-blue-400 border-blue-400/30 hover:bg-blue-500/20 ml-2"
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="text-red-400 border-red-400/30 hover:bg-red-500/20 ml-2"
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          )}
                         </div>
                         <p className="text-gray-400 text-sm mb-3">{task.description}</p>
                         {task.social_url && (
@@ -726,82 +760,66 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                         )}
                         {/* Action button at the bottom on mobile, right on desktop */}
                         <div className="mt-2 sm:mt-0 w-full sm:w-auto flex flex-col sm:flex-row gap-2 justify-end">
-                          {/* Quiz actions */}
-                          {mounted && task.task_type === "learn" && !task.user_task_submissions?.status && (
+                          {/* Only show Go to X/Verify/Complete Quiz for non-admins/creators */}
+                          {!isAdminOrCreator() && (
                             <>
-                              <Button
-                                onClick={() => setShowQuiz(s => ({ ...s, [task.id]: true }))}
-                                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
-                              >
-                                Complete Quiz
-                              </Button>
-                              {renderQuizModal(task)}
-                            </>
-                          )}
-                          {/* Twitter (X) social task action: require X auth, show Go to X and Verify buttons */}
-                          {mounted && task.task_type === "social" && task.social_platform === "twitter" && !task.user_task_submissions?.status && (
-                            (() => {
-                              // Find Twitter identity from Supabase identities
-                              const [twitterIdentity] = (emailUser?.identities || []).filter((i: any) => i.provider === 'twitter');
-                              if (!twitterIdentity) {
-                                return (
+                              {/* Quiz actions */}
+                              {mounted && task.task_type === "learn" && !task.user_task_submissions?.status && (
+                                <>
                                   <Button
-                                    className="bg-black text-white border-0"
-                                    onClick={() => window.location.href = '/profile'}
+                                    onClick={() => setShowQuiz(s => ({ ...s, [task.id]: true }))}
+                                    className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
                                   >
-                                    Connect X in Profile to Complete
+                                    Complete Quiz
                                   </Button>
-                                );
-                              } else {
-                                return (
-                                  <>
-                                    {/* Go to X button: profile or post */}
-                                    <a
-                                      href={task.social_action === 'follow' && task.social_username ? `https://x.com/${task.social_username}` :
-                                        (task.social_action === 'like' || task.social_action === 'retweet') && task.social_username && task.social_post_id ? `https://x.com/${task.social_username}/status/${task.social_post_id}` : task.social_url || '#'}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
+                                  {renderQuizModal(task)}
+                                </>
+                              )}
+                              {/* Twitter (X) social task action: require X auth, show Go to X and Verify buttons */}
+                              {mounted && task.task_type === "social" && task.social_platform === "twitter" && !task.user_task_submissions?.status && (
+                                (() => {
+                                  // Find Twitter identity from Supabase identities
+                                  const [twitterIdentity] = (emailUser?.identities || []).filter((i: any) => i.provider === 'twitter');
+                                  if (!twitterIdentity) {
+                                    return (
                                       <Button
-                                        variant="outline"
-                                        className="border-blue-500 text-blue-400 hover:bg-blue-900/40 mb-2"
+                                        className="bg-black text-white border-0"
+                                        onClick={() => window.location.href = '/profile'}
                                       >
-                                        Go to X
+                                        Connect X in Profile to Complete
                                       </Button>
-                                    </a>
-                                    <Button
-                                      onClick={() => handleTaskVerification(task)}
-                                      disabled={verifyingTask === task.id}
-                                      className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
-                                    >
-                                      {verifyingTask === task.id ? "Verifying..." : "Verify"}
-                                    </Button>
-                                  </>
-                                );
-                              }
-                            })()
-                          )}
-                          {/* Admin/creator edit button for quiz */}
-                          {mounted && task.task_type === "learn" && isAdminOrCreator() && (
-                            <>
-                              <Button
-                                variant="outline"
-                                onClick={() => setEditingQuizTask(task)}
-                                className="border-green-500 text-green-400 hover:bg-green-900/40"
-                              >
-                                Edit Quiz
-                              </Button>
-                              <Dialog open={!!editingQuizTask && editingQuizTask.id === task.id} onOpenChange={open => open ? setEditingQuizTask(task) : setEditingQuizTask(null)}>
-                                <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-2xl">
-                                  <DialogHeader>
-                                    <DialogTitle>Edit Quiz Task</DialogTitle>
-                                  </DialogHeader>
-                                  {editingQuizTask && <EditQuestForm quest={quest} onSave={() => setEditingQuizTask(null)} />}
-                                </DialogContent>
-                              </Dialog>
+                                    );
+                                  } else {
+                                    return (
+                                      <>
+                                        {/* Go to X button: profile or post */}
+                                        <a
+                                          href={task.social_action === 'follow' && task.social_username ? `https://x.com/${task.social_username}` :
+                                            (task.social_action === 'like' || task.social_action === 'retweet') && task.social_username && task.social_post_id ? `https://x.com/${task.social_username}/status/${task.social_post_id}` : task.social_url || '#'}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                        >
+                                          <Button
+                                            variant="outline"
+                                            className="border-blue-500 text-blue-400 hover:bg-blue-900/40 mb-2"
+                                          >
+                                            Go to X
+                                          </Button>
+                                        </a>
+                                        <Button
+                                          onClick={() => handleTaskVerification(task)}
+                                          disabled={verifyingTask === task.id}
+                                          className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
+                                        >
+                                          Verify
+                                        </Button>
+                                      </>
+                                    );
+                                  }
+                                })()
+                              )}
                             </>
                           )}
-                          {/* Other task action buttons (reuse from previous logic) */}
                         </div>
                       </div>
                     </div>

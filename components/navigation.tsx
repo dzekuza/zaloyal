@@ -91,7 +91,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
 
   // Only render sign-in/profile button after loading is false
   return (
-    <nav className="hidden md:block sticky top-0 z-50" style={{ background: '#111111' }}>
+    <nav className="hidden md:block sticky top-0 z-50 border-b border-[#282828]" style={{ background: '#111111' }}>
       <div className=" px-4">
         <div className="items-center h-auto md:h-16 gap-auto grid grid-cols-2 justify-end">
           {/* Left: Search bar */}

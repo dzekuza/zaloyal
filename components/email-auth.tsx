@@ -124,7 +124,7 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
   }
 
   return (
-    <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full max-w-md">
+    <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm w-full max-w-md">
       <CardHeader className="text-center">
         <CardTitle className="text-white flex items-center justify-center gap-2">
           <Mail className="w-5 h-5" />
