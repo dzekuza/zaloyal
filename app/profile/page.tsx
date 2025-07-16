@@ -71,6 +71,15 @@ export default function ProfilePage() {
     profileUrl: emailUser.profile.x_username ? `https://x.com/${emailUser.profile.x_username}` : null,
   } : null
 
+  // Helper to fetch and update identities in emailUser
+  const updateEmailUserWithIdentities = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: identities } = await supabase.auth.getUserIdentities();
+      setEmailUser((prev: any) => ({ ...prev, ...user, identities: identities?.identities || [] }));
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -82,16 +91,17 @@ export default function ProfilePage() {
     })
     // Email user
     const checkEmailAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-        if (isMounted) setEmailUser({ ...user, profile })
-        if (isMounted) setCurrentUser({ ...user, profile })
-        if (profile) fetchProfile(null, profile)
+        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single();
+        const { data: identities } = await supabase.auth.getUserIdentities();
+        setEmailUser({ ...user, profile, identities: identities?.identities || [] });
+        setCurrentUser({ ...user, profile });
+        if (profile) fetchProfile(null, profile);
       }
-      setLoading(false)
-    }
-    checkEmailAuth()
+      setLoading(false);
+    };
+    checkEmailAuth();
     return () => { isMounted = false; unsubscribeWallet() }
   }, [])
 
@@ -217,38 +227,8 @@ export default function ProfilePage() {
       alert('Failed to link X (Twitter): ' + error.message);
       return;
     }
-    // After linking, get Twitter identity info
-    const { data: identities } = await supabase.auth.getUserIdentities();
-    const twitterIdentity = identities?.identities?.find((identity: any) => identity.provider === 'twitter');
-    if (!twitterIdentity) {
-      alert('No Twitter identity found after linking.');
-      return;
-    }
-    const x_username = twitterIdentity.identity_data?.user_name;
-    const x_id = twitterIdentity.id;
-    const x_avatar_url = twitterIdentity.identity_data?.avatar_url;
-    const x_profile_url = x_username ? `https://x.com/${x_username}` : null;
-    if (!emailUser?.profile?.id) {
-      alert('User profile not loaded. Please refresh and try again.');
-      return;
-    }
-    const { error: updateError } = await supabase.from('users').update({
-      x_id,
-      x_username,
-      x_avatar_url,
-      x_profile_url,
-    }).eq('id', emailUser.profile.id);
-    if (updateError) {
-      alert('Failed to update user table: ' + updateError.message);
-      return;
-    }
-    // Refetch user info
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single();
-      setEmailUser({ ...user, profile });
-    }
-    alert('X (Twitter) account linked and saved!');
+    await updateEmailUserWithIdentities();
+    alert('X (Twitter) account linked!');
   };
 
   const handleUnlinkTwitter = async () => {
@@ -259,18 +239,15 @@ export default function ProfilePage() {
         const twitterIdentity = identities.identities.find((identity: any) => identity.provider === 'twitter')
         if (twitterIdentity) {
           await supabase.auth.unlinkIdentity(twitterIdentity)
-          // Clear Twitter info from users table
-          await supabase.from('users').update({
-            x_id: null,
-            x_username: null,
-            x_avatar_url: null,
-            x_profile_url: null,
-          }).eq('id', emailUser.profile.id)
-          // Refetch user info
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-            setEmailUser({ ...user, profile })
+          await updateEmailUserWithIdentities();
+          // Optionally clear X fields in users table as before
+          if (emailUser?.profile?.id) {
+            await supabase.from('users').update({
+              x_id: null,
+              x_username: null,
+              x_avatar_url: null,
+              x_profile_url: null,
+            }).eq('id', emailUser.profile.id);
           }
         }
       }
@@ -461,20 +438,7 @@ export default function ProfilePage() {
                         </div>
                         <Button
                           className="w-full bg-red-600 hover:bg-red-700 text-white border-0 flex items-center justify-center gap-2 text-base font-medium py-3"
-                          onClick={async () => {
-                            try {
-                              // Unlink Twitter identity
-                              const { data: identities } = await supabase.auth.getUserIdentities();
-                              const twitterIdentity = identities?.identities?.find((i: any) => i.provider === 'twitter');
-                              if (twitterIdentity) {
-                                await supabase.auth.unlinkIdentity(twitterIdentity);
-                                alert('Twitter account unlinked!');
-                                window.location.reload();
-                              }
-                            } catch (err) {
-                              alert('Error unlinking Twitter: ' + String((err as Error)?.message || err));
-                            }
-                          }}
+                          onClick={handleUnlinkTwitter}
                         >
                           Unlink X
                         </Button>

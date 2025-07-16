@@ -41,7 +41,7 @@ export default async function ProjectDiscovery() {
     .order("created_at", { ascending: false })
 
   if (error) {
-    console.error("Error fetching projects:", error)
+    console.error("Error fetching projects:", error, JSON.stringify(error, null, 2) || "<empty error object>");
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900"><p className="text-white text-xl">Error loading projects.</p></div>
   }
   console.log("Fetched projects:", projects)

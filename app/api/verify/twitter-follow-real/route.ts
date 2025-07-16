@@ -1,31 +1,57 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userWallet, userEmail, taskId } = await request.json()
+    const body = await request.json();
+    console.log('DEBUG: Incoming request body:', body);
+    const { userWallet, userEmail, taskId } = body;
 
     if ((!userWallet && !userEmail) || !taskId) {
-      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
+      console.log('DEBUG: Missing required parameters');
+      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
     }
 
     // Get user from database by wallet or email
-    let userQuery = supabase.from("users").select("id, x_username, wallet_address, email")
+    let userQuery = supabase.from("users").select("id, wallet_address, email");
     if (userWallet) {
-      userQuery = userQuery.eq("wallet_address", userWallet.toLowerCase())
+      userQuery = userQuery.ilike("wallet_address", userWallet);
     } else if (userEmail) {
-      userQuery = userQuery.eq("email", userEmail.toLowerCase())
+      userQuery = userQuery.eq("email", userEmail.toLowerCase());
     }
-    const { data: user } = await userQuery.single()
+    const { data: user, error: userError } = await userQuery.single();
+    console.log('DEBUG: User lookup result:', user, userError);
+    if (!user || userError) {
+      return NextResponse.json({ error: "User not found", userError }, { status: 404 });
+    }
 
-    const { data: task } = await supabase.from("tasks").select("*").eq("id", taskId).single()
+    // Fetch X (Twitter) username from Supabase Auth identities using the new get_twitter_identity RPC function
+    const { data: identityData, error: twitterIdentityError } = await supabaseAdmin
+      .rpc('get_twitter_identity', { user_id: user.id });
+    if (twitterIdentityError) {
+      console.log('DEBUG: Error fetching identities:', twitterIdentityError);
+      return NextResponse.json({ error: "Failed to fetch user identities", twitterIdentityError }, { status: 500 });
+    }
+    const x_username = identityData && identityData[0]?.user_name;
+    console.log('DEBUG: get_twitter_identity result:', identityData, 'x_username:', x_username);
+    if (!x_username) {
+      return NextResponse.json({ error: "No X (Twitter) username found in identity data" }, { status: 400 });
+    }
+
+    // Get task from database
+    const { data: task, error: taskError } = await supabase.from("tasks").select("*").eq("id", taskId).single();
+    console.log('DEBUG: Task lookup result:', task, taskError);
+    if (!task || taskError) {
+      return NextResponse.json({ error: "Task not found", taskError }, { status: 404 });
+    }
 
     if (!user || !task) {
       return NextResponse.json({ error: "User or task not found" }, { status: 404 })
     }
 
     // Use the user's linked X (Twitter) username
-    const xUsername = user.x_username
+    const xUsername = x_username
     if (!xUsername) {
       return NextResponse.json({ error: "No linked X (Twitter) account found for this user" }, { status: 400 })
     }
@@ -60,9 +86,9 @@ export async function POST(request: NextRequest) {
       message: isFollowing ? "Follow verified!" : "Please follow the account first",
       xpEarned: isFollowing ? task.xp_reward : 0,
     })
-  } catch (error) {
-    console.error("Twitter follow verification error:", error)
-    return NextResponse.json({ error: "Verification failed" }, { status: 500 })
+  } catch (err: any) {
+    console.error('DEBUG: Exception in POST /api/verify/twitter-follow-real:', err);
+    return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }
 }
 
@@ -135,3 +161,5 @@ async function verifyTwitterFollow(userHandle: string, targetHandle: string): Pr
     return false
   }
 }
+
+console.log('DEBUG: Is service role key defined?', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
