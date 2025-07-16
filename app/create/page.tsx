@@ -833,7 +833,7 @@ export default function CreateQuest() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {questForm.tasks.length > 0 ? (
                   <div className="space-y-3">
                     {questForm.tasks.map((task, index) => (

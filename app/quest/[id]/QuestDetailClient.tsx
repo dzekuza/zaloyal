@@ -111,6 +111,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     }
   }, [])
 
+  if (!mounted) return null;
+
   const handleTaskVerification = async (task: Task) => {
     const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
     if (!userObj) {
@@ -134,10 +136,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               response = await fetch("/api/verify/twitter-follow-real", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  ...baseData,
-                  username: submissionData[task.id]?.username || "",
-                }),
+                body: JSON.stringify(baseData),
               })
             } else if (task.social_action === "like") {
               // TODO: Implement real Twitter Like endpoint
@@ -393,6 +392,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     { value: "reply", label: "Reply" },
   ];
 
+  if (!mounted) return null; // or a loading spinner
+
   return (
     <div className="min-h-screen" style={{ background: '#181818' }}>
       <div className="w-full px-2 sm:px-4 py-8">
@@ -433,7 +434,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 <CardTitle className="text-2xl text-white">{quest.title}</CardTitle>
                 <CardDescription className="text-gray-300 text-base">{quest.description}</CardDescription>
               </CardHeader>
-              <CardContent className="bg-[#111111]">
+              <CardContent className="bg-[#111111] pt-6">
                 <QuestStatsBar totalXP={quest.total_xp} participants={quest.participant_count} taskCount={tasks.length} />
               </CardContent>
             </Card>
@@ -445,7 +446,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Quest Stats</CardTitle>
               </CardHeader>
-              <CardContent className="bg-[#111111] space-y-4 p-6">
+              <CardContent className="bg-[#111111] space-y-4 p-6 pt-6">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Rewards</span>
                   <span className="text-yellow-400 font-semibold">{quest.total_xp} XP</span>
@@ -468,7 +469,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Creator</CardTitle>
               </CardHeader>
-              <CardContent className="bg-[#111111]">
+              <CardContent className="bg-[#111111] pt-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold">
@@ -544,7 +545,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               )}
             </div>
           </CardHeader>
-          <CardContent className="bg-[#111111]">
+          <CardContent className="bg-[#111111] p-6">
             {/* Add Task Dialog */}
             <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
               <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
@@ -714,7 +715,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           <h3 className={`font-semibold ${task.user_task_submissions?.status === "verified" ? "text-green-400" : "text-white"}`}>{task.title}</h3>
                           <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/30">+{quest.total_xp} XP</Badge>
                           <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">{task.task_type}</Badge>
-                          <Button size="sm" className="ml-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">Complete Task</Button>
                         </div>
                         <p className="text-gray-400 text-sm mb-3">{task.description}</p>
                         {task.social_url && (

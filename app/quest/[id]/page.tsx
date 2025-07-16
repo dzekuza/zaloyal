@@ -2,7 +2,7 @@ import QuestDetailClient from "./QuestDetailClient"
 import { supabase } from "@/lib/supabase"
 
 export default async function QuestDetail({ params }: { params: { id: string } }) {
-  const questId = params.id
+  const { id: questId } = await params
   // Fetch quest and related data
   const { data: quest } = await supabase
     .from("quests")

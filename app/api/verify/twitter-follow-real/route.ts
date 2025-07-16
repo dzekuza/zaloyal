@@ -3,18 +3,20 @@ import { supabase } from "@/lib/supabase"
 
 export async function POST(request: NextRequest) {
   try {
-    const { userWallet, username, taskId } = await request.json()
+    const { userWallet, userEmail, taskId } = await request.json()
 
-    if (!userWallet || !username || !taskId) {
+    if ((!userWallet && !userEmail) || !taskId) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
     }
 
-    // Get user and task from database
-    const { data: user } = await supabase
-      .from("users")
-      .select("id")
-      .eq("wallet_address", userWallet.toLowerCase())
-      .single()
+    // Get user from database by wallet or email
+    let userQuery = supabase.from("users").select("id, x_username, wallet_address, email")
+    if (userWallet) {
+      userQuery = userQuery.eq("wallet_address", userWallet.toLowerCase())
+    } else if (userEmail) {
+      userQuery = userQuery.eq("email", userEmail.toLowerCase())
+    }
+    const { data: user } = await userQuery.single()
 
     const { data: task } = await supabase.from("tasks").select("*").eq("id", taskId).single()
 
@@ -22,8 +24,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User or task not found" }, { status: 404 })
     }
 
+    // Use the user's linked X (Twitter) username
+    const xUsername = user.x_username
+    if (!xUsername) {
+      return NextResponse.json({ error: "No linked X (Twitter) account found for this user" }, { status: 400 })
+    }
+
     // Real Twitter API v2 verification
-    const isFollowing = await verifyTwitterFollow(username, task.social_username)
+    const isFollowing = await verifyTwitterFollow(xUsername, task.social_username)
 
     if (isFollowing) {
       // Create task submission
@@ -32,17 +40,19 @@ export async function POST(request: NextRequest) {
         task_id: taskId,
         quest_id: task.quest_id,
         status: "verified",
-        submission_data: { username, verified_at: new Date().toISOString() },
+        submission_data: { x_username: xUsername, verified_at: new Date().toISOString() },
         verification_data: { method: "twitter_api_v2", verified: true },
         xp_earned: task.xp_reward,
         verified_at: new Date().toISOString(),
       })
 
       // Update user XP
-      await supabase.rpc("increment_user_xp", {
-        user_wallet: userWallet.toLowerCase(),
-        xp_amount: task.xp_reward,
-      })
+      if (user.wallet_address) {
+        await supabase.rpc("increment_user_xp", {
+          user_wallet: user.wallet_address.toLowerCase(),
+          xp_amount: task.xp_reward,
+        })
+      }
     }
 
     return NextResponse.json({

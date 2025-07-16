@@ -212,32 +212,44 @@ export default function ProfilePage() {
 
   // Replace handleLinkTwitter to update x_* fields
   const handleLinkX = async () => {
-    // Use Supabase Auth OAuth, but store in x_* fields
-    const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' })
-    if (!error) {
-      // After linking, get Twitter identity info
-      const { data: identities } = await supabase.auth.getUserIdentities()
-      const twitterIdentity = identities?.identities?.find((identity: any) => identity.provider === 'twitter')
-      if (twitterIdentity) {
-        const x_username = twitterIdentity.identity_data?.user_name
-        const x_id = twitterIdentity.id
-        const x_avatar_url = twitterIdentity.identity_data?.avatar_url
-        const x_profile_url = x_username ? `https://x.com/${x_username}` : null
-        await supabase.from('users').update({
-          x_id,
-          x_username,
-          x_avatar_url,
-          x_profile_url,
-        }).eq('id', emailUser.profile.id)
-        // Refetch user info
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-          setEmailUser({ ...user, profile })
-        }
-      }
+    const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
+    if (error) {
+      alert('Failed to link X (Twitter): ' + error.message);
+      return;
     }
-  }
+    // After linking, get Twitter identity info
+    const { data: identities } = await supabase.auth.getUserIdentities();
+    const twitterIdentity = identities?.identities?.find((identity: any) => identity.provider === 'twitter');
+    if (!twitterIdentity) {
+      alert('No Twitter identity found after linking.');
+      return;
+    }
+    const x_username = twitterIdentity.identity_data?.user_name;
+    const x_id = twitterIdentity.id;
+    const x_avatar_url = twitterIdentity.identity_data?.avatar_url;
+    const x_profile_url = x_username ? `https://x.com/${x_username}` : null;
+    if (!emailUser?.profile?.id) {
+      alert('User profile not loaded. Please refresh and try again.');
+      return;
+    }
+    const { error: updateError } = await supabase.from('users').update({
+      x_id,
+      x_username,
+      x_avatar_url,
+      x_profile_url,
+    }).eq('id', emailUser.profile.id);
+    if (updateError) {
+      alert('Failed to update user table: ' + updateError.message);
+      return;
+    }
+    // Refetch user info
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single();
+      setEmailUser({ ...user, profile });
+    }
+    alert('X (Twitter) account linked and saved!');
+  };
 
   const handleUnlinkTwitter = async () => {
     setUnlinkingTwitter(true)

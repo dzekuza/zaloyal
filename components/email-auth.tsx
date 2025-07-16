@@ -41,31 +41,22 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
 
       if (error) throw error
 
-      // Get user profile
+      // Always upsert user profile after login
+      const { user } = data;
       let { data: profile } = await supabase.from("users").select("*").eq("email", loginForm.email).single()
-
-      // If user profile does not exist, create it
-      if (!profile) {
-        const { user } = data;
-        const { error: profileError } = await supabase.from("users").insert({
-          id: user.id,
-          email: user.email,
-          username: user.user_metadata?.username || "",
-          auth_provider: "email",
-          email_verified: false,
-          total_xp: 0,
-          level: 1,
-          completed_quests: 0,
-          role: "participant",
-        });
-        if (profileError) {
-          onError("Profile creation error: " + (profileError.message || JSON.stringify(profileError)));
-          setLoading(false);
-          return;
-        }
-        // Fetch the newly created profile
-        ({ data: profile } = await supabase.from("users").select("*").eq("email", loginForm.email).single());
-      }
+      await supabase.from("users").upsert({
+        id: user.id,
+        email: user.email,
+        username: user.user_metadata?.username || profile?.username || "",
+        auth_provider: "email",
+        email_verified: false,
+        total_xp: profile?.total_xp || 0,
+        level: profile?.level || 1,
+        completed_quests: profile?.completed_quests || 0,
+        role: profile?.role || "participant",
+      });
+      // Fetch the up-to-date profile
+      ({ data: profile } = await supabase.from("users").select("*").eq("email", loginForm.email).single());
 
       onSuccess({ ...data.user, profile })
     } catch (error: any) {
@@ -110,33 +101,18 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) throw new Error("User not authenticated after registration");
 
-      // Check if user already exists in users table
-      const { data: existingUser, error: fetchError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", authUser.email)
-        .single();
-
-      if (!existingUser && !fetchError) {
-        // Insert only if not exists, and set id to authUser.id
-        const { error: profileError } = await supabase.from("users").insert({
-          id: authUser.id,
-          email: authUser.email,
-          username: registerForm.username,
-          auth_provider: "email",
-          email_verified: false,
-          total_xp: 0,
-          level: 1,
-          completed_quests: 0,
-          role: "participant",
-        });
-        if (profileError) {
-          console.error("Profile creation error:", profileError);
-          onError("Profile creation error: " + (profileError.message || JSON.stringify(profileError)));
-          setLoading(false);
-          return;
-        }
-      }
+      // Always upsert user profile after registration
+      await supabase.from("users").upsert({
+        id: authUser.id,
+        email: authUser.email,
+        username: registerForm.username,
+        auth_provider: "email",
+        email_verified: false,
+        total_xp: 0,
+        level: 1,
+        completed_quests: 0,
+        role: "participant",
+      });
 
       // Call onSuccess immediately
       onSuccess(authUser)
