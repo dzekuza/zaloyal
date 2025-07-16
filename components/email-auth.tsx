@@ -47,7 +47,12 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
       await supabase.from("users").upsert({
         id: user.id,
         email: user.email,
-        username: user.user_metadata?.username || profile?.username || "",
+        // Only set username if it exists in user_metadata or profile
+        ...(user.user_metadata?.username
+          ? { username: user.user_metadata.username }
+          : profile?.username
+          ? { username: profile.username }
+          : {}),
         auth_provider: "email",
         email_verified: false,
         total_xp: profile?.total_xp || 0,

@@ -131,7 +131,10 @@ async function verifyTwitterFollow(userHandle: string, targetHandle: string): Pr
       headers: { Authorization: `Bearer ${bearerToken}` },
     })
     const followData = await followResponse.json()
-    if (!followResponse.ok) throw new Error("Failed to check following status")
+    // Add detailed logging
+    console.log('DEBUG: Twitter /following response status:', followResponse.status)
+    console.log('DEBUG: Twitter /following response body:', followData)
+    if (!followResponse.ok) throw new Error(`Failed to check following status: ${followResponse.status} ${JSON.stringify(followData)}`)
     const following = followData.data || []
     return following.some((user: any) => user.id === targetUserId)
   } catch (error) {
