@@ -454,13 +454,15 @@ export default function ProfilePage() {
                   <Button
                     onClick={async () => {
                       try {
-                        if (typeof window !== 'undefined') {
-                          console.log('[Profile] Starting Twitter OAuth, redirectTo: https://zaloyal.vercel.app/auth/v1/callback');
-                        }
+                        const redirectTo =
+                          typeof window !== 'undefined' && window.location.origin
+                            ? window.location.origin + '/profile'
+                            : 'https://zaloyal.vercel.app/profile';
+                        console.log('[Profile] Starting Twitter OAuth, redirectTo:', redirectTo);
                         await supabase.auth.signInWithOAuth({
                           provider: 'twitter',
                           options: {
-                            redirectTo: 'https://zaloyal.vercel.app/auth/v1/callback'
+                            redirectTo
                           }
                         });
                       } catch (err) {
