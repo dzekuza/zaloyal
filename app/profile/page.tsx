@@ -45,6 +45,18 @@ export default function ProfilePage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSupabaseUser(data?.user))
   }, [])
+
+  // Add this useEffect at the top level of ProfilePage to log on mount
+  useEffect(() => {
+    // Log the current URL and query params after redirect
+    if (typeof window !== 'undefined') {
+      console.log('[Profile] Current URL after redirect:', window.location.href);
+      if (window.location.search) {
+        console.log('[Profile] Query params:', window.location.search);
+      }
+    }
+  }, []);
+
   const discordInfo = emailUser?.profile?.discord_id ? {
     id: emailUser.profile.discord_id,
     username: emailUser.profile.discord_username,
@@ -440,12 +452,21 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <Button
-                    onClick={() => supabase.auth.signInWithOAuth({
-                      provider: 'twitter',
-                      options: {
-                        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/profile' : undefined
+                    onClick={async () => {
+                      try {
+                        if (typeof window !== 'undefined') {
+                          console.log('[Profile] Starting Twitter OAuth, redirectTo: https://zaloyal.vercel.app/auth/v1/callback');
+                        }
+                        await supabase.auth.signInWithOAuth({
+                          provider: 'twitter',
+                          options: {
+                            redirectTo: 'https://zaloyal.vercel.app/auth/v1/callback'
+                          }
+                        });
+                      } catch (err) {
+                        console.error('[Profile] Twitter OAuth error:', err);
                       }
-                    })}
+                    }}
                     className="w-full bg-blue-600 text-white flex items-center justify-center gap-2 mt-2"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
