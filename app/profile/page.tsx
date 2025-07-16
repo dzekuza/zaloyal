@@ -440,7 +440,12 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <Button
-                    onClick={() => supabase.auth.signInWithOAuth({ provider: 'twitter' })}
+                    onClick={() => supabase.auth.signInWithOAuth({
+                      provider: 'twitter',
+                      options: {
+                        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/profile' : undefined
+                      }
+                    })}
                     className="w-full bg-blue-600 text-white flex items-center justify-center gap-2 mt-2"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
