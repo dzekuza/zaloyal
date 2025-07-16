@@ -108,6 +108,10 @@ export default function ClientLayout({
               <SidebarFooter>
                 <div className="p-4 text-center">
                   <p className="text-xs text-gray-400">Web3Quest Platform</p>
+                  <div className="flex justify-center gap-4 mt-2">
+                    <a href="/terms" className="text-xs text-gray-400 hover:text-white underline">Terms of Service</a>
+                    <a href="/privacy" className="text-xs text-gray-400 hover:text-white underline">Privacy Policy</a>
+                  </div>
                 </div>
               </SidebarFooter>
               <SidebarRail />

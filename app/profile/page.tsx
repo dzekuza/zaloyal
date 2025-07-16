@@ -430,56 +430,71 @@ export default function ProfilePage() {
               </div>
               {/* X (Twitter) Connect Button */}
               <div className="flex flex-col items-center w-full">
-                {xInfo ? (
-                  <div className="flex flex-col items-center w-full gap-2">
-                    <div className="flex items-center gap-2 mb-2">
-                      {xInfo.avatar && (
-                        <img src={xInfo.avatar} alt="X Avatar" className="w-8 h-8 rounded-full" />
-                      )}
-                      <span className="text-white font-medium">{xInfo.username}</span>
-                      {xInfo.profileUrl && (
-                        <a href={xInfo.profileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline ml-2">View Profile</a>
-                      )}
-                    </div>
-                    <Button
-                      className="w-full bg-red-600 hover:bg-red-700 text-white border-0 flex items-center justify-center gap-2 text-base font-medium py-3"
-                      onClick={handleUnlinkTwitter}
-                      disabled={unlinkingTwitter}
-                    >
-                      <XIcon className="w-6 h-6" />
-                      {unlinkingTwitter ? 'Unlinking...' : 'Unlink X'}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={async () => {
-                      try {
-                        // User must already be signed in with email or wallet!
-                        const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
-                        if (error) {
-                          console.error('Error linking Twitter:', error);
-                          alert('Error linking Twitter: ' + String(error?.message || error));
-                        } else {
-                          // Optionally, fetch and log Twitter identity
-                          const { data: identities } = await supabase.auth.getUserIdentities();
-                          const twitterIdentity = identities?.identities?.find((i: any) => i.provider === 'twitter');
-                          console.log('[Profile] Linked Twitter identity:', twitterIdentity);
-                          alert('Twitter account linked!');
-                        }
-                      } catch (err) {
-                        console.error('Twitter link error:', err);
-                        alert('Twitter link error: ' + String((err as Error)?.message || err));
-                      }
-                    }}
-                    className="whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-primary/90 h-10 px-4 py-2 w-full bg-blue-600 text-white flex items-center justify-center gap-2 mt-2"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75v-1.5A2.25 2.25 0 0015 3h-6A2.25 2.25 0 006.75 5.25v13.5A2.25 2.25 0 009 21h6a2.25 2.25 0 002.25-2.25v-1.5" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 8.25h2.25m0 0v2.25m0-2.25l-6 6" />
-                    </svg>
-                    Connect X
-                  </Button>
-                )}
+                {/* Check if X (Twitter) is linked */}
+                {(() => {
+                  // Find Twitter identity from Supabase identities
+                  const [twitterIdentity] = (emailUser?.identities || [])
+                    .filter((i: any) => i.provider === 'twitter');
+                  if (twitterIdentity) {
+                    return (
+                      <div className="flex flex-col items-center w-full gap-2">
+                        <div className="flex items-center gap-2 mb-2">
+                          {twitterIdentity.identity_data?.avatar_url && (
+                            <img src={twitterIdentity.identity_data.avatar_url} alt="X Avatar" className="w-8 h-8 rounded-full" />
+                          )}
+                          <span className="text-white font-medium">{twitterIdentity.identity_data?.user_name || 'X User'}</span>
+                          {twitterIdentity.identity_data?.user_name && (
+                            <a href={`https://x.com/${twitterIdentity.identity_data.user_name}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline ml-2">View Profile</a>
+                          )}
+                        </div>
+                        <Button
+                          className="w-full bg-red-600 hover:bg-red-700 text-white border-0 flex items-center justify-center gap-2 text-base font-medium py-3"
+                          onClick={async () => {
+                            try {
+                              // Unlink Twitter identity
+                              const { data: identities } = await supabase.auth.getUserIdentities();
+                              const twitterIdentity = identities?.identities?.find((i: any) => i.provider === 'twitter');
+                              if (twitterIdentity) {
+                                await supabase.auth.unlinkIdentity(twitterIdentity);
+                                alert('Twitter account unlinked!');
+                                window.location.reload();
+                              }
+                            } catch (err) {
+                              alert('Error unlinking Twitter: ' + String((err as Error)?.message || err));
+                            }
+                          }}
+                        >
+                          Unlink X
+                        </Button>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
+                            if (error) {
+                              alert('Error linking Twitter: ' + String(error?.message || error));
+                            } else {
+                              alert('Twitter account linked!');
+                              window.location.reload();
+                            }
+                          } catch (err) {
+                            alert('Twitter link error: ' + String((err as Error)?.message || err));
+                          }
+                        }}
+                        className="w-full bg-blue-600 text-white flex items-center justify-center gap-2 mt-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75v-1.5A2.25 2.25 0 0015 3h-6A2.25 2.25 0 006.75 5.25v13.5A2.25 2.25 0 009 21h6a2.25 2.25 0 002.25-2.25v-1.5" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 8.25h2.25m0 0v2.25m0-2.25l-6 6" />
+                        </svg>
+                        Connect X
+                      </Button>
+                    );
+                  }
+                })()}
               </div>
             </div>
           </CardContent>
