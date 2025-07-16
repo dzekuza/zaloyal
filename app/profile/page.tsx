@@ -454,22 +454,24 @@ export default function ProfilePage() {
                   <Button
                     onClick={async () => {
                       try {
-                        const redirectTo =
-                          typeof window !== 'undefined' && window.location.origin
-                            ? window.location.origin + '/profile'
-                            : 'https://zaloyal.vercel.app/profile';
-                        console.log('[Profile] Starting Twitter OAuth, redirectTo:', redirectTo);
-                        await supabase.auth.signInWithOAuth({
-                          provider: 'twitter',
-                          options: {
-                            redirectTo
-                          }
-                        });
+                        // User must already be signed in with email or wallet!
+                        const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
+                        if (error) {
+                          console.error('Error linking Twitter:', error);
+                          alert('Error linking Twitter: ' + String(error?.message || error));
+                        } else {
+                          // Optionally, fetch and log Twitter identity
+                          const { data: identities } = await supabase.auth.getUserIdentities();
+                          const twitterIdentity = identities?.identities?.find((i: any) => i.provider === 'twitter');
+                          console.log('[Profile] Linked Twitter identity:', twitterIdentity);
+                          alert('Twitter account linked!');
+                        }
                       } catch (err) {
-                        console.error('[Profile] Twitter OAuth error:', err);
+                        console.error('Twitter link error:', err);
+                        alert('Twitter link error: ' + String((err as Error)?.message || err));
                       }
                     }}
-                    className="w-full bg-blue-600 text-white flex items-center justify-center gap-2 mt-2"
+                    className="whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-primary/90 h-10 px-4 py-2 w-full bg-blue-600 text-white flex items-center justify-center gap-2 mt-2"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75v-1.5A2.25 2.25 0 0015 3h-6A2.25 2.25 0 006.75 5.25v13.5A2.25 2.25 0 009 21h6a2.25 2.25 0 002.25-2.25v-1.5" />
