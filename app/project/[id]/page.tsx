@@ -207,9 +207,9 @@ export default function ProjectDetailPage() {
           {isOwner && (
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">Edit Project</Button>
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">Edit Project</Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+              <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Edit Project</DialogTitle>
                 </DialogHeader>
@@ -256,14 +256,14 @@ export default function ProjectDetailPage() {
             Featured Quests
           </h2>
           {isOwner && (
-            <Button onClick={() => setShowCreateQuest(true)} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white flex items-center gap-2">
+            <Button onClick={() => setShowCreateQuest(true)} className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2">
               <Plus className="w-4 h-4" /> Add Quest
             </Button>
           )}
         </div>
         {/* Create Quest Dialog */}
         <Dialog open={showCreateQuest} onOpenChange={setShowCreateQuest}>
-          <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+          <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Quest</DialogTitle>
             </DialogHeader>
@@ -298,8 +298,8 @@ export default function ProjectDetailPage() {
                 </select>
               </div>
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setShowCreateQuest(false)} className="bg-white/10 border-white/20 text-white">Cancel</Button>
-                <Button type="submit" disabled={creatingQuest} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">{creatingQuest ? "Creating..." : "Create Quest"}</Button>
+                <Button type="button" variant="outline" onClick={() => setShowCreateQuest(false)} className="bg-[#181818] border-[#282828] text-white">Cancel</Button>
+                <Button type="submit" disabled={creatingQuest} className="bg-green-600 hover:bg-green-700 text-white border-0">{creatingQuest ? "Creating..." : "Create Quest"}</Button>
               </div>
             </form>
           </DialogContent>
@@ -345,9 +345,9 @@ export default function ProjectDetailPage() {
                       {isOwner && (
                         <Dialog open={editingQuest?.id === quest.id} onOpenChange={open => setEditingQuest(open ? quest : null)}>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0" onClick={e => e.preventDefault()}>Edit Quest</Button>
+                            <Button size="sm" variant="outline" className="w-full bg-green-600 hover:bg-green-700 text-white border-0" onClick={e => e.preventDefault()}>Edit Quest</Button>
                           </DialogTrigger>
-                          <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+                          <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
                             <DialogHeader>
                               <DialogTitle>Edit Quest</DialogTitle>
                               <DialogDescription>

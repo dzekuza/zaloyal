@@ -34,7 +34,7 @@ export default function SearchPage() {
   }, [query])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 py-8">
+    <div className="min-h-screen bg-[#181818] py-8">
       <div className="container mx-auto px-4">
         <h1 className="text-3xl font-bold text-white mb-6">Search Results for "{query}"</h1>
         {loading ? (
@@ -48,7 +48,7 @@ export default function SearchPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {projects.map((project) => (
-                    <Card key={project.id} className="bg-[#111111] border-white/20 backdrop-blur-sm overflow-hidden">
+                    <Card key={project.id} className="bg-[#111111] border-[#282828] overflow-hidden">
                       <div className="relative overflow-hidden">
                         <img
                           src={project.cover_image_url || "/placeholder.svg?height=160&width=240"}
@@ -57,7 +57,7 @@ export default function SearchPage() {
                         />
                         <div className="absolute top-3 left-3 flex gap-2">
                           {project.category && (
-                            <span className="bg-blue-500/80 text-white text-xs px-2 py-1 rounded">{project.category}</span>
+                            <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded">{project.category}</span>
                           )}
                         </div>
                         <div className="absolute top-3 right-3">

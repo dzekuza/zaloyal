@@ -49,17 +49,6 @@ export default function ProfilePage() {
     supabase.auth.getUser().then(({ data }) => setSupabaseUser(data?.user))
   }, [])
 
-  // Add this useEffect at the top level of ProfilePage to log on mount
-  useEffect(() => {
-    // Log the current URL and query params after redirect
-    if (typeof window !== 'undefined') {
-      console.log('[Profile] Current URL after redirect:', window.location.href);
-      if (window.location.search) {
-        console.log('[Profile] Query params:', window.location.search);
-      }
-    }
-  }, []);
-
   const discordInfo = emailUser?.profile?.discord_id ? {
     id: emailUser.profile.discord_id,
     username: emailUser.profile.discord_username,
@@ -389,7 +378,7 @@ export default function ProfilePage() {
 
                   {/* Save Button */}
                   <div className="flex justify-end">
-                    <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white">
                       {saving ? "Saving..." : "Save Changes"}
                     </Button>
                   </div>
@@ -443,23 +432,6 @@ export default function ProfilePage() {
                       <WalletConnect />
                     </div>
                   </div>
-
-                  {/* Disconnect Wallet */}
-                  {walletUser && (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-white">Disconnect Wallet</h3>
-                      <div className="p-4 bg-[#181818] rounded-lg border border-[#282828]">
-                        <p className="text-gray-300 text-sm mb-4">Disconnect your wallet from this account. You can reconnect it later.</p>
-                        <Button 
-                          variant="destructive" 
-                          onClick={handleDisconnectWallet}
-                          className="w-full"
-                        >
-                          Disconnect Wallet
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </TabsContent>
 

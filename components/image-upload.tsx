@@ -142,11 +142,11 @@ export default function ImageUpload({
       />
 
       {currentImage && !uploading ? (
-        <Card className="bg-[#0b4b34c4] border-white/20 overflow-hidden">
+        <Card className="bg-[#111111] border-[#282828] overflow-hidden">
           <CardContent className="p-0 relative">
             <img src={currentImage || "/placeholder.svg"} alt="Quest image" className="w-full h-48 object-cover" />
             <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-              <Button size="sm" onClick={openFileDialog} className="bg-blue-500 hover:bg-blue-600 text-white">
+              <Button size="sm" onClick={openFileDialog} className="bg-green-600 hover:bg-green-700 text-white">
                 <Upload className="w-4 h-4 mr-2" />
                 Replace
               </Button>
@@ -166,7 +166,7 @@ export default function ImageUpload({
         </Card>
       ) : (
         <Card
-          className={`bg-[#0b4b34c4] border-white/20 transition-all cursor-pointer ${
+          className={`bg-[#111111] border-[#282828] transition-all cursor-pointer ${
             dragOver ? "border-green-400 bg-green-500/20" : "hover:border-white/30"
           }`}
           onDrop={handleDrop}
@@ -178,7 +178,7 @@ export default function ImageUpload({
             <div className="text-center">
               {uploading ? (
                 <div className="space-y-4">
-                  <Loader2 className="w-12 h-12 mx-auto text-blue-400 animate-spin" />
+                  <Loader2 className="w-12 h-12 mx-auto text-green-400 animate-spin" />
                   <div className="space-y-2">
                     <p className="text-white font-medium">Uploading image...</p>
                     <Progress value={uploadProgress} className="h-2" />
@@ -187,7 +187,7 @@ export default function ImageUpload({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                  <div className="w-16 h-16 mx-auto bg-[#282828] rounded-full flex items-center justify-center">
                     <ImageIcon className="w-8 h-8 text-white" />
                   </div>
                   <div>
@@ -201,7 +201,7 @@ export default function ImageUpload({
                   <Button
                     type="button"
                     variant="outline"
-                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    className="bg-[#181818] border-[#282828] text-white hover:bg-[#282828]"
                   >
                     <Upload className="w-4 h-4 mr-2" />
                     Choose File

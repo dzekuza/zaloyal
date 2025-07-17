@@ -308,7 +308,7 @@ export default function RegisterProject() {
             <h2 className="text-2xl font-bold text-white mb-4">Wallet Required</h2>
             <p className="text-gray-300 mb-6">You need to link your wallet in your profile before you can register a project.</p>
             <Link href="/profile">
-              <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+              <Button className="bg-green-600 hover:bg-green-700 text-white border-0">
                 Go to Profile
               </Button>
             </Link>

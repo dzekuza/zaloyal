@@ -351,7 +351,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     const answers = quizAnswers[task.id] || Array(questions.length).fill("")
     return (
       <Dialog open={!!showQuiz[task.id]} onOpenChange={open => setShowQuiz(s => ({ ...s, [task.id]: open }))}>
-        <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-lg">
+        <DialogContent className="text-white max-w-lg">
           <DialogHeader>
             <DialogTitle>Quiz: {task.title}</DialogTitle>
             <DialogDescription>Answer all questions to complete the quiz.</DialogDescription>
@@ -562,7 +562,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           <CardContent className="bg-[#111111] p-6">
             {/* Add Task Dialog */}
             <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
-              <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+              <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Add New Task</DialogTitle>
                 </DialogHeader>

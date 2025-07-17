@@ -31,10 +31,10 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+    <div className="min-h-screen bg-[#181818]">
       <div className="container mx-auto px-4 py-8">
         {/* User Profile Header */}
-        <Card className="bg-[#0b4b34] border-[#0b4b34] mb-8">
+        <Card className="bg-[#111111] border-[#282828] mb-8">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="flex items-center gap-4">
@@ -44,7 +44,7 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
                     alt="Profile"
                     className="w-20 h-20 rounded-full border-2 border-white/20"
                   />
-                  <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                  <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
                     L{profile?.level}
                   </div>
                 </div>

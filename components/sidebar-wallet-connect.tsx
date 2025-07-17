@@ -101,12 +101,12 @@ export default function SidebarWalletConnect() {
     <div className="space-y-2" style={{ background: '#181818' }}>
       <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
         <DialogTrigger asChild>
-          <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+          <Button className="w-full bg-green-600 hover:bg-green-700 text-white border-0">
             <User className="w-4 h-4 mr-2" />
             Sign In
           </Button>
         </DialogTrigger>
-        <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-md">
+        <DialogContent className="text-white max-w-md">
           {/* Only show email authentication */}
           <EmailAuth onSuccess={handleEmailAuthSuccess} onError={handleEmailAuthError} />
 

@@ -58,7 +58,7 @@ export default function QuestImageManager({ questId, currentImageUrl, onImageUpd
   }
 
   return (
-    <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+    <Card className="bg-[#111111] border-[#282828]">
       <CardHeader>
         <CardTitle className="text-white">Quest Image</CardTitle>
         <CardDescription className="text-gray-300">Upload or update your quest image</CardDescription>
@@ -72,7 +72,7 @@ export default function QuestImageManager({ questId, currentImageUrl, onImageUpd
         />
 
         {updating && (
-          <div className="mt-3 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-400 text-sm">
+          <div className="mt-3 p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm">
             Updating quest image...
           </div>
         )}

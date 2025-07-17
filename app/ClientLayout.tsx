@@ -125,7 +125,7 @@ export default function ClientLayout({
 
           {/* Auth Dialog */}
           <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-            <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white max-w-md">
+            <DialogContent className="text-white max-w-md">
               <DialogHeader>
                 <DialogTitle>Authentication</DialogTitle>
                 <DialogDescription className="text-gray-300">

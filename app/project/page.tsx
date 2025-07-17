@@ -212,7 +212,7 @@ export default function MyProjectsPage() {
       </div>
       {/* Edit Project Dialog */}
       <Dialog open={!!editingProject} onOpenChange={open => setEditingProject(open ? editingProject : null)}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl bg-[#0b4b34] border-[#0b4b34]">
+        <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Project</DialogTitle>
             <DialogDescription>

@@ -51,7 +51,7 @@ export default function WalletConnect({ onLinked }: { onLinked?: () => void } = 
 
   if (isAuthenticated === false) {
     return (
-      <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+      <Card className="bg-[#111111] border-[#282828]">
         <CardHeader className="text-center">
           <CardTitle className="text-white flex items-center justify-center gap-2">
             <Wallet className="w-5 h-5" />
@@ -63,7 +63,7 @@ export default function WalletConnect({ onLinked }: { onLinked?: () => void } = 
             <p className="text-red-400 mb-4">You must be signed in to link your wallet.</p>
             <Button
               onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
             >
               Go to Login
             </Button>
@@ -74,7 +74,7 @@ export default function WalletConnect({ onLinked }: { onLinked?: () => void } = 
   }
 
   return (
-    <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+    <Card className="bg-[#111111] border-[#282828]">
       <CardHeader className="text-center">
         <CardTitle className="text-white flex items-center justify-center gap-2">
           <Wallet className="w-5 h-5" />
@@ -86,10 +86,10 @@ export default function WalletConnect({ onLinked }: { onLinked?: () => void } = 
           <div className="text-center">
             <p className="text-gray-300 mb-2">Linked Wallet Address:</p>
             <p className="text-white font-mono mb-2">{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</p>
-            <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Linked</Badge>
+            <Badge className="bg-green-600 text-white text-xs">Linked</Badge>
             <Button
               onClick={handleDisconnectWallet}
-              className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white border-0"
+              className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white"
             >
               <LogOut className="w-4 h-4 mr-1" /> Disconnect Wallet
             </Button>
@@ -98,7 +98,7 @@ export default function WalletConnect({ onLinked }: { onLinked?: () => void } = 
           <Button
             onClick={handleLinkWallet}
             disabled={isLinking}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+            className="w-full bg-green-600 hover:bg-green-700 text-white"
           >
             {isLinking ? "Linking..." : "Link Wallet"}
           </Button>

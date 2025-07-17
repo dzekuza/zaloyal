@@ -690,7 +690,7 @@ export default function CreateQuest() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+    <div className="min-h-screen bg-[#181818]">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -707,7 +707,7 @@ export default function CreateQuest() {
           {/* Quest Form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Information */}
-            <Card className="bg-[#111111] border-white/20">
+            <Card className="bg-[#111111] border-[#282828]">
               <CardHeader>
                 <CardTitle className="text-white">Basic Information</CardTitle>
                 <CardDescription className="text-gray-300">Set up the core details of your quest</CardDescription>
@@ -826,7 +826,7 @@ export default function CreateQuest() {
                   </div>
                   <Button
                     onClick={() => openTaskDialog()}
-                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
+                    className="bg-green-600 hover:bg-green-700 text-white"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Task
@@ -963,7 +963,7 @@ export default function CreateQuest() {
                   disabled={
                     !questForm.title || !questForm.description || questForm.tasks.length === 0 || !selectedProjectId
                   }
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
                 >
                   <Save className="w-4 h-4 mr-2" />
                   Publish Quest
@@ -979,7 +979,7 @@ export default function CreateQuest() {
 
         {/* Task Dialog */}
         <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
-          <DialogContent className="bg-[#0b4b34] border-[#0b4b34] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="text-white max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingTaskIndex !== null ? "Edit Task" : "Add New Task"}</DialogTitle>
               <DialogDescription className="text-gray-300">

@@ -101,7 +101,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: { proje
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 bg-black/30 backdrop-blur-3xl" />
         <div className="relative container mx-auto px-4 py-16 text-center space-y-6">
-          <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-emerald-600 bg-clip-text text-transparent">
+          <h1 className="text-5xl md:text-7xl font-bold text-white">
             Web3 Projects
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
