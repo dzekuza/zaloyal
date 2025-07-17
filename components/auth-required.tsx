@@ -9,6 +9,7 @@ interface AuthRequiredProps {
   message?: string;
   showSignInButton?: boolean;
   className?: string;
+  onAuthClick?: () => void;
 }
 
 export default function AuthRequired({
@@ -16,7 +17,17 @@ export default function AuthRequired({
   message = "Please sign in with your email or wallet to access this page.",
   showSignInButton = true,
   className = "",
+  onAuthClick,
 }: AuthRequiredProps) {
+  const handleSignIn = () => {
+    if (onAuthClick) {
+      onAuthClick();
+    } else {
+      // Fallback to profile page if no onAuthClick provided
+      window.location.href = '/profile';
+    }
+  };
+
   return (
     <div className={`flex items-center justify-center min-h-[50vh] px-4 ${className}`}>
       <Card className="bg-[#111111] border-[#282828] max-w-md w-full">
@@ -33,7 +44,7 @@ export default function AuthRequired({
             
             {showSignInButton && (
               <Button 
-                onClick={() => window.location.href = '/profile'}
+                onClick={handleSignIn}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 w-full"
               >
                 Sign In

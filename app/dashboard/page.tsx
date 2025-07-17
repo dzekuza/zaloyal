@@ -64,6 +64,7 @@ export default function DashboardPage() {
         <AuthRequired 
           title="Sign In Required"
           message="Please sign in with your email or wallet to view your dashboard."
+          onAuthClick={() => window.location.href = '/'}
         />
       </BackgroundWrapper>
     );

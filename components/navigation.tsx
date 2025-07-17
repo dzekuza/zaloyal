@@ -201,6 +201,22 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
               ))}
 
               <div className="flex md:hidden items-center gap-2 ml-auto">
+                {/* Mobile Profile Button */}
+                {(user || emailUser) && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setMobileProfileOpen(true)}
+                    className="hover:bg-white/10"
+                  >
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
+                      <AvatarFallback className="bg-[#111111] border border-[#282828] text-white">
+                        {displayName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
                   {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </Button>

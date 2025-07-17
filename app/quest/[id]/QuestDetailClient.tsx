@@ -850,7 +850,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                         </div>
                         
                         <div className="flex items-center gap-2">
-                          <span className="text-yellow-400 font-semibold">{task.xp_reward} XP</span>
                           {isAdminOrCreator() && (
                             <div className="flex gap-1">
                               <Button
@@ -874,30 +873,33 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                               </Button>
                             </div>
                           )}
+                          {!isCompleted && (
+                            <div className="flex gap-2">
+                              {task.task_type === "learn" ? (
+                                <Button
+                                  onClick={() => setShowQuiz(s => ({ ...s, [task.id]: true }))}
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  size="sm"
+                                >
+                                  Start Quiz
+                                </Button>
+                              ) : (
+                                <Button
+                                  onClick={() => handleTaskVerification(task)}
+                                  disabled={isVerifying}
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  size="sm"
+                                >
+                                  {isVerifying ? "Verifying..." : "Verify Task"}
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                       
                       {/* Action buttons */}
-                      {!isCompleted && (
-                        <div className="mt-4 flex gap-2">
-                          {task.task_type === "learn" ? (
-                            <Button
-                              onClick={() => setShowQuiz(s => ({ ...s, [task.id]: true }))}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              Start Quiz
-                            </Button>
-                          ) : (
-                            <Button
-                              onClick={() => handleTaskVerification(task)}
-                              disabled={isVerifying}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              {isVerifying ? "Verifying..." : "Verify Task"}
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                      {/* Removed action buttons from here */}
                     </div>
                   </div>
                 )

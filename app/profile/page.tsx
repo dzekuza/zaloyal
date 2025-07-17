@@ -305,6 +305,7 @@ export default function ProfilePage() {
         <AuthRequired 
           title="Sign In Required"
           message="Please sign in with your email or wallet to access your profile and connect social accounts."
+          onAuthClick={() => window.location.href = '/'}
         />
       </div>
     )
