@@ -106,6 +106,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   const [showEditTask, setShowEditTask] = useState(false)
   const [updatingTask, setUpdatingTask] = useState(false)
   const [updateTaskError, setUpdateTaskError] = useState("")
+  const [currentUserUUID, setCurrentUserUUID] = useState<string | null>(null)
   const [newTask, setNewTask] = useState<any>({
     type: "social",
     title: "",
@@ -138,6 +139,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       if (user) {
         const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
         setEmailUser({ ...user, profile })
+        if (profile) {
+          setCurrentUserUUID(profile.id)
+        }
       }
       setLoading(false)
     }
@@ -147,6 +151,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         checkEmailAuth()
       } else if (event === "SIGNED_OUT") {
         setEmailUser(null)
+        setCurrentUserUUID(null)
         setLoading(false)
       }
     })
@@ -155,6 +160,25 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       subscription.unsubscribe()
     }
   }, [])
+
+  // Fetch current user UUID when wallet user changes
+  useEffect(() => {
+    const fetchUserUUID = async () => {
+      if (walletUser?.walletAddress) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("id")
+          .eq("wallet_address", walletUser.walletAddress.toLowerCase())
+          .single()
+        
+        if (userData) {
+          setCurrentUserUUID(userData.id)
+        }
+      }
+    }
+    
+    fetchUserUUID()
+  }, [walletUser])
 
   if (!mounted) return null;
 
@@ -316,10 +340,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     try {
       const taskData = {
         quest_id: quest.id,
-        title: newTask.title,
-        description: newTask.description,
+        title: newTask.type === "learn" ? newTask.quizHeadline : `Task ${tasks.length + 1}`,
+        description: newTask.type === "learn" ? newTask.quizDescription : `Complete this ${newTask.type} task`,
         task_type: newTask.type,
-        xp_reward: newTask.xpReward,
+        xp_reward: 100, // Default XP reward
         order_index: tasks.length + 1,
         social_platform: newTask.type === "social" ? newTask.socialPlatform : null,
         social_action: newTask.type === "social" ? newTask.socialAction : null,
@@ -375,10 +399,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     setUpdateTaskError("")
     try {
       const taskData = {
-        title: editingTask.title,
-        description: editingTask.description,
         task_type: editingTask.task_type,
-        xp_reward: editingTask.xp_reward,
         social_platform: editingTask.task_type === "social" ? editingTask.social_platform : null,
         social_action: editingTask.task_type === "social" ? editingTask.social_action : null,
         social_url: editingTask.task_type === "social" ? editingTask.social_url : null,
@@ -514,52 +535,25 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   }
 
   const isAdminOrCreator = () => {
-    // Get current user ID - try multiple sources
-    let currentUserId = null
-    
-    // Try wallet user first
-    if (walletUser?.walletAddress) {
-      currentUserId = walletUser.walletAddress.toLowerCase()
-    }
-    // Try email user profile ID
-    else if (emailUser?.profile?.id) {
-      currentUserId = emailUser.profile.id
-    }
-    // Try email user wallet address
-    else if (emailUser?.profile?.wallet_address) {
-      currentUserId = emailUser.profile.wallet_address.toLowerCase()
-    }
-    
-    if (!currentUserId) {
-      console.log('No current user ID found')
+    if (!currentUserUUID) {
+      console.log('No current user UUID found')
       return false
     }
     
-    // Check if user is the creator (for older quests)
-    const isCreator = quest.creator_id && currentUserId === quest.creator_id
+    // Check if user is the project owner (this is the main check)
+    const isProjectOwner = quest.project_id && quest.projects?.owner_id ? currentUserUUID === quest.projects.owner_id : false
     
-    // Check if user is the project owner (for newer quests)
-    const isProjectOwner = quest.project_id && quest.projects?.owner_id && currentUserId === quest.projects.owner_id
-    
-    // Also check if user is admin (only from email user profile)
-    const isAdmin = emailUser?.profile?.role === 'admin'
-    
-    console.log('Admin check:', { 
-      currentUserId, 
-      creatorId: quest.creator_id,
+    console.log('Project owner check:', { 
+      currentUserUUID,
       projectId: quest.project_id,
       projectOwnerId: quest.projects?.owner_id,
-      isCreator,
       isProjectOwner,
-      isAdmin,
       walletUser: walletUser?.walletAddress,
       emailUser: emailUser?.profile?.id,
-      userRole: emailUser?.profile?.role,
-      questCreatorId: quest.creator_id,
       questData: quest
     })
     
-    return isCreator || isProjectOwner || isAdmin
+    return isProjectOwner
   }
 
   const renderQuizModal = (task: Task) => {
@@ -823,7 +817,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               {/* Debug info */}
               {process.env.NODE_ENV === 'development' && (
                 <div className="text-xs text-gray-400 mt-2">
-                  Debug: isAdminOrCreator = {isAdminOrCreator() ? 'true' : 'false'}
+                  Debug: isProjectOwner = {isAdminOrCreator() ? 'true' : 'false'}
                 </div>
               )}
             </div>
@@ -981,48 +975,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                       </div>
                     </div>
                   )}
-                  <div>
-                    <label className="text-white block mb-1">Task Title</label>
-                    <Input 
-                      value={newTask.type === "learn" ? newTask.quizHeadline : newTask.title} 
-                      onChange={e => {
-                        if (newTask.type === "learn") {
-                          setNewTask((t: typeof newTask) => ({ 
-                            ...t, 
-                            quizHeadline: e.target.value,
-                            title: e.target.value // Also update title for consistency
-                          }))
-                        } else {
-                          setNewTask((t: typeof newTask) => ({ ...t, title: e.target.value }))
-                        }
-                      }} 
-                      className="bg-white/10 border-white/20 text-white" 
-                      placeholder={newTask.type === "learn" ? "Enter quiz question" : "Enter task title"}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-white block mb-1">Description</label>
-                    <Textarea 
-                      value={newTask.type === "learn" ? newTask.quizDescription : newTask.description} 
-                      onChange={e => {
-                        if (newTask.type === "learn") {
-                          setNewTask((t: typeof newTask) => ({ 
-                            ...t, 
-                            quizDescription: e.target.value,
-                            description: e.target.value // Also update description for consistency
-                          }))
-                        } else {
-                          setNewTask((t: typeof newTask) => ({ ...t, description: e.target.value }))
-                        }
-                      }} 
-                      className="bg-white/10 border-white/20 text-white" 
-                      placeholder={newTask.type === "learn" ? "Enter quiz description" : "Enter task description"}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-white block mb-1">XP Reward</label>
-                    <Input type="number" value={newTask.xpReward} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, xpReward: parseInt(e.target.value) }))} className="bg-white/10 border-white/20 text-white" />
-                  </div>
+
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => setShowAddTask(false)}>Cancel</Button>
                     <Button type="submit" disabled={creatingTask} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
@@ -1042,31 +995,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 {editingTask && (
                   <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleEditTask(); }}>
                     {updateTaskError && <div className="p-2 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-sm">{updateTaskError}</div>}
-                    <div>
-                      <label className="text-white block mb-1">Task Title</label>
-                      <Input 
-                        value={editingTask.title} 
-                        onChange={e => setEditingTask(t => ({ ...t!, title: e.target.value }))} 
-                        className="bg-white/10 border-white/20 text-white" 
-                      />
-                    </div>
-                    <div>
-                      <label className="text-white block mb-1">Description</label>
-                      <Textarea 
-                        value={editingTask.description} 
-                        onChange={e => setEditingTask(t => ({ ...t!, description: e.target.value }))} 
-                        className="bg-white/10 border-white/20 text-white" 
-                      />
-                    </div>
-                    <div>
-                      <label className="text-white block mb-1">XP Reward</label>
-                      <Input 
-                        type="number" 
-                        value={editingTask.xp_reward} 
-                        onChange={e => setEditingTask(t => ({ ...t!, xp_reward: parseInt(e.target.value) }))} 
-                        className="bg-white/10 border-white/20 text-white" 
-                      />
-                    </div>
+
                     <div className="flex justify-end gap-2">
                       <Button type="button" variant="outline" onClick={() => setShowEditTask(false)}>Cancel</Button>
                       <Button type="submit" disabled={updatingTask} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">

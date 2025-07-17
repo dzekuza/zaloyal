@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import AvatarUpload from "@/components/avatar-upload"
+import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 
 interface EditQuestFormProps {
   quest: any;
@@ -22,6 +23,27 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
+  const [emailUser, setEmailUser] = useState<any>(null)
+
+  useEffect(() => {
+    // Check for wallet user
+    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
+      setWalletUser(user)
+    })
+
+    // Check for email user
+    const checkEmailAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+        setEmailUser({ ...user, profile })
+      }
+    }
+    checkEmailAuth()
+
+    return () => unsubscribeWallet()
+  }, [])
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -34,26 +56,126 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
     setSuccess("")
     
     try {
-      const { error: updateError } = await supabase.from("quests").update({
-        title: title.trim(),
-        description: description.trim(),
-        image_url: imageUrl,
-        total_xp: totalXp,
-        status,
-      }).eq("id", quest.id)
+      // Get current user ID with better error handling
+      let userId = null
+      let userError = null
       
-      if (updateError) throw updateError
+      if (walletUser) {
+        // Try wallet lookup first
+        const { data: userData, error: walletError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("wallet_address", walletUser.walletAddress.toLowerCase())
+          .single()
+        
+        if (userData && !walletError) {
+          userId = userData.id
+        } else {
+          // If wallet user not found, try to create them
+          try {
+            const response = await fetch("/api/users/upsert", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                walletAddress: walletUser.walletAddress,
+                username: walletUser.username || `User${walletUser.walletAddress.slice(-6)}`
+              }),
+            })
+            
+            if (response.ok) {
+              const { user } = await response.json()
+              userId = user.id
+            } else {
+              const errorData = await response.json()
+              // If creation fails, try email lookup as fallback
+              if (emailUser?.email) {
+                const { data: emailUserData, error: emailError } = await supabase
+                  .from("users")
+                  .select("id")
+                  .eq("email", emailUser.email.toLowerCase())
+                  .single()
+                
+                if (emailUserData && !emailError) {
+                  userId = emailUserData.id
+                } else {
+                  userError = `User not found and could not be created. Wallet: ${walletError?.message}, Create: ${errorData.error}, Email: ${emailError?.message}`
+                }
+              } else {
+                userError = `User not found and could not be created. Wallet: ${walletError?.message}, Create: ${errorData.error}`
+              }
+            }
+          } catch (createErr: any) {
+            userError = `Failed to create user: ${createErr.message}`
+          }
+        }
+      } else if (emailUser?.profile) {
+        // Email user - use profile ID directly
+        userId = emailUser.profile.id
+      } else {
+        userError = "No authenticated user found"
+      }
+
+      if (!userId) {
+        console.error("User lookup failed:", {
+          walletUser,
+          emailUser,
+          userError
+        })
+        throw new Error(userError || "User not found. Please sign in again.")
+      }
+
+      if (quest.id === 'new') {
+        // Create new quest
+        const { data: newQuest, error: insertError } = await supabase
+          .from("quests")
+          .insert({
+            title: title.trim(),
+            description: description.trim(),
+            image_url: imageUrl,
+            total_xp: totalXp,
+            status,
+            creator_id: userId,
+            project_id: quest.project_id,
+          })
+          .select()
+          .single()
+        
+        if (insertError) throw insertError
+        
+        setSuccess("Quest created successfully!")
+      } else {
+        // Update existing quest
+        const { error: updateError } = await supabase
+          .from("quests")
+          .update({
+            title: title.trim(),
+            description: description.trim(),
+            image_url: imageUrl,
+            total_xp: totalXp,
+            status,
+          })
+          .eq("id", quest.id)
+        
+        if (updateError) throw updateError
+        
+        setSuccess("Quest updated successfully!")
+      }
       
-      setSuccess("Quest updated successfully!")
       if (onSave) onSave()
     } catch (e: any) {
-      setError(e.message || "Failed to update quest")
+      console.error("Quest save error:", e)
+      setError(e.message || "Failed to save quest")
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async () => {
+    if (quest.id === 'new') {
+      setError("Cannot delete a quest that hasn't been created yet")
+      return
+    }
+
     if (!window.confirm("Are you sure you want to delete this quest? This action cannot be undone.")) return;
     
     setSaving(true);
@@ -117,7 +239,7 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
         <AvatarUpload
           onAvatarUploaded={setImageUrl}
           currentAvatar={imageUrl}
-          userId={quest.id}
+          userId={quest.id === 'new' ? 'temp' : quest.id}
           size="lg"
           className="mx-auto"
           uploadType="quest-image"
@@ -154,21 +276,23 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
       </div>
       
       <div className="flex justify-end gap-2 pt-4">
-        <Button 
-          type="button" 
-          variant="destructive" 
-          onClick={handleDelete} 
-          disabled={saving}
-          className="bg-red-600 hover:bg-red-700 text-white"
-        >
-          {saving ? "Deleting..." : "Delete Quest"}
-        </Button>
+        {quest.id !== 'new' && (
+          <Button 
+            type="button" 
+            variant="destructive" 
+            onClick={handleDelete} 
+            disabled={saving}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            {saving ? "Deleting..." : "Delete Quest"}
+          </Button>
+        )}
         <Button 
           type="submit" 
           disabled={saving} 
           className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 hover:from-green-600 hover:to-emerald-600"
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Saving..." : quest.id === 'new' ? "Create Quest" : "Save Changes"}
         </Button>
       </div>
     </form>

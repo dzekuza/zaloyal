@@ -291,7 +291,7 @@ export default function CreateQuest() {
   }
 
   const saveTask = () => {
-    if (!currentTask.title || !currentTask.description) return
+    // No validation needed since we removed title and description fields
 
     const newTasks = [...questForm.tasks]
 
@@ -380,7 +380,7 @@ export default function CreateQuest() {
         return
       }
       // Calculate total XP
-      const totalXP = questForm.tasks.reduce((sum, task) => sum + task.xpReward, 0)
+      const totalXP = questForm.tasks.reduce((sum, task) => sum + (task.xpReward || 100), 0)
       // Create quest
       const { data: quest, error: questError } = await supabase
         .from("quests")
@@ -402,10 +402,10 @@ export default function CreateQuest() {
       // Create tasks
       const tasksToInsert = questForm.tasks.map((task, index) => ({
         quest_id: quest.id,
-        title: task.title,
-        description: task.description,
+        title: task.title || `Task ${index + 1}`,
+        description: task.description || `Complete this ${task.type} task`,
         task_type: task.type,
-        xp_reward: task.xpReward,
+        xp_reward: task.xpReward || 100,
         order_index: index,
         social_action: task.socialAction || null,
         social_platform: task.socialPlatform || null,
@@ -1031,39 +1031,7 @@ export default function CreateQuest() {
                   </Select>
                 </div>
 
-                <div>
-                  <Label className="text-white">Task Title</Label>
-                  <Input
-                    value={currentTask.title || ""}
-                    onChange={(e) => setCurrentTask((prev) => ({ ...prev, title: e.target.value }))}
-                    placeholder="Enter task title..."
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                  />
-                </div>
 
-                <div>
-                  <Label className="text-white">Task Description</Label>
-                  <Textarea
-                    value={currentTask.description || ""}
-                    onChange={(e) => setCurrentTask((prev) => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe what participants need to do..."
-                    rows={3}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-white">XP Reward</Label>
-                  <Input
-                    type="number"
-                    value={currentTask.xpReward || 0}
-                    onChange={(e) =>
-                      setCurrentTask((prev) => ({ ...prev, xpReward: Number.parseInt(e.target.value) || 0 }))
-                    }
-                    placeholder="100"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                  />
-                </div>
               </div>
 
               <Separator className="bg-white/20" />
@@ -1081,7 +1049,6 @@ export default function CreateQuest() {
                 </Button>
                 <Button
                   onClick={saveTask}
-                  disabled={!currentTask.title || !currentTask.description}
                   className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
                 >
                   {editingTaskIndex !== null ? "Update Task" : "Add Task"}
