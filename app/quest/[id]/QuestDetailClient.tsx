@@ -514,13 +514,35 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   }
 
   const isAdminOrCreator = () => {
-    const currentUserId = walletUser?.walletAddress?.toLowerCase() || emailUser?.profile?.id
+    // Get current user ID - try multiple sources
+    let currentUserId = null
+    
+    // Try wallet user first
+    if (walletUser?.walletAddress) {
+      currentUserId = walletUser.walletAddress.toLowerCase()
+    }
+    // Try email user profile ID
+    else if (emailUser?.profile?.id) {
+      currentUserId = emailUser.profile.id
+    }
+    // Try email user wallet address
+    else if (emailUser?.profile?.wallet_address) {
+      currentUserId = emailUser.profile.wallet_address.toLowerCase()
+    }
+    
+    if (!currentUserId) {
+      console.log('No current user ID found')
+      return false
+    }
     
     // Check if user is the creator (for older quests)
-    const isCreator = currentUserId === quest.creator_id
+    const isCreator = quest.creator_id && currentUserId === quest.creator_id
     
     // Check if user is the project owner (for newer quests)
     const isProjectOwner = quest.project_id && quest.projects?.owner_id && currentUserId === quest.projects.owner_id
+    
+    // Also check if user is admin (only from email user profile)
+    const isAdmin = emailUser?.profile?.role === 'admin'
     
     console.log('Admin check:', { 
       currentUserId, 
@@ -529,12 +551,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       projectOwnerId: quest.projects?.owner_id,
       isCreator,
       isProjectOwner,
+      isAdmin,
       walletUser: walletUser?.walletAddress,
       emailUser: emailUser?.profile?.id,
-      questCreatorId: quest.creator_id
+      userRole: emailUser?.profile?.role,
+      questCreatorId: quest.creator_id,
+      questData: quest
     })
     
-    return isCreator || isProjectOwner
+    return isCreator || isProjectOwner || isAdmin
   }
 
   const renderQuizModal = (task: Task) => {

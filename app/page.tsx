@@ -1,11 +1,6 @@
-import Link from "next/link"
-import { Search, Filter, Users, Zap, Trophy, Star } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/lib/supabase"
-import { Button } from "@/components/ui/button"
-import ProjectCard from "@/components/ProjectCard"
 import ProjectDiscoveryClient from "@/components/ProjectDiscoveryClient";
+import { cache } from "react"
 
 interface Project {
   id: string;
@@ -29,111 +24,90 @@ interface Project {
   xpToCollect?: number;
 }
 
-// Remove all useEffect/useState for fetching projects, loading, and currentUserId
-// Move search/filter state to a client subcomponent
-
-// Server component
-export default async function ProjectDiscovery() {
-  // Fetch all projects
+// Cache the database queries
+const getProjects = cache(async () => {
   const { data: projects, error } = await supabase
     .from("projects")
     .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured, total_participants')
+    .eq("status", "approved")
     .order("created_at", { ascending: false })
+  
+  if (error) throw error
+  return projects
+})
 
-  if (error) {
-    console.error("Error fetching projects:", error, JSON.stringify(error, null, 2) || "<empty error object>");
+const getQuests = cache(async (projectIds: string[]) => {
+  if (projectIds.length === 0) return {}
+  
+  const { data: quests, error } = await supabase
+    .from("quests")
+    .select("id, project_id, total_xp")
+    .in("project_id", projectIds)
+    .eq("status", "active")
+  
+  if (error) throw error
+  
+  return (quests || []).reduce((acc, q) => {
+    acc[q.project_id] = acc[q.project_id] || []
+    acc[q.project_id].push(q)
+    return acc
+  }, {} as Record<string, { total_xp: number }[]>)
+})
+
+// Server component
+export default async function ProjectDiscovery() {
+  try {
+    // Fetch projects with basic info
+    const projects = await getProjects()
+
+    // Fetch quests for all projects in one query
+    const projectIds = (projects || []).map(p => p.id)
+    const questsByProject = await getQuests(projectIds)
+
+    // Process the data to calculate stats
+    const processedProjects: Project[] = (projects || []).map(project => {
+      const quests = questsByProject[project.id] || []
+      const xpToCollect = quests.reduce((sum: number, q: { total_xp: number }) => sum + (q.total_xp || 0), 0)
+
+      return {
+        id: project.id,
+        owner_id: project.owner_id,
+        name: project.name,
+        logo_url: project.logo_url,
+        cover_image_url: project.cover_image_url,
+        category: project.category,
+        status: project.status,
+        featured: project.featured,
+        total_participants: project.total_participants || 0,
+        xpToCollect,
+        quest_count: quests.length,
+      }
+    })
+
+    console.log("projectsWithStats:", processedProjects)
+
+    const categories = [
+      "DeFi",
+      "NFT",
+      "Gaming",
+      "Infrastructure",
+      "Social",
+      "Education",
+      "DAO",
+      "Metaverse",
+      "Trading",
+      "Staking",
+    ]
+
+    return <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
+  } catch (error) {
+    console.error("Error fetching projects:", error);
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900"><p className="text-white text-xl">Error loading projects.</p></div>
   }
-  console.log("Fetched projects:", projects)
-
-  // Batch fetch all quests for all projects
-  const projectIds = (projects || []).map(p => p.id)
-  let questsByProject: Record<string, { total_xp: number }[]> = {}
-  if (projectIds.length > 0) {
-    const { data: quests, error: questsError } = await supabase
-      .from("quests")
-      .select("id, project_id, total_xp")
-      .in("project_id", projectIds)
-      .eq("status", "active")
-    if (questsError) {
-      console.error("Error fetching quests for projects:", questsError)
-    }
-    questsByProject = (quests || []).reduce((acc, q) => {
-      acc[q.project_id] = acc[q.project_id] || []
-      acc[q.project_id].push(q)
-      return acc
-    }, {} as Record<string, { total_xp: number }[]>)
-  }
-
-  // Batch fetch participants for all projects (optional: can be optimized further)
-  let participantsByProject: Record<string, number> = {}
-  if (projectIds.length > 0) {
-    const { data: questIdsRaw, error: questIdsError } = await supabase
-      .from("quests")
-      .select("id, project_id")
-      .in("project_id", projectIds)
-      .eq("status", "active")
-    if (questIdsError) {
-      console.error("Error fetching quest ids for participants:", questIdsError)
-    }
-    const questIds: Array<{ id: string; project_id: string }> = questIdsRaw || []
-    const allQuestIds = questIds.map(q => q.id)
-    if (allQuestIds.length > 0) {
-      const { data: userQuestProgressRaw, error: userQuestProgressError } = await supabase
-        .from("user_quest_progress")
-        .select("quest_id, user_id")
-        .in("quest_id", allQuestIds)
-      if (userQuestProgressError) {
-        console.error("Error fetching user quest progress:", userQuestProgressError)
-      }
-      const userQuestProgress: Array<{ quest_id: string; user_id: string }> = userQuestProgressRaw || []
-      // Count unique users per project
-      const usersByProject: Record<string, Set<string>> = {}
-      userQuestProgress.forEach((uqp: { quest_id: string; user_id: string }) => {
-        const projectId = questIds.find((q) => q.id === uqp.quest_id)?.project_id
-        if (projectId) {
-          usersByProject[projectId] = usersByProject[projectId] || new Set()
-          usersByProject[projectId].add(uqp.user_id)
-        }
-      })
-      participantsByProject = Object.fromEntries(
-        Object.entries(usersByProject).map(([pid, set]) => [pid, set.size])
-      )
-    }
-  }
-
-  // Compose final project list with stats as 'projectsWithStats'
-  const projectsWithStats: Project[] = (projects || []).map(project => {
-    const quests = questsByProject[project.id] || []
-    const xpToCollect = quests.reduce((sum: number, q: { total_xp: number }) => sum + (q.total_xp || 0), 0)
-    const total_participants = participantsByProject[project.id] || 0
-    return {
-      ...project,
-      xpToCollect,
-      quest_count: quests.length,
-      total_participants,
-    }
-  })
-  console.log("projectsWithStats:", projectsWithStats)
-
-  const categories = [
-    "DeFi",
-    "NFT",
-    "Gaming",
-    "Infrastructure",
-    "Social",
-    "Education",
-    "DAO",
-    "Metaverse",
-    "Trading",
-    "Staking",
-  ]
-
-  return <ProjectDiscoveryClient projects={projectsWithStats} categories={categories} />
 }
 
 /* ------------------------------------------------------------------ */
-/*  utility                                                            */
+/*  utility                                                            */
 /* ------------------------------------------------------------------ */
 function getAbsoluteUrl(url: string) {
   return url?.match(/^https?:\/\//i) ? url : `https://${url}`;

@@ -26,7 +26,12 @@ import Navigation from "@/components/navigation"
 import EmailAuth from "@/components/email-auth"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: 'swap',
+  preload: true,
+  fallback: ['system-ui', 'arial']
+})
 
 // Menu items for sidebar
 const items = [
