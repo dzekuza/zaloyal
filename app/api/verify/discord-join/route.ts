@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     params.append("grant_type", "authorization_code");
     params.append("code", code);
     params.append("redirect_uri", REDIRECT_URI);
-    params.append("scope", "identify guilds");
+    params.append("scope", "guilds.join email guilds guilds.members.read");
 
     const tokenRes = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
