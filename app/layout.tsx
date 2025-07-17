@@ -7,9 +7,22 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <ClientLayout>{children}</ClientLayout>
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>BeLink Web3 Quest Platform</title>
+        <meta name="description" content="Web3 Quest Platform for Community Engagement" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body>
+        <ClientLayout>{children}</ClientLayout>
+      </body>
+    </html>
+  )
 }
 
 export const metadata = {
-      generator: 'v0.dev'
-    };
+  title: 'BeLink Web3 Quest Platform',
+  description: 'Web3 Quest Platform for Community Engagement',
+  generator: 'v0.dev'
+};

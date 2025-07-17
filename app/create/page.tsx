@@ -189,7 +189,13 @@ export default function CreateQuest() {
             const res = await fetch("/api/users/upsert", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ walletAddress }),
+              body: JSON.stringify({ 
+                walletAddress,
+                username: walletUser?.username || emailUser?.profile?.username,
+                email: emailUser?.email,
+                avatar_url: emailUser?.profile?.avatar_url,
+                bio: emailUser?.profile?.bio,
+              }),
             })
             if (res.ok) {
               const { user } = await res.json()

@@ -104,7 +104,7 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
 
           <TabsContent value="overview" className="space-y-6">
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30 backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
