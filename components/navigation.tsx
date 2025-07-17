@@ -18,6 +18,8 @@ import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useRef } from "react";
+import Image from "next/image";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface NavigationProps {
   onAuthClick: () => void
@@ -31,6 +33,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [copied, setCopied] = useState(false)
   const router = useRouter()
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
 
   useEffect(() => {
     // Check for wallet user
@@ -92,104 +95,35 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
 
   // Only render sign-in/profile button after loading is false
   return (
-    <nav className="hidden md:block sticky top-0 z-50 border-b border-[#282828]" style={{ background: '#111111' }}>
-      <div className=" px-4">
-        <div className="items-center h-auto md:h-16 gap-auto grid grid-cols-2 justify-end">
-          {/* Left: Search bar */}
-          <div className="hidden md:inline-grid justify-self-start">
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                if (searchTerm.trim()) router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
-              }}
-              className="relative flex items-center w-full max-w-md mx-auto"
-            >
-              <input
-                type="text"
-                placeholder="Search projects or quests..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10 pr-3 py-2 rounded-md bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-            </form>
-          </div>
-          {/* Right: Profile/User and Hamburger */}
-          <div className="flex items-center justify-end gap-4 w-full col-span-2 md:col-span-1">
-            {!loading && (currentUser ? (
-              <>
-                {/* User Stats - Desktop */}
-                <div className="hidden lg:flex items-center space-x-4 text-sm">
-                  <div className="flex items-center gap-1 text-yellow-400">
-                    <Zap className="w-4 h-4" />
-                    <span className="font-semibold">{userStats.xp}</span>
-                    <span className="text-gray-400">XP</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-blue-400">
-                    <Trophy className="w-4 h-4" />
-                    <span className="font-semibold">L{userStats.level}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-green-400">
-                    <Users className="w-4 h-4" />
-                    <span className="font-semibold">#{userStats.rank}</span>
-                  </div>
-                </div>
+    <>
+      {/* Mobile Top Navigation */}
+      <div className="md:hidden fixed top-0 left-0 w-full z-50 flex items-center justify-between bg-[#181818] border-b-2 border-[#282828] px-4 h-14">
+        <Image src="/belinklogo.svg" alt="Belink Logo" className="h-8 w-auto" width={32} height={32} />
+        {!loading && !currentUser && (
+          <Button
+            onClick={onAuthClick}
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 text-sm"
+          >
+            Sign In
+          </Button>
+        )}
+      </div>
 
-                {/* User Dropdown */}
-                <ProfileDropdown
-                  displayName={displayName}
-                  user={user}
-                  emailUser={emailUser}
-                  userStats={userStats}
-                  handleSignOut={handleSignOut}
-                  setCopied={setCopied}
-                  copied={copied}
-                />
-              </>
-            ) : (
-              <Button
-                onClick={onAuthClick}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
-              >
-                Sign In
-              </Button>
-            ))}
+      {/* Spacer for mobile top navigation */}
+      <div className="md:hidden h-14 w-full"></div>
 
-            <div className="flex md:hidden items-center gap-2 ml-auto">
-              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile/Tablet Menu Drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden fixed top-0 left-0 w-full h-full bg-slate-900/95 z-50 flex flex-col p-6 gap-6 animate-in fade-in">
-            <div className="flex justify-end">
-              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
-                <X className="w-6 h-6" />
-              </Button>
-            </div>
-            <nav className="flex flex-col gap-4 mt-4">
-              <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
-                <Home className="w-4 h-4" /> Projects
-              </Link>
-              <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
-                <BarChart3 className="w-4 h-4" /> Dashboard
-              </Link>
-              <Link href="/leaderboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
-                <Trophy className="w-4 h-4" /> Leaderboard
-              </Link>
+      {/* Main Navigation (desktop and mobile) */}
+      <nav className="hidden md:block sticky top-0 z-50 border-b border-[#282828]" style={{ background: '#111111' }}>
+        <div className=" px-4">
+          <div className="items-center h-auto md:h-16 gap-auto grid grid-cols-2 justify-end">
+            {/* Left: Search bar */}
+            <div className="hidden md:inline-grid justify-self-start">
               <form
                 onSubmit={e => {
                   e.preventDefault();
-                  if (searchTerm.trim()) {
-                    setMobileMenuOpen(false);
-                    router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
-                  }
+                  if (searchTerm.trim()) router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
                 }}
-                className="relative flex items-center w-full mt-4"
+                className="relative flex items-center w-full max-w-md mx-auto"
               >
                 <input
                   type="text"
@@ -200,11 +134,114 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
               </form>
-            </nav>
+            </div>
+            {/* Right: Profile/User and Hamburger */}
+            <div className="flex items-center justify-end gap-4 w-full col-span-2 md:col-span-1">
+              {!loading && (currentUser ? (
+                <>
+                  {/* User Stats - Desktop */}
+                  <div className="hidden lg:flex items-center space-x-4 text-sm">
+                    <div className="flex items-center gap-1 text-yellow-400">
+                      <Zap className="w-4 h-4" />
+                      <span className="font-semibold">{userStats.xp}</span>
+                      <span className="text-gray-400">XP</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-blue-400">
+                      <Trophy className="w-4 h-4" />
+                      <span className="font-semibold">L{userStats.level}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-green-400">
+                      <Users className="w-4 h-4" />
+                      <span className="font-semibold">#{userStats.rank}</span>
+                    </div>
+                  </div>
+
+                  {/* User Dropdown */}
+                  <ProfileDropdown
+                    displayName={displayName}
+                    user={user}
+                    emailUser={emailUser}
+                    userStats={userStats}
+                    handleSignOut={handleSignOut}
+                    setCopied={setCopied}
+                    copied={copied}
+                  />
+                </>
+              ) : (
+                <Button
+                  onClick={onAuthClick}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                >
+                  Sign In
+                </Button>
+              ))}
+
+              <div className="flex md:hidden items-center gap-2 ml-auto">
+                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                  {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </Button>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
-    </nav>
+
+          {/* Mobile/Tablet Menu Drawer */}
+          {mobileMenuOpen && (
+            <div className="md:hidden fixed top-0 left-0 w-full h-full bg-slate-900/95 z-50 flex flex-col p-6 gap-6 animate-in fade-in">
+              <div className="flex justify-end">
+                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+              <nav className="flex flex-col gap-4 mt-4">
+                <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                  <Home className="w-4 h-4" /> Projects
+                </Link>
+                <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                  <BarChart3 className="w-4 h-4" /> Dashboard
+                </Link>
+                <Link href="/leaderboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                  <Trophy className="w-4 h-4" /> Leaderboard
+                </Link>
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    if (searchTerm.trim()) {
+                      setMobileMenuOpen(false);
+                      router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
+                    }
+                  }}
+                  className="relative flex items-center w-full mt-4"
+                >
+                  <input
+                    type="text"
+                    placeholder="Search projects or quests..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-3 py-2 rounded-md bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                </form>
+              </nav>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Mobile Profile Modal */}
+      <Dialog open={mobileProfileOpen} onOpenChange={setMobileProfileOpen}>
+        <DialogContent className="max-w-xs w-full bg-[#111111] border-[#282828] p-0">
+          <ProfileDropdown
+            displayName={displayName}
+            user={user}
+            emailUser={emailUser}
+            userStats={userStats}
+            handleSignOut={handleSignOut}
+            setCopied={setCopied}
+            copied={copied}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

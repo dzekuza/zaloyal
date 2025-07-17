@@ -7,10 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import WalletConnect from "@/components/wallet-connect"
 import TelegramLoginWidget from "@/components/telegram-login-widget"
 import { useRouter } from "next/navigation"
-import { LogOut } from "lucide-react"
+import { LogOut, Copy, ExternalLink, User, Wallet, Link } from "lucide-react"
 import { SiDiscord, SiX } from "react-icons/si"
 import AvatarUpload from "@/components/avatar-upload"
 
@@ -302,177 +305,282 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 text-white text-xl">Loading...</div>
+    return <div className="min-h-screen flex items-center justify-center bg-[#181818] text-white text-xl">Loading...</div>
   }
 
   // If not signed in, show sign-in prompt
   if (!walletUser && !emailUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
-        <div className="bg-white/10 border-white/20 backdrop-blur-sm p-8 rounded-lg flex flex-col items-center">
-          <h2 className="text-2xl text-white mb-4 font-bold">Sign In Required</h2>
-          <p className="text-gray-300 mb-6">Please sign in with your email or wallet to access your profile and connect social accounts.</p>
-          {/* You can add your sign-in component here, or a button to open the sign-in dialog */}
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+        <Card className="w-full max-w-md bg-[#111111] border-[#282828]">
+          <CardHeader>
+            <CardTitle className="text-white">Sign In Required</CardTitle>
+            <CardDescription className="text-gray-300">Please sign in with your email or wallet to access your profile and connect social accounts.</CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 py-12">
-      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 px-2">
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full">
+    <div className="min-h-screen bg-[#181818] py-8 px-4">
+      <div className="container mx-auto max-w-4xl">
+        <Card className="bg-[#111111] border-[#282828]">
           <CardHeader>
-            <CardTitle className="text-white">Edit Profile</CardTitle>
-            <CardDescription className="text-gray-300">Manage your profile information</CardDescription>
-            <div className="mt-4 flex flex-col gap-2">
-              {emailUser && (
-                <div className="text-sm text-white/80">Email: <span className="font-semibold">{emailUser.email}</span></div>
-              )}
-              {walletUser && (
-                <div className="text-sm text-white/80 flex items-center gap-2">
-                  Wallet:
-                  <span className="font-semibold">
-                    {walletUser.walletAddress.slice(0, 8)}...{walletUser.walletAddress.slice(-12)}
-                  </span>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(walletUser.walletAddress)
-                    }}
-                    className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
-                    title="Copy wallet address"
-                    type="button"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
+            <CardTitle className="text-white text-2xl">Profile Settings</CardTitle>
+            <CardDescription className="text-gray-300">Manage your profile, wallet, and connected accounts</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Wallet Linking UI */}
-            <div>
-              <WalletConnect />
-            </div>
-            {error && <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">{error}</div>}
-            {success && <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm">{success}</div>}
-            <div className="flex flex-col md:flex-row gap-8 items-center">
-              <div className="flex-1 space-y-4">
-                {/* Profile Image Upload */}
-                <div className="flex flex-col items-center mb-4">
-                  <AvatarUpload
-                    currentAvatar={avatarUrl}
-                    onAvatarUploaded={handleAvatarUploaded}
-                    userId={walletUser ? walletUser.walletAddress.toLowerCase() : emailUser?.profile?.id}
-                    size="md"
-                  />
-                </div>
-                <div>
-                  <label className="text-white block mb-1">Username</label>
-                  <Input value={username} onChange={e => setUsername(e.target.value)} className="bg-white/10 border-white/20 text-white" />
-                </div>
-                <div>
-                  <label className="text-white block mb-1">Bio</label>
-                  <Textarea value={bio} onChange={e => setBio(e.target.value)} className="bg-white/10 border-white/20 text-white" rows={3} />
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
-                {saving ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm w-full">
-          <CardHeader>
-            <CardTitle className="text-white">Connected Account</CardTitle>
-            <CardDescription className="text-gray-300">Connect your social accounts to the app</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col gap-6">
-              {/* Discord Connect Button */}
-              <div className="flex flex-col items-center w-full">
-                {discordInfo ? (
-                  <div className="flex flex-col items-center w-full gap-2">
-                    <Button
-                      className="w-full bg-red-600 hover:bg-red-700 text-white border-0 mb-2 flex items-center justify-center gap-2 text-base font-medium py-3"
-                      onClick={handleUnlinkDiscord}
-                      disabled={unlinkingDiscord}
-                    >
-                      <DiscordIcon className="w-6 h-6" />
-                      {unlinkingDiscord ? 'Unlinking...' : 'Unlink Discord'}
+          <CardContent>
+            <Tabs defaultValue="profile" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-[#181818] border-[#282828]">
+                <TabsTrigger value="profile" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Profile
+                </TabsTrigger>
+                <TabsTrigger value="wallet" className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4" />
+                  Wallet
+                </TabsTrigger>
+                <TabsTrigger value="accounts" className="flex items-center gap-2">
+                  <Link className="w-4 h-4" />
+                  Linked Accounts
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Profile Tab */}
+              <TabsContent value="profile" className="space-y-6 mt-6">
+                <div className="space-y-6">
+                  {/* Profile Image Upload */}
+                  <div className="flex flex-col items-center">
+                    <AvatarUpload
+                      currentAvatar={avatarUrl}
+                      onAvatarUploaded={handleAvatarUploaded}
+                      userId={walletUser ? walletUser.walletAddress.toLowerCase() : emailUser?.profile?.id}
+                      size="lg"
+                    />
+                  </div>
+
+                  {/* Profile Information */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-white block mb-2 text-sm font-medium">Username</label>
+                      <Input 
+                        value={username} 
+                        onChange={e => setUsername(e.target.value)} 
+                        className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400" 
+                        placeholder="Enter your username"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-white block mb-2 text-sm font-medium">Bio</label>
+                      <Textarea 
+                        value={bio} 
+                        onChange={e => setBio(e.target.value)} 
+                        rows={4} 
+                        className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400" 
+                        placeholder="Tell us about yourself..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status Messages */}
+                  {error && <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">{error}</div>}
+                  {success && <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm">{success}</div>}
+
+                  {/* Save Button */}
+                  <div className="flex justify-end">
+                    <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white">
+                      {saving ? "Saving..." : "Save Changes"}
                     </Button>
                   </div>
-                ) : (
-                  <Button
-                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 mb-2 flex items-center justify-center gap-2 text-base font-medium py-3"
-                    onClick={handleLinkDiscord}
-                  >
-                    <DiscordIcon className="w-6 h-6" />
-                    Connect Discord
-                  </Button>
-                )}
-              </div>
-              {/* X (Twitter) Connect Button */}
-              <div className="flex flex-col items-center w-full">
-                {/* Check if X (Twitter) is linked */}
-                {(() => {
-                  // Find Twitter identity from Supabase identities
-                  const [twitterIdentity] = (emailUser?.identities || [])
-                    .filter((i: any) => i.provider === 'twitter');
-                  if (twitterIdentity) {
-                    return (
-                      <div className="flex flex-col items-center w-full gap-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          {twitterIdentity.identity_data?.avatar_url && (
-                            <img src={twitterIdentity.identity_data.avatar_url} alt="X Avatar" className="w-8 h-8 rounded-full" />
-                          )}
-                          <span className="text-white font-medium">{twitterIdentity.identity_data?.user_name || 'X User'}</span>
-                          {twitterIdentity.identity_data?.user_name && (
-                            <a href={`https://x.com/${twitterIdentity.identity_data.user_name}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline ml-2">View Profile</a>
-                          )}
+                </div>
+              </TabsContent>
+
+              {/* Wallet Tab */}
+              <TabsContent value="wallet" className="space-y-6 mt-6">
+                <div className="space-y-6">
+                  {/* Current Account Info */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-white">Current Account</h3>
+                    <div className="space-y-3">
+                      {emailUser && (
+                        <div className="flex items-center justify-between p-4 bg-[#181818] rounded-lg border border-[#282828]">
+                          <div>
+                            <div className="text-sm text-gray-300">Email Account</div>
+                            <div className="text-white font-medium">{emailUser.email}</div>
+                          </div>
+                          <Badge variant="secondary" className="bg-green-600 text-white">Active</Badge>
                         </div>
-                        <Button
-                          className="w-full bg-red-600 hover:bg-red-700 text-white border-0 flex items-center justify-center gap-2 text-base font-medium py-3"
-                          onClick={handleUnlinkTwitter}
+                      )}
+                      {walletUser && (
+                        <div className="flex items-center justify-between p-4 bg-[#181818] rounded-lg border border-[#282828]">
+                          <div>
+                            <div className="text-sm text-gray-300">Wallet Address</div>
+                            <div className="text-white font-medium flex items-center gap-2">
+                              {walletUser.walletAddress.slice(0, 8)}...{walletUser.walletAddress.slice(-12)}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(walletUser.walletAddress)
+                                }}
+                                className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <Badge variant="secondary" className="bg-green-600 text-white">Connected</Badge>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Wallet Connection */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-white">Connect Wallet</h3>
+                    <div className="p-4 bg-[#181818] rounded-lg border border-[#282828]">
+                      <WalletConnect />
+                    </div>
+                  </div>
+
+                  {/* Disconnect Wallet */}
+                  {walletUser && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-white">Disconnect Wallet</h3>
+                      <div className="p-4 bg-[#181818] rounded-lg border border-[#282828]">
+                        <p className="text-gray-300 text-sm mb-4">Disconnect your wallet from this account. You can reconnect it later.</p>
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleDisconnectWallet}
+                          className="w-full"
                         >
-                          Unlink X
+                          Disconnect Wallet
                         </Button>
                       </div>
-                    );
-                  } else {
-                    return (
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Linked Accounts Tab */}
+              <TabsContent value="accounts" className="space-y-6 mt-6">
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold text-white">Connected Social Accounts</h3>
+                  
+                  {/* Discord */}
+                  <div className="p-4 bg-[#181818] rounded-lg border border-[#282828]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <DiscordIcon className="w-6 h-6 text-white" />
+                        <div>
+                          <div className="text-white font-medium">Discord</div>
+                          <div className="text-gray-300 text-sm">Connect your Discord account</div>
+                        </div>
+                      </div>
+                      {discordInfo && <Badge variant="secondary" className="bg-green-600 text-white">Connected</Badge>}
+                    </div>
+                    
+                    {discordInfo ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white">{discordInfo.username}</span>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          onClick={handleUnlinkDiscord}
+                          disabled={unlinkingDiscord}
+                          className="w-full"
+                        >
+                          {unlinkingDiscord ? 'Unlinking...' : 'Unlink Discord'}
+                        </Button>
+                      </div>
+                    ) : (
                       <Button
-                        onClick={async () => {
-                          try {
-                            const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
-                            if (error) {
-                              alert('Error linking Twitter: ' + String(error?.message || error));
-                            } else {
-                              alert('Twitter account linked!');
-                              window.location.reload();
-                            }
-                          } catch (err) {
-                            alert('Twitter link error: ' + String((err as Error)?.message || err));
-                          }
-                        }}
-                        className="w-full bg-blue-600 text-white flex items-center justify-center gap-2 mt-2"
+                        onClick={handleLinkDiscord}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75v-1.5A2.25 2.25 0 0015 3h-6A2.25 2.25 0 006.75 5.25v13.5A2.25 2.25 0 009 21h6a2.25 2.25 0 002.25-2.25v-1.5" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 8.25h2.25m0 0v2.25m0-2.25l-6 6" />
-                        </svg>
-                        Connect X
+                        <DiscordIcon className="w-5 h-5 mr-2" />
+                        Connect Discord
                       </Button>
-                    );
-                  }
-                })()}
-              </div>
-            </div>
+                    )}
+                  </div>
+
+                  {/* X (Twitter) */}
+                  <div className="p-4 bg-[#181818] rounded-lg border border-[#282828]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <XIcon className="w-6 h-6 text-white" />
+                        <div>
+                          <div className="text-white font-medium">X (Twitter)</div>
+                          <div className="text-gray-300 text-sm">Connect your X account</div>
+                        </div>
+                      </div>
+                      {(() => {
+                        const [twitterIdentity] = (emailUser?.identities || [])
+                          .filter((i: any) => i.provider === 'twitter');
+                        return twitterIdentity ? <Badge variant="secondary" className="bg-green-600 text-white">Connected</Badge> : null;
+                      })()}
+                    </div>
+                    
+                    {(() => {
+                      // Find Twitter identity from Supabase identities
+                      const [twitterIdentity] = (emailUser?.identities || [])
+                        .filter((i: any) => i.provider === 'twitter');
+                      if (twitterIdentity) {
+                        return (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              {twitterIdentity.identity_data?.avatar_url && (
+                                <img src={twitterIdentity.identity_data.avatar_url} alt="X Avatar" className="w-5 h-5 rounded-full" />
+                              )}
+                              <span className="text-white">{twitterIdentity.identity_data?.user_name || 'X User'}</span>
+                              {twitterIdentity.identity_data?.user_name && (
+                                <Button variant="ghost" size="sm" asChild className="text-blue-400 hover:text-blue-300">
+                                  <a href={`https://x.com/${twitterIdentity.identity_data.user_name}`} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="w-4 h-4" />
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                            <Button
+                              variant="destructive"
+                              onClick={handleUnlinkTwitter}
+                              disabled={unlinkingTwitter}
+                              className="w-full"
+                            >
+                              {unlinkingTwitter ? 'Unlinking...' : 'Unlink X'}
+                            </Button>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <Button
+                            onClick={async () => {
+                              try {
+                                const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
+                                if (error) {
+                                  alert('Error linking Twitter: ' + String(error?.message || error));
+                                } else {
+                                  alert('Twitter account linked!');
+                                  window.location.reload();
+                                }
+                              } catch (err) {
+                                alert('Twitter link error: ' + String((err as Error)?.message || err));
+                              }
+                            }}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <XIcon className="w-5 h-5 mr-2" />
+                            Connect X
+                          </Button>
+                        );
+                      }
+                    })()}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
