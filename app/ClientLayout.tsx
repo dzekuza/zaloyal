@@ -77,7 +77,7 @@ export default function ClientLayout({
   }
 
   return (
-    <div className={inter.className + " bg-[#181818]"}>
+    <div className={inter.className + " bg-[#181818] min-h-screen"}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
         <SidebarProvider>
           <Sidebar variant="inset">
@@ -117,9 +117,9 @@ export default function ClientLayout({
             </SidebarFooter>
             <SidebarRail />
           </Sidebar>
-          <SidebarInset>
+          <SidebarInset className="bg-[#181818]">
             <Navigation onAuthClick={() => setShowAuthDialog(true)} />
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 pb-20 md:pb-0 bg-[#181818]">{children}</main>
           </SidebarInset>
         </SidebarProvider>
 

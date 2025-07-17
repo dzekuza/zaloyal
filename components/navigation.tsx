@@ -16,7 +16,6 @@ import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import Image from "next/image";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface NavigationProps {
   onAuthClick: () => void
@@ -30,7 +29,6 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [copied, setCopied] = useState(false)
   const router = useRouter()
-  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
 
   useEffect(() => {
     // Check for wallet user
@@ -111,8 +109,8 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
   return (
     <>
       {/* Mobile Top Navigation */}
-      <div className="md:hidden fixed top-0 left-0 w-full z-50 flex items-center justify-between bg-[#181818] border-b-2 border-[#282828] px-4 h-14">
-        <Image src="/belinklogo.svg" alt="Belink Logo" className="h-8 w-auto" width={32} height={32} />
+      <div className="md:hidden fixed top-0 left-0 w-full z-50 flex items-center justify-between bg-[#181818]/80 backdrop-blur-md border-b-2 border-[#282828] px-4 h-16">
+        <Image src="/belinklogo.svg" alt="Belink Logo" className="h-6 w-auto" width={24} height={24} />
         {!loading && !currentUser && (
           <Button
             onClick={onAuthClick}
@@ -122,27 +120,23 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
           </Button>
         )}
         {!loading && currentUser && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setMobileProfileOpen(true)}
-            className="p-2"
-          >
-            <Avatar className="w-6 h-6">
-              <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
-              <AvatarFallback className="bg-[#111111] border border-[#282828] text-white text-xs">
-                {displayName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
+          <ProfileDropdown
+            displayName={displayName}
+            user={user}
+            emailUser={emailUser}
+            userStats={userStats}
+            handleSignOut={handleSignOut}
+            copied={copied}
+            onCopyAddress={handleCopyAddress}
+          />
         )}
       </div>
 
       {/* Spacer for mobile top navigation */}
-      <div className="md:hidden h-14 w-full"></div>
+      <div className="md:hidden h-16 w-full"></div>
 
       {/* Main Navigation (desktop and mobile) */}
-      <nav className="hidden md:block sticky top-0 z-50 border-b border-[#282828] bg-[#111111]">
+      <nav className="hidden md:block sticky top-0 z-50 border-b border-[#282828] bg-[#111111]/80 backdrop-blur-md">
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
             {/* Left: Search bar */}
@@ -162,35 +156,15 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
             {/* Right: Profile/User and Hamburger */}
             <div className="flex items-center gap-4">
               {!loading && (currentUser ? (
-                <>
-                  {/* User Stats - Desktop */}
-                  <div className="hidden lg:flex items-center space-x-4 text-sm">
-                    <div className="flex items-center gap-1 text-yellow-400">
-                      <Zap className="w-4 h-4" />
-                      <span className="font-semibold">{userStats.xp}</span>
-                      <span className="text-gray-400">XP</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-blue-400">
-                      <Trophy className="w-4 h-4" />
-                      <span className="font-semibold">L{userStats.level}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-green-400">
-                      <Users className="w-4 h-4" />
-                      <span className="font-semibold">#{userStats.rank}</span>
-                    </div>
-                  </div>
-
-                  {/* User Dropdown */}
-                  <ProfileDropdown
-                    displayName={displayName}
-                    user={user}
-                    emailUser={emailUser}
-                    userStats={userStats}
-                    handleSignOut={handleSignOut}
-                    copied={copied}
-                    onCopyAddress={handleCopyAddress}
-                  />
-                </>
+                <ProfileDropdown
+                  displayName={displayName}
+                  user={user}
+                  emailUser={emailUser}
+                  userStats={userStats}
+                  handleSignOut={handleSignOut}
+                  copied={copied}
+                  onCopyAddress={handleCopyAddress}
+                />
               ) : (
                 <Button
                   onClick={onAuthClick}
@@ -201,22 +175,6 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
               ))}
 
               <div className="flex md:hidden items-center gap-2 ml-auto">
-                {/* Mobile Profile Button */}
-                {(user || emailUser) && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setMobileProfileOpen(true)}
-                    className="hover:bg-white/10"
-                  >
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
-                      <AvatarFallback className="bg-[#111111] border border-[#282828] text-white">
-                        {displayName.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                )}
                 <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
                   {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </Button>
@@ -257,22 +215,6 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
           )}
         </div>
       </nav>
-
-      {/* Mobile Profile Modal */}
-      <Dialog open={mobileProfileOpen} onOpenChange={setMobileProfileOpen}>
-        <DialogContent className="max-w-xs w-full bg-[#111111] border-[#282828] p-0">
-          <DialogTitle className="sr-only">User Profile</DialogTitle>
-          <ProfileDropdown
-            displayName={displayName}
-            user={user}
-            emailUser={emailUser}
-            userStats={userStats}
-            handleSignOut={handleSignOut}
-            copied={copied}
-            onCopyAddress={handleCopyAddress}
-          />
-        </DialogContent>
-      </Dialog>
     </>
   )
 }
@@ -301,10 +243,10 @@ function ProfileDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10 py-3 h-14">
-          <Avatar className="w-8 h-8">
+        <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10 py-2 h-10 md:py-3 md:h-14">
+          <Avatar className="w-6 h-6 md:w-8 md:h-8">
             <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
-            <AvatarFallback className="bg-[#111111] border border-[#282828] text-white">
+            <AvatarFallback className="bg-[#111111] border border-[#282828] text-white text-xs md:text-sm">
               {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -337,7 +279,7 @@ function ProfileDropdown({
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 border-[#282828] bg-[#111111]">
+      <DropdownMenuContent align="end" className="w-56 md:w-64 border-[#282828] bg-[#111111]">
         <div className="px-2 py-1.5">
           <p className="text-sm font-medium text-white">{displayName}</p>
           <div className="flex items-center gap-1 text-xs text-gray-400">
@@ -366,23 +308,6 @@ function ProfileDropdown({
           </div>
         </div>
         <DropdownMenuSeparator className="bg-[#282828]" />
-        <div className="lg:hidden px-2 py-2">
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div>
-              <div className="text-yellow-400 font-bold">{userStats.xp}</div>
-              <div className="text-gray-400">XP</div>
-            </div>
-            <div>
-              <div className="text-blue-400 font-bold">L{userStats.level}</div>
-              <div className="text-gray-400">Level</div>
-            </div>
-            <div>
-              <div className="text-green-400 font-bold">#{userStats.rank}</div>
-              <div className="text-gray-400">Rank</div>
-            </div>
-          </div>
-        </div>
-        <DropdownMenuSeparator className="lg:hidden bg-[#282828]" />
         <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
           <Link href="/profile">
             <User className="w-4 h-4 mr-2" />

@@ -164,16 +164,29 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   // Fetch current user UUID when wallet user changes
   useEffect(() => {
     const fetchUserUUID = async () => {
-      if (walletUser?.walletAddress) {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("id")
-          .eq("wallet_address", walletUser.walletAddress.toLowerCase())
-          .single()
-        
-        if (userData) {
-          setCurrentUserUUID(userData.id)
+      try {
+        if (walletUser?.walletAddress) {
+          const { data: userData, error } = await supabase
+            .from("users")
+            .select("id")
+            .eq("wallet_address", walletUser.walletAddress.toLowerCase())
+            .single()
+          
+          if (userData && !error) {
+            setCurrentUserUUID(userData.id)
+            console.log('Found user UUID from wallet:', userData.id)
+          } else {
+            console.log('No user found for wallet address:', walletUser.walletAddress)
+          }
+        } else if (emailUser?.profile?.id) {
+          // For email users, use the profile ID directly
+          setCurrentUserUUID(emailUser.profile.id)
+          console.log('Found user UUID from email profile:', emailUser.profile.id)
+        } else {
+          console.log('No wallet or email user found')
         }
+      } catch (error) {
+        console.error('Error fetching user UUID:', error)
       }
     }
     
@@ -550,7 +563,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       isProjectOwner,
       walletUser: walletUser?.walletAddress,
       emailUser: emailUser?.profile?.id,
-      questData: quest
+      questData: quest,
+      projectsData: quest.projects
     })
     
     return isProjectOwner
@@ -657,12 +671,13 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   // Debug quest data
   console.log('Quest data:', quest)
   console.log('User data:', { walletUser, emailUser })
+  console.log('Full quest object:', JSON.stringify(quest, null, 2))
 
   return (
     <div className="min-h-screen" style={{ background: '#181818' }}>
       <div className="w-full px-2 sm:px-4 py-8">
         {/* Back Button */}
-        <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors">
+        <Link href={quest.project_id ? `/project/${quest.project_id}` : "/"} className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Back to Quests
         </Link>
@@ -1008,50 +1023,50 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             </Dialog>
 
             {/* Tasks List */}
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {tasks.map((task, index) => {
                 const isCompleted = task.user_task_submissions
                 const isVerifying = verifyingTask === task.id
                 return (
-                  <div key={task.id} className="flex items-start gap-4 p-4 bg-[#181818] rounded-lg border border-[#282828]">
+                  <div key={task.id} className="flex items-start gap-3 md:gap-4 p-3 md:p-4 bg-[#181818] rounded-lg border border-[#282828]">
                     <div className="flex-shrink-0">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center ${
                         isCompleted ? 'bg-green-500' : 'bg-gray-600'
                       }`}>
                         {isCompleted ? (
-                          <CheckCircle className="w-5 h-5 text-white" />
+                          <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
                         ) : (
-                          <span className="text-white font-semibold">{index + 1}</span>
+                          <span className="text-white font-semibold text-xs md:text-sm">{index + 1}</span>
                         )}
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             {getTaskIcon(task)}
-                            <h3 className="text-white font-semibold">{task.title}</h3>
+                            <h3 className="text-white font-semibold text-sm md:text-base">{task.title}</h3>
                             {isCompleted && (
                               <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
                                 Completed
                               </Badge>
                             )}
                           </div>
-                          <p className="text-gray-300 text-sm mb-3">{task.description}</p>
+                          <p className="text-gray-300 text-xs md:text-sm mb-3">{task.description}</p>
                           
                           {/* Task-specific content */}
                           {task.task_type === "social" && task.social_platform === "twitter" && (
-                            <div className="space-y-2">
-                              <div className="text-sm text-gray-400">
+                            <div className="space-y-1 md:space-y-2">
+                              <div className="text-xs md:text-sm text-gray-400">
                                 {getTwitterTaskHeading(task.social_action || "follow")}
                               </div>
                               {task.social_username && (
-                                <div className="text-sm text-gray-300">
+                                <div className="text-xs md:text-sm text-gray-300">
                                   @{task.social_username}
                                 </div>
                               )}
                               {task.social_post_id && (
-                                <div className="text-sm text-gray-300">
+                                <div className="text-xs md:text-sm text-gray-300">
                                   Post ID: {task.social_post_id}
                                 </div>
                               )}
@@ -1059,10 +1074,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           )}
                           
                           {task.task_type === "social" && task.social_platform === "telegram" && (
-                            <div className="space-y-2">
-                              <div className="text-sm text-gray-400">Join Telegram Channel</div>
+                            <div className="space-y-1 md:space-y-2">
+                              <div className="text-xs md:text-sm text-gray-400">Join Telegram Channel</div>
                               {task.social_url && (
-                                <div className="text-sm text-gray-300">
+                                <div className="text-xs md:text-sm text-gray-300">
                                   <a href={getAbsoluteUrl(task.social_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
                                     {task.social_url}
                                   </a>
@@ -1104,10 +1119,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           )}
                           
                           {task.task_type === "social" && task.social_platform === "discord" && (
-                            <div className="space-y-2">
-                              <div className="text-sm text-gray-400">Join Discord Server</div>
+                            <div className="space-y-1 md:space-y-2">
+                              <div className="text-xs md:text-sm text-gray-400">Join Discord Server</div>
                               {task.social_url && (
-                                <div className="text-sm text-gray-300">
+                                <div className="text-xs md:text-sm text-gray-300">
                                   <a href={getAbsoluteUrl(task.social_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
                                     {task.social_url}
                                   </a>
@@ -1117,9 +1132,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           )}
                           
                           {task.task_type === "download" && task.download_url && (
-                            <div className="space-y-2">
-                              <div className="text-sm text-gray-400">Download File</div>
-                              <div className="text-sm text-gray-300">
+                            <div className="space-y-1 md:space-y-2">
+                              <div className="text-xs md:text-sm text-gray-400">Download File</div>
+                              <div className="text-xs md:text-sm text-gray-300">
                                 <a href={getAbsoluteUrl(task.download_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
                                   {task.download_url}
                                 </a>
@@ -1128,9 +1143,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           )}
                           
                           {task.task_type === "visit" && task.visit_url && (
-                            <div className="space-y-2">
-                              <div className="text-sm text-gray-400">Visit Website</div>
-                              <div className="text-sm text-gray-300">
+                            <div className="space-y-1 md:space-y-2">
+                              <div className="text-xs md:text-sm text-gray-400">Visit Website</div>
+                              <div className="text-xs md:text-sm text-gray-300">
                                 <a href={getAbsoluteUrl(task.visit_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
                                   {task.visit_url}
                                 </a>
@@ -1139,15 +1154,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           )}
                           
                           {task.task_type === "learn" && (
-                            <div className="space-y-2">
-                              <div className="text-sm text-gray-400">Complete Quiz</div>
+                            <div className="space-y-1 md:space-y-2">
+                              <div className="text-xs md:text-sm text-gray-400">Complete Quiz</div>
                               {task.learn_content && (
-                                <div className="text-sm text-gray-300 font-medium">
+                                <div className="text-xs md:text-sm text-gray-300 font-medium">
                                   {task.learn_content}
                                 </div>
                               )}
                               {task.learn_questions && (
-                                <div className="text-sm text-gray-400">
+                                <div className="text-xs md:text-sm text-gray-400">
                                   {task.learn_questions.answers?.length || 0} answer options
                                   {task.learn_questions.multiSelect ? " (Multi-select)" : " (Single-select)"}
                                 </div>
@@ -1156,7 +1171,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 md:gap-2">
                           {isAdminOrCreator() && (
                             <div className="flex gap-1">
                               <Button
@@ -1166,26 +1181,26 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                                   setEditingTask(task)
                                   setShowEditTask(true)
                                 }}
-                                className="h-8 w-8 p-0"
+                                className="h-6 w-6 md:h-8 md:w-8 p-0"
                               >
-                                <FileText className="w-4 h-4" />
+                                <FileText className="w-3 h-3 md:w-4 md:h-4" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="destructive"
                                 onClick={() => handleDeleteTask(task.id)}
-                                className="h-8 w-8 p-0"
+                                className="h-6 w-6 md:h-8 md:w-8 p-0"
                               >
-                                <Trash className="w-4 h-4" />
+                                <Trash className="w-3 h-3 md:w-4 md:h-4" />
                               </Button>
                             </div>
                           )}
                           {!isCompleted && (
-                            <div className="flex gap-2">
+                            <div className="flex gap-1 md:gap-2">
                               {task.task_type === "learn" ? (
                                 <Button
                                   onClick={() => setShowQuiz(s => ({ ...s, [task.id]: true }))}
-                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
                                   size="sm"
                                 >
                                   Start Quiz
@@ -1194,7 +1209,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                                 <Button
                                   onClick={() => handleTaskVerification(task)}
                                   disabled={isVerifying}
-                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
                                   size="sm"
                                 >
                                   {isVerifying ? "Verifying..." : "Verify Task"}
@@ -1204,9 +1219,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           )}
                         </div>
                       </div>
-                      
-                      {/* Action buttons */}
-                      {/* Removed action buttons from here */}
                     </div>
                   </div>
                 )
@@ -1216,7 +1228,11 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         </Card>
 
         {/* Quiz Modals */}
-        {tasks.map(task => renderQuizModal(task))}
+        {tasks.map(task => (
+          <div key={task.id}>
+            {renderQuizModal(task)}
+          </div>
+        ))}
       </div>
     </div>
   )
