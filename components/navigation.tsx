@@ -268,7 +268,7 @@ function ProfileDropdown({
         <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10 py-3 h-14">
           <Avatar className="w-8 h-8">
             <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
-            <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+            <AvatarFallback className="bg-[#111111] border border-[#282828] text-white">
               {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -362,14 +362,14 @@ function ProfileDropdown({
             </div>
           </div>
         </div>
-        <DropdownMenuSeparator className="lg:hidden bg-emerald-700" />
+        <DropdownMenuSeparator className="lg:hidden bg-[#282828]" />
         <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
           <Link href="/profile">
             <User className="w-4 h-4 mr-2" />
             Profile
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator className="bg-emerald-700" />
+        <DropdownMenuSeparator className="bg-[#282828]" />
         <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
           <Link href="/register-project">
             <Building2 className="w-4 h-4 mr-2" />

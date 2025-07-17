@@ -193,7 +193,7 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
             <Button
               onClick={handleLogin}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
             >
               {loading ? "Signing In..." : "Sign In"}
             </Button>

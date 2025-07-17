@@ -345,7 +345,7 @@ export default function ProjectDetailPage() {
                       {isOwner && (
                         <Dialog open={editingQuest?.id === quest.id} onOpenChange={open => setEditingQuest(open ? quest : null)}>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="w-full bg-green-600 hover:bg-green-700 text-white border-0" onClick={e => e.preventDefault()}>Edit Quest</Button>
+                            <Button size="sm" variant="outline" className="w-full bg-green-600 hover:bg-green-700 text-white border-0" onClick={e => { e.preventDefault(); e.stopPropagation(); }}>Edit Quest</Button>
                           </DialogTrigger>
                           <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
                             <DialogHeader>
