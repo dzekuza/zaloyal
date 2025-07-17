@@ -48,6 +48,10 @@ import { Textarea } from "@/components/ui/textarea"
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
   users: Database["public"]["Tables"]["users"]["Row"] | null
+  project_id?: string | null
+  projects?: {
+    owner_id: string
+  } | null
 }
 type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
   user_task_submissions?: Database["public"]["Tables"]["user_task_submissions"]["Row"] | null
@@ -112,6 +116,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     socialUrl: "",
     socialUsername: "",
     socialPostId: "",
+    // Quiz fields
+    quizHeadline: "",
+    quizDescription: "",
+    quizAnswers: ["", "", "", ""],
+    quizCorrectAnswers: [],
+    quizMultiSelect: false,
     // ... other fields as needed
   })
 
@@ -318,6 +328,16 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         social_post_id: newTask.type === "social" ? newTask.socialPostId : null,
         download_url: newTask.type === "download" ? newTask.downloadUrl : null,
         visit_url: newTask.type === "visit" ? newTask.visitUrl : null,
+        // Quiz fields
+        learn_content: newTask.type === "learn" ? newTask.quizHeadline : null,
+        learn_questions: newTask.type === "learn" ? {
+          question: newTask.quizHeadline,
+          description: newTask.quizDescription,
+          answers: newTask.quizAnswers.filter((answer: string) => answer.trim() !== ""),
+          correctAnswers: newTask.quizCorrectAnswers,
+          multiSelect: newTask.quizMultiSelect
+        } : null,
+        learn_passing_score: newTask.type === "learn" ? 100 : null,
       }
 
       const { data, error } = await supabase.from("tasks").insert(taskData).select().single()
@@ -335,6 +355,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         socialUrl: "",
         socialUsername: "",
         socialPostId: "",
+        // Quiz fields
+        quizHeadline: "",
+        quizDescription: "",
+        quizAnswers: ["", "", "", ""],
+        quizCorrectAnswers: [],
+        quizMultiSelect: false,
       })
     } catch (error: any) {
       setCreateTaskError(error.message || "Failed to create task")
@@ -387,6 +413,80 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     }
   }
 
+  const handleQuizSubmission = async (task: Task) => {
+    const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
+    if (!userObj) {
+      alert("Please sign in first")
+      return
+    }
+
+    setVerifyingTask(task.id)
+    try {
+      const quizData = task.learn_questions;
+      if (!quizData) {
+        alert("Quiz data not found")
+        return
+      }
+
+      const userAnswers = quizAnswers[task.id] || [];
+      const correctAnswers = quizData.correctAnswers || [];
+      
+      // Check if answers are correct
+      let isCorrect = false;
+      if (quizData.multiSelect) {
+        // For multi-select, all correct answers must be selected and no incorrect ones
+        isCorrect = correctAnswers.length === userAnswers.length && 
+                   correctAnswers.every((answer: number) => userAnswers.includes(answer));
+      } else {
+        // For single-select, the selected answer must be correct
+        isCorrect = userAnswers.length === 1 && correctAnswers.includes(userAnswers[0]);
+      }
+
+      let response;
+      let baseData: any = { taskId: task.id }
+      if (walletUser) {
+        baseData.userWallet = walletUser.walletAddress
+      } else if (emailUser?.profile) {
+        baseData.userId = emailUser.profile.id
+        baseData.userEmail = emailUser.email
+      }
+
+      response = await fetch("/api/verify/learn-completion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...baseData,
+          answers: userAnswers,
+          isCorrect: isCorrect,
+          quizData: quizData
+        }),
+      })
+
+      if (response) {
+        const result = await response.json()
+        if (result.success) {
+          // Update local state to reflect completion
+          setTasks(prevTasks => 
+            prevTasks.map(t => 
+              t.id === task.id 
+                ? { ...t, user_task_submissions: { ...result.submission } }
+                : t
+            )
+          )
+          setShowQuiz(s => ({ ...s, [task.id]: false }))
+          alert(isCorrect ? "Quiz completed successfully!" : "Quiz completed, but some answers were incorrect.")
+        } else {
+          alert(result.error || "Quiz submission failed")
+        }
+      }
+    } catch (error) {
+      console.error("Quiz submission error:", error)
+      alert("Quiz submission failed. Please try again.")
+    } finally {
+      setVerifyingTask(null)
+    }
+  }
+
   const getTaskIcon = (task: Task) => {
     switch (task.task_type) {
       case "social":
@@ -415,12 +515,110 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
   const isAdminOrCreator = () => {
     const currentUserId = walletUser?.walletAddress?.toLowerCase() || emailUser?.profile?.id
-    return currentUserId === quest.creator_id
+    
+    // Check if user is the creator (for older quests)
+    const isCreator = currentUserId === quest.creator_id
+    
+    // Check if user is the project owner (for newer quests)
+    const isProjectOwner = quest.project_id && quest.projects?.owner_id && currentUserId === quest.projects.owner_id
+    
+    console.log('Admin check:', { 
+      currentUserId, 
+      creatorId: quest.creator_id,
+      projectId: quest.project_id,
+      projectOwnerId: quest.projects?.owner_id,
+      isCreator,
+      isProjectOwner,
+      walletUser: walletUser?.walletAddress,
+      emailUser: emailUser?.profile?.id,
+      questCreatorId: quest.creator_id
+    })
+    
+    return isCreator || isProjectOwner
   }
 
   const renderQuizModal = (task: Task) => {
-    // For now, return null since quiz_questions field doesn't exist in the current schema
-    return null
+    if (task.task_type !== "learn" || !showQuiz[task.id]) return null;
+    
+    const quizData = task.learn_questions;
+    if (!quizData) return null;
+    
+    return (
+      <Dialog open={showQuiz[task.id]} onOpenChange={(open) => setShowQuiz(s => ({ ...s, [task.id]: open }))}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">{task.title}</DialogTitle>
+            <DialogDescription className="text-gray-300">{task.description}</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {quizData.question && (
+              <div>
+                <h3 className="text-white font-semibold mb-2">{quizData.question}</h3>
+                {quizData.description && (
+                  <p className="text-gray-300 text-sm mb-4">{quizData.description}</p>
+                )}
+              </div>
+            )}
+            
+            <div className="space-y-3">
+              <p className="text-gray-300 text-sm">
+                {quizData.multiSelect ? "Select all correct answers:" : "Select the correct answer:"}
+              </p>
+              
+              {quizData.answers?.map((answer: string, index: number) => (
+                <div key={index} className="flex items-center space-x-3">
+                  <input
+                    type={quizData.multiSelect ? "checkbox" : "radio"}
+                    name={`quiz-${task.id}`}
+                    id={`answer-${task.id}-${index}`}
+                    className="w-4 h-4 text-green-500 bg-white/10 border-white/20 rounded"
+                    onChange={(e) => {
+                      const currentAnswers = quizAnswers[task.id] || [];
+                      let newAnswers;
+                      
+                      if (quizData.multiSelect) {
+                        if (e.target.checked) {
+                          newAnswers = [...currentAnswers, index];
+                        } else {
+                          newAnswers = currentAnswers.filter(i => i !== index);
+                        }
+                      } else {
+                        newAnswers = e.target.checked ? [index] : [];
+                      }
+                      
+                      setQuizAnswers(prev => ({ ...prev, [task.id]: newAnswers }));
+                    }}
+                  />
+                  <label 
+                    htmlFor={`answer-${task.id}-${index}`}
+                    className="text-white cursor-pointer flex-1"
+                  >
+                    {answer}
+                  </label>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowQuiz(s => ({ ...s, [task.id]: false }))}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleQuizSubmission(task)}
+                disabled={!quizAnswers[task.id] || quizAnswers[task.id].length === 0}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                Submit Quiz
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   const TWITTER_TASK_TYPES = [
@@ -436,6 +634,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   ];
 
   if (!mounted) return null; // or a loading spinner
+
+  // Debug quest data
+  console.log('Quest data:', quest)
+  console.log('User data:', { walletUser, emailUser })
 
   return (
     <div className="min-h-screen" style={{ background: '#181818' }}>
@@ -593,6 +795,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                   <Plus className="w-4 h-4" /> Add Task
                 </Button>
               )}
+              {/* Debug info */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="text-xs text-gray-400 mt-2">
+                  Debug: isAdminOrCreator = {isAdminOrCreator() ? 'true' : 'false'}
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="bg-[#111111] p-6">
@@ -665,6 +873,87 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
                         </>
                       )}
+                    </div>
+                  )}
+                  {/* Quiz task fields */}
+                  {newTask.type === "learn" && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-white block mb-1">Quiz Headline</label>
+                        <Input 
+                          value={newTask.quizHeadline} 
+                          onChange={e => setNewTask((t: typeof newTask) => ({ ...t, quizHeadline: e.target.value }))} 
+                          className="bg-white/10 border-white/20 text-white" 
+                          placeholder="Enter quiz question or headline"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-white block mb-1">Quiz Description</label>
+                        <Textarea 
+                          value={newTask.quizDescription} 
+                          onChange={e => setNewTask((t: typeof newTask) => ({ ...t, quizDescription: e.target.value }))} 
+                          className="bg-white/10 border-white/20 text-white" 
+                          placeholder="Enter quiz description or additional context"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-white block mb-1">Answer Type</label>
+                        <Select 
+                          value={newTask.quizMultiSelect ? "multi" : "single"} 
+                          onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ 
+                            ...t, 
+                            quizMultiSelect: val === "multi",
+                            quizCorrectAnswers: val === "multi" ? [] : [0] // Reset to single answer if switching
+                          }))}
+                        >
+                          <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#111111] border-[#282828]">
+                            <SelectItem value="single" className="text-white">Single Select</SelectItem>
+                            <SelectItem value="multi" className="text-white">Multi Select</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-white block mb-1">Answer Options (1-4)</label>
+                        <div className="space-y-2">
+                          {[0, 1, 2, 3].map((index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <Input
+                                value={newTask.quizAnswers[index] || ""}
+                                onChange={(e) => {
+                                  const newAnswers = [...newTask.quizAnswers];
+                                  newAnswers[index] = e.target.value;
+                                  setNewTask((t: typeof newTask) => ({ ...t, quizAnswers: newAnswers }));
+                                }}
+                                className="bg-white/10 border-white/20 text-white flex-1"
+                                placeholder={`Answer ${index + 1}`}
+                              />
+                              <input
+                                type={newTask.quizMultiSelect ? "checkbox" : "radio"}
+                                name="correctAnswer"
+                                checked={newTask.quizCorrectAnswers.includes(index)}
+                                onChange={(e) => {
+                                  let newCorrectAnswers;
+                                  if (newTask.quizMultiSelect) {
+                                    if (e.target.checked) {
+                                      newCorrectAnswers = [...newTask.quizCorrectAnswers, index];
+                                                                         } else {
+                                       newCorrectAnswers = newTask.quizCorrectAnswers.filter((i: number) => i !== index);
+                                     }
+                                  } else {
+                                    newCorrectAnswers = e.target.checked ? [index] : [];
+                                  }
+                                  setNewTask((t: typeof newTask) => ({ ...t, quizCorrectAnswers: newCorrectAnswers }));
+                                }}
+                                className="w-4 h-4 text-green-500 bg-white/10 border-white/20 rounded"
+                              />
+                              <span className="text-white text-sm">Correct</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
                   <div>
@@ -795,12 +1084,38 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                                   </a>
                                 </div>
                               )}
-                                                             {!isCompleted && (
-                                 <TelegramLoginWidget
-                                   botUsername="your_bot_username"
-                                   onAuth={(telegramUser) => handleTelegramAuth(task, telegramUser)}
-                                 />
-                               )}
+                              {!isCompleted && (
+                                <div className="mt-2">
+                                  <TelegramLoginWidget
+                                    botName="YourBotName" // TODO: Replace with your bot's username
+                                    onAuth={async (telegramUser) => {
+                                      setVerifyingTask(task.id);
+                                      const res = await fetch("/api/verify/telegram-join-real", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          userWallet: walletUser?.walletAddress,
+                                          telegramUserId: telegramUser.id,
+                                          telegramUsername: telegramUser.username,
+                                          channelId: task.social_url?.split("/").pop(),
+                                          taskId: task.id,
+                                        }),
+                                      });
+                                      const data = await res.json();
+                                      setSubmissionData((prev: any) => ({ ...prev, [task.id]: data }));
+                                      setVerifyingTask(null);
+                                      if (data.verified) {
+                                        // Optionally refresh tasks or show success
+                                      }
+                                    }}
+                                  />
+                                  {submissionData[task.id] && (
+                                    <div className={submissionData[task.id].verified ? "text-green-500 mt-2" : "text-red-500 mt-2"}>
+                                      {submissionData[task.id].message}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                           
@@ -839,14 +1154,22 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                             </div>
                           )}
                           
-                                                     {task.task_type === "learn" && (
-                             <div className="space-y-2">
-                               <div className="text-sm text-gray-400">Complete Quiz</div>
-                               <div className="text-sm text-gray-300">
-                                 Quiz task
-                               </div>
-                             </div>
-                           )}
+                          {task.task_type === "learn" && (
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">Complete Quiz</div>
+                              {task.learn_content && (
+                                <div className="text-sm text-gray-300 font-medium">
+                                  {task.learn_content}
+                                </div>
+                              )}
+                              {task.learn_questions && (
+                                <div className="text-sm text-gray-400">
+                                  {task.learn_questions.answers?.length || 0} answer options
+                                  {task.learn_questions.multiSelect ? " (Multi-select)" : " (Single-select)"}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex items-center gap-2">

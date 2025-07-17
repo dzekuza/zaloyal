@@ -3,21 +3,38 @@ import { supabase } from "@/lib/supabase"
 
 export async function POST(request: NextRequest) {
   try {
-    const { userWallet, taskId, answers } = await request.json()
+    const { userWallet, userId, userEmail, taskId, answers, isCorrect, quizData } = await request.json()
 
-    if (!userWallet || !taskId || !answers) {
+    if (!taskId || !answers) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
     }
 
     // Get user from database
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("wallet_address", userWallet.toLowerCase())
-      .single()
+    let user;
+    if (userWallet) {
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("wallet_address", userWallet.toLowerCase())
+        .single()
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      if (userError || !userData) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 })
+      }
+      user = userData;
+    } else if (userId) {
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", userId)
+        .single()
+
+      if (userError || !userData) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 })
+      }
+      user = userData;
+    } else {
+      return NextResponse.json({ error: "User authentication required" }, { status: 401 })
     }
 
     // Get task details
@@ -27,25 +44,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 })
     }
 
-    // Check answers against correct answers
-    const questions = task.learn_questions || []
-    let correctAnswers = 0
-    const totalQuestions = questions.length
+    // Use the isCorrect flag from the frontend or calculate it
+    let passed = isCorrect;
+    let score = 100; // Default to 100% if correct
+    let correctAnswers = answers.length;
+    let totalQuestions = 1; // Single quiz question
+    const passingScore = task.learn_passing_score || 80;
 
-    if (totalQuestions === 0) {
-      return NextResponse.json({ error: "No questions found for this task" }, { status: 400 })
-    }
-
-    // Calculate score
-    questions.forEach((question: any, index: number) => {
-      if (answers[index] === question.correctAnswer) {
-        correctAnswers++
+    // If isCorrect is not provided, calculate it
+    if (typeof isCorrect === 'undefined' && quizData) {
+      const correctAnswersList = quizData.correctAnswers || [];
+      
+      if (quizData.multiSelect) {
+        // For multi-select, all correct answers must be selected and no incorrect ones
+        passed = correctAnswersList.length === answers.length && 
+                correctAnswersList.every((answer: number) => answers.includes(answer));
+      } else {
+        // For single-select, the selected answer must be correct
+        passed = answers.length === 1 && correctAnswersList.includes(answers[0]);
       }
-    })
-
-    const score = Math.round((correctAnswers / totalQuestions) * 100)
-    const passingScore = task.learn_passing_score || 80
-    const passed = score >= passingScore
+      
+      score = passed ? 100 : 0;
+    }
 
     // Create task submission
     const { error: submissionError } = await supabase.from("user_task_submissions").upsert({

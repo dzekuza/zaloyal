@@ -1,57 +1,67 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef } from "react";
 
 interface TelegramLoginWidgetProps {
-  botUsername: string
-  onAuth: (user: any) => void
-  buttonSize?: "large" | "medium" | "small"
-  cornerRadius?: number
-  requestAccess?: boolean
+  botName: string; // Your bot's username, e.g. 'MyBot'
+  onAuth: (telegramUser: {
+    id: number;
+    username: string;
+    first_name?: string;
+    last_name?: string;
+    photo_url?: string;
+    auth_date: number;
+    hash: string;
+  }) => void;
+  buttonText?: string;
+  className?: string;
 }
 
-export default function TelegramLoginWidget({
-  botUsername,
-  onAuth,
-  buttonSize = "medium",
-  cornerRadius = 10,
-  requestAccess = true,
-}: TelegramLoginWidgetProps) {
-  const ref = useRef<HTMLDivElement>(null)
+export default function TelegramLoginWidget({ botName, onAuth, buttonText = "Verify with Telegram", className = "" }: TelegramLoginWidgetProps) {
+  const widgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (ref.current) {
-      // Clear any existing content
-      ref.current.innerHTML = ""
-
-      // Create script element for Telegram Widget
-      const script = document.createElement("script")
-      script.src = "https://telegram.org/js/telegram-widget.js?22"
-      script.setAttribute("data-telegram-login", botUsername)
-      script.setAttribute("data-size", buttonSize)
-      script.setAttribute("data-corner-radius", cornerRadius.toString())
-      script.setAttribute("data-request-access", requestAccess ? "write" : "")
-      script.setAttribute("data-userpic", "false")
-      script.setAttribute("data-onauth", "onTelegramAuth(user)")
-
-      // Add global callback function
-      ;(window as any).onTelegramAuth = (user: any) => {
-        onAuth(user)
-      }
-
-      ref.current.appendChild(script)
+    // Clean up any previous widget
+    if (widgetRef.current) {
+      widgetRef.current.innerHTML = "";
     }
+    // @ts-ignore
+    window.TelegramLoginWidget = undefined;
+
+    // Create the script
+    const script = document.createElement("script");
+    script.src = "https://telegram.org/js/telegram-widget.js?7";
+    script.async = true;
+    script.setAttribute("data-telegram-login", botName);
+    script.setAttribute("data-size", "large");
+    script.setAttribute("data-radius", "8");
+    script.setAttribute("data-userpic", "false");
+    script.setAttribute("data-request-access", "write");
+    script.setAttribute("data-lang", "en");
+    script.setAttribute("data-onauth", "window.handleTelegramAuth(user)");
+    if (buttonText) {
+      script.setAttribute("data-auth-url", ""); // disables redirect
+      script.setAttribute("data-button-text", buttonText);
+    }
+    if (widgetRef.current) {
+      widgetRef.current.appendChild(script);
+    }
+
+    // Expose the callback globally
+    // @ts-ignore
+    window.handleTelegramAuth = (user: any) => {
+      onAuth(user);
+    };
 
     return () => {
-      // Cleanup global function
-      delete (window as any).onTelegramAuth
-    }
-  }, [botUsername, buttonSize, cornerRadius, requestAccess, onAuth])
+      // Clean up
+      // @ts-ignore
+      window.handleTelegramAuth = undefined;
+      if (widgetRef.current) {
+        widgetRef.current.innerHTML = "";
+      }
+    };
+  }, [botName, onAuth, buttonText]);
 
-  return (
-    <div>
-      <div ref={ref} />
-      <p className="text-xs text-gray-400 mt-2">Click to authenticate with Telegram and verify group membership</p>
-    </div>
-  )
+  return <div ref={widgetRef} className={className} />;
 }

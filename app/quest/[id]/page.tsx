@@ -13,7 +13,7 @@ export default async function QuestDetail({
   // Fetch quest and related data
   const { data: quest } = await supabase
     .from("quests")
-    .select(`*, quest_categories(*), users(*)`)
+    .select(`*, quest_categories(*), users(*), projects(owner_id)`)
     .eq("id", questId)
     .single()
   // Fetch tasks for the quest

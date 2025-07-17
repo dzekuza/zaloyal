@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase"
 
 export async function POST(request: NextRequest) {
   try {
-    const { userWallet, username, groupId, taskId } = await request.json()
+    const { userWallet, telegramUserId, telegramUsername, channelId, taskId } = await request.json()
 
     // Get user and task from database
     const { data: user } = await supabase
@@ -18,39 +18,79 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User or task not found" }, { status: 404 })
     }
 
-    // Real Telegram Bot API verification
-    const isMember = await verifyTelegramMembership(username, groupId)
+    // Verify Telegram membership using multiple methods
+    const verificationResult = await verifyTelegramMembership(telegramUserId, telegramUsername, channelId)
 
-    if (isMember) {
+    if (verificationResult.verified) {
+      // Check if already submitted
+      const { data: existingSubmission } = await supabase
+        .from("user_task_submissions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("task_id", taskId)
+        .single()
+
+      if (existingSubmission) {
+        return NextResponse.json({ 
+          verified: true, 
+          message: "Task already completed!",
+          xpEarned: 0 
+        })
+      }
+
+      // Create submission
       await supabase.from("user_task_submissions").upsert({
         user_id: user.id,
         task_id: taskId,
         quest_id: task.quest_id,
         status: "verified",
-        submission_data: { username, group_id: groupId, verified_at: new Date().toISOString() },
-        verification_data: { method: "telegram_bot_api", verified: true },
+        submission_data: { 
+          telegram_user_id: telegramUserId,
+          telegram_username: telegramUsername, 
+          channel_id: channelId, 
+          verified_at: new Date().toISOString() 
+        },
+        verification_data: { 
+          method: "telegram_bot_api", 
+          verified: true,
+          verification_method: verificationResult.method
+        },
         xp_earned: task.xp_reward,
         verified_at: new Date().toISOString(),
       })
 
+      // Update user XP
       await supabase.rpc("increment_user_xp", {
         user_wallet: userWallet.toLowerCase(),
         xp_amount: task.xp_reward,
       })
-    }
 
-    return NextResponse.json({
-      verified: isMember,
-      message: isMember ? "Membership verified!" : "Please join the group first",
-      xpEarned: isMember ? task.xp_reward : 0,
-    })
+      return NextResponse.json({
+        verified: true,
+        message: "Channel membership verified!",
+        xpEarned: task.xp_reward,
+      })
+    } else {
+      return NextResponse.json({
+        verified: false,
+        message: verificationResult.error || "Please join the channel first",
+        xpEarned: 0,
+      })
+    }
   } catch (error) {
     console.error("Telegram verification error:", error)
-    return NextResponse.json({ error: "Verification failed" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Verification failed", 
+      details: error instanceof Error ? error.message : "Unknown error" 
+    }, { status: 500 })
   }
 }
 
-async function verifyTelegramMembership(username: string, groupId: string): Promise<boolean> {
+async function verifyTelegramMembership(
+  telegramUserId: number, 
+  telegramUsername: string, 
+  channelId: string
+): Promise<{ verified: boolean; method?: string; error?: string }> {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN
 
@@ -58,44 +98,62 @@ async function verifyTelegramMembership(username: string, groupId: string): Prom
       throw new Error("Telegram Bot Token not configured")
     }
 
-    // Step 1: Get user ID from username (requires the user to have messaged the bot first)
-    const updatesResponse = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`)
-    const updatesData = await updatesResponse.json()
+    // Method 1: Direct channel membership check (if bot is admin of the channel)
+    try {
+      const memberResponse = await fetch(
+        `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${channelId}&user_id=${telegramUserId}`,
+        { method: 'GET' }
+      )
 
-    // Find user by username in recent messages
-    let userId: number | null = null
-    for (const update of updatesData.result || []) {
-      if (update.message?.from?.username === username) {
-        userId = update.message.from.id
-        break
+      if (memberResponse.ok) {
+        const memberData = await memberResponse.json()
+        
+        if (memberData.ok) {
+          const status = memberData.result?.status
+          const isMember = ["member", "administrator", "creator"].includes(status)
+          
+          if (isMember) {
+            return { verified: true, method: "direct_channel_check" }
+          } else {
+            return { verified: false, error: "User is not a member of the channel" }
+          }
+        }
       }
+    } catch (error) {
+      console.log("Direct channel check failed, trying alternative methods:", error)
     }
 
-    if (!userId) {
-      // Alternative: Ask user to send a specific message to the bot first
-      throw new Error("User must message the bot first for verification")
+    // Method 2: Check if user has recent activity in the channel
+    try {
+      const updatesResponse = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`)
+      const updatesData = await updatesResponse.json()
+
+      // Look for recent messages from this user in the target channel
+      for (const update of updatesData.result || []) {
+        if (update.message?.from?.id === telegramUserId && 
+            update.message?.chat?.id?.toString() === channelId) {
+          return { verified: true, method: "recent_activity_check" }
+        }
+      }
+    } catch (error) {
+      console.log("Recent activity check failed:", error)
     }
 
-    // Step 2: Check if user is member of the group/channel
-    const memberResponse = await fetch(
-      `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${groupId}&user_id=${userId}`,
-    )
-
-    if (!memberResponse.ok) {
-      return false
+    // Method 3: Check if user has the channel in their recent chats (requires user to interact with bot)
+    try {
+      // This would require the user to send a message to the bot first
+      // For now, we'll return false and ask user to interact with bot
+      return { 
+        verified: false, 
+        error: "Please send a message to @YourBotName first, then try again" 
+      }
+    } catch (error) {
+      console.log("Bot interaction check failed:", error)
     }
 
-    const memberData = await memberResponse.json()
-
-    if (!memberData.ok) {
-      return false
-    }
-
-    // Check if user is a member (not left or kicked)
-    const status = memberData.result?.status
-    return ["member", "administrator", "creator"].includes(status)
+    return { verified: false, error: "Unable to verify channel membership" }
   } catch (error) {
     console.error("Telegram API error:", error)
-    return false
+    return { verified: false, error: "Telegram API error" }
   }
 }
