@@ -29,6 +29,7 @@ import ImageUpload from "@/components/image-upload"
 import WalletConnect from "@/components/wallet-connect"
 import { useRouter } from "next/navigation"
 import BackgroundWrapper from "@/components/BackgroundWrapper";
+import AuthRequired from "@/components/auth-required";
 
 interface ProjectForm {
   // Step 1: Basic Info
@@ -145,6 +146,18 @@ export default function RegisterProject() {
 
     return () => unsubscribeWallet()
   }, [])
+  
+  // Authentication check
+  if (!loading && !walletUser && !emailUser) {
+    return (
+      <BackgroundWrapper>
+        <AuthRequired 
+          title="Sign In Required"
+          message="Please sign in with your email or wallet to register your project."
+        />
+      </BackgroundWrapper>
+    )
+  }
 
   const handleInputChange = (field: keyof ProjectForm, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))

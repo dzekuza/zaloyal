@@ -31,6 +31,7 @@ import { supabase } from "@/lib/supabase"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import type { Database } from "@/lib/supabase"
 import ImageUpload from "@/components/image-upload"
+import AuthRequired from "@/components/auth-required"
 
 interface TaskForm {
   id?: string
@@ -253,6 +254,18 @@ export default function CreateQuest() {
     }
     fetchCategories()
   }, [])
+  
+  // Authentication check
+  if (!walletUser && !emailUser) {
+    return (
+      <div className="min-h-screen bg-[#181818]">
+        <AuthRequired 
+          title="Sign In Required"
+          message="Please sign in with your email or wallet to create quests and projects."
+        />
+      </div>
+    )
+  }
 
   const openTaskDialog = (taskIndex?: number) => {
     if (taskIndex !== undefined) {

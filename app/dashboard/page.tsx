@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import DashboardClient from "@/components/DashboardClient";
 import BackgroundWrapper from "@/components/BackgroundWrapper";
+import AuthRequired from "@/components/auth-required";
 
 export default function DashboardPage() {
   // Fix useState types
@@ -60,9 +61,10 @@ export default function DashboardPage() {
   if (!profile) {
     return (
       <BackgroundWrapper>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-white text-xl">Please sign in to view your dashboard.</p>
-        </div>
+        <AuthRequired 
+          title="Sign In Required"
+          message="Please sign in with your email or wallet to view your dashboard."
+        />
       </BackgroundWrapper>
     );
   }

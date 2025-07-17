@@ -31,11 +31,13 @@ interface Project {
   xpToCollect?: number;
 }
 
-function ProjectGrid({ projects, currentUserId, onProjectDeleted }: {
-  projects: Project[],
-  currentUserId: string | null,
-  onProjectDeleted: () => void
-}) {
+interface ProjectGridProps {
+  projects: Project[];
+  currentUserId: string | null;
+  onProjectDeleted: () => void;
+}
+
+function ProjectGrid({ projects, currentUserId, onProjectDeleted }: ProjectGridProps) {
   if (!projects.length) return null;
 
   async function handleDeleteProject(projectId: string) {
@@ -51,7 +53,7 @@ function ProjectGrid({ projects, currentUserId, onProjectDeleted }: {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-12">
       {projects.map((project) => (
         <ProjectCard
           key={project.id}
@@ -74,37 +76,66 @@ function ProjectGrid({ projects, currentUserId, onProjectDeleted }: {
   );
 }
 
-export default function ProjectDiscoveryClient({ projects, categories }: { projects: Project[], categories: string[] }) {
+interface ProjectDiscoveryClientProps {
+  projects: Project[];
+  categories: string[];
+}
+
+export default function ProjectDiscoveryClient({ projects, categories }: ProjectDiscoveryClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
-  const totalXPToCollect = useMemo(() => projects.reduce((sum: number, p: Project) => sum + (p.xpToCollect || 0), 0), [projects]);
+  const totalXPToCollect = useMemo(() => 
+    projects.reduce((sum: number, p: Project) => sum + (p.xpToCollect || 0), 0), 
+    [projects]
+  );
+
+  const totalQuests = useMemo(() => 
+    projects.reduce((sum: number, p: Project) => sum + (p.quest_count || 0), 0), 
+    [projects]
+  );
 
   const filteredProjects = useMemo(() => {
     let filtered = projects;
+    
     if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (p: Project) =>
-          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+          p.name.toLowerCase().includes(searchLower) ||
+          p.description?.toLowerCase().includes(searchLower),
       );
     }
+    
     if (selectedCategory !== "all") {
-      filtered = filtered.filter((p: Project) => p.category?.toLowerCase() === selectedCategory.toLowerCase());
+      filtered = filtered.filter((p: Project) => 
+        p.category?.toLowerCase() === selectedCategory.toLowerCase()
+      );
     }
+    
     return filtered;
   }, [searchTerm, selectedCategory, projects]);
 
+  const featuredProjects = useMemo(() => 
+    filteredProjects.filter((p: Project) => p.featured), 
+    [filteredProjects]
+  );
+
+  const allProjects = useMemo(() => 
+    filteredProjects.filter((p: Project) => !p.featured), 
+    [filteredProjects]
+  );
+
   return (
     <BackgroundWrapper>
-      {/* Hero */}
+      {/* Hero Section */}
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 bg-black/30 backdrop-blur-3xl" />
-        <div className="relative container mx-auto px-4 py-16 text-center space-y-6">
-          <h1 className="text-5xl md:text-7xl font-bold text-white">
+        <div className="relative container mx-auto px-4 py-12 md:py-16 text-center space-y-6">
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white">
             Web3 Projects
           </h1>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
             Discover amazing Web3 projects and complete their quests to earn rewards
           </p>
           <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
@@ -114,7 +145,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: { proje
             </span>
             <span className="flex items-center gap-2">
               <Zap className="w-4 h-4" />
-              {projects.reduce((sum: number, p: Project) => sum + (p.quest_count || 0), 0)} Active Quests
+              {totalQuests} Active Quests
             </span>
             <span className="flex items-center gap-2">
               <Trophy className="w-4 h-4" />
@@ -123,7 +154,8 @@ export default function ProjectDiscoveryClient({ projects, categories }: { proje
           </div>
         </div>
       </header>
-      {/* Search / Filter */}
+
+      {/* Search and Filter Section */}
       <section className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">
@@ -132,7 +164,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: { proje
               placeholder="Search projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-gray-200 backdrop-blur-sm"
+              className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-gray-200 backdrop-blur-sm focus:ring-2 focus:ring-green-500"
             />
           </div>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -144,35 +176,42 @@ export default function ProjectDiscoveryClient({ projects, categories }: { proje
               <SelectItem value="all" className="text-white hover:bg-[#06351f]">
                 All Categories
               </SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c} value={c.toLowerCase()} className="text-white hover:bg-[#06351f]">
-                  {c}
+              {categories.map((category) => (
+                <SelectItem key={category} value={category.toLowerCase()} className="text-white hover:bg-[#06351f]">
+                  {category}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
         {/* Featured Projects */}
-        <h2 className="flex items-center gap-2 text-2xl font-bold text-white mb-6">
-          <Star className="h-5 w-5 text-yellow-400" />
-          Featured Projects
-        </h2>
-        <ProjectGrid
-          projects={filteredProjects.filter((p: Project) => p.featured)}
-          currentUserId={null}
-          onProjectDeleted={() => window.location.reload()}
-        />
+        {featuredProjects.length > 0 && (
+          <>
+            <h2 className="flex items-center gap-2 text-2xl font-bold text-white mb-6">
+              <Star className="h-5 w-5 text-yellow-400" />
+              Featured Projects
+            </h2>
+            <ProjectGrid
+              projects={featuredProjects}
+              currentUserId={null}
+              onProjectDeleted={() => window.location.reload()}
+            />
+          </>
+        )}
+
         {/* All Projects */}
         <h2 className="text-2xl font-bold text-white my-6">All Projects</h2>
         <ProjectGrid
-          projects={filteredProjects}
+          projects={allProjects}
           currentUserId={null}
           onProjectDeleted={() => window.location.reload()}
         />
+        
         {filteredProjects.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-400 text-lg mb-2">No projects found</p>
-            <p className="text-gray-500">Try different search or filters</p>
+            <p className="text-gray-500">Try different search terms or filters</p>
           </div>
         )}
       </section>

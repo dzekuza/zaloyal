@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation"
 import { LogOut, Copy, ExternalLink, User, Wallet, Link } from "lucide-react"
 import { SiDiscord, SiX } from "react-icons/si"
 import AvatarUpload from "@/components/avatar-upload"
+import AuthRequired from "@/components/auth-required"
 
 // react-icons currently returns `ReactNode`, which is incompatible with React 19's
 // stricter JSX.Element return type expectations. Cast the icon components to
@@ -300,13 +301,11 @@ export default function ProfilePage() {
   // If not signed in, show sign-in prompt
   if (!walletUser && !emailUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
-        <Card className="w-full max-w-md bg-[#111111] border-[#282828]">
-          <CardHeader>
-            <CardTitle className="text-white">Sign In Required</CardTitle>
-            <CardDescription className="text-gray-300">Please sign in with your email or wallet to access your profile and connect social accounts.</CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="min-h-screen bg-[#181818]">
+        <AuthRequired 
+          title="Sign In Required"
+          message="Please sign in with your email or wallet to access your profile and connect social accounts."
+        />
       </div>
     )
   }

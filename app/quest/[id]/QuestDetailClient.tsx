@@ -33,6 +33,7 @@ import {
   BookOpen,
   Trash,
   Plus,
+  Target,
 } from "lucide-react"
 import Link from "next/link"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
@@ -52,6 +53,35 @@ type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
   user_task_submissions?: Database["public"]["Tables"]["user_task_submissions"]["Row"] | null
 }
 const getAbsoluteUrl = (url: string) => url?.match(/^https?:\/\//i) ? url : `https://${url}`;
+
+function QuestPlaceholderCover({ title, categoryIcon }: { title: string; categoryIcon?: string }) {
+  return (
+    <div className="h-64 w-full bg-gradient-to-br from-[#1a1a1a] via-[#0f0f0f] to-[#1a1a1a] flex items-center justify-center relative overflow-hidden">
+      {/* Background pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 left-0 w-full h-full" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        }}></div>
+      </div>
+      
+      {/* Quest icon or fallback */}
+      <div className="relative z-10 flex items-center justify-center">
+        <div className="h-20 w-20 rounded-full border-2 border-white/20 bg-white/10 flex items-center justify-center">
+          {categoryIcon ? (
+            <span className="text-2xl">{categoryIcon}</span>
+          ) : (
+            <Target className="h-10 w-10 text-white/60" />
+          )}
+        </div>
+      </div>
+      
+      {/* Quest title overlay */}
+      <div className="absolute bottom-4 left-4 right-4">
+        <h3 className="text-white font-semibold text-xl truncate">{title}</h3>
+      </div>
+    </div>
+  );
+}
 
 export default function QuestDetailClient({ quest, tasks: initialTasks }: { quest: Quest, tasks: Task[] }) {
   // --- Begin full client logic and UI ---
@@ -198,12 +228,21 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           })
           break
       }
+
       if (response) {
         const result = await response.json()
-        if (result.verified) {
-          alert(`Task completed! You earned ${result.xpEarned} XP`)
+        if (result.success) {
+          // Update local state to reflect completion
+          setTasks(prevTasks => 
+            prevTasks.map(t => 
+              t.id === task.id 
+                ? { ...t, user_task_submissions: { ...result.submission } }
+                : t
+            )
+          )
+          alert("Task completed successfully!")
         } else {
-          alert(result.message || "Verification failed")
+          alert(result.error || "Verification failed")
         }
       }
     } catch (error) {
@@ -215,186 +254,152 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   }
 
   const handleTelegramAuth = async (task: Task, telegramUser: any) => {
-    const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
-    if (!userObj) {
-      alert("Please sign in first")
-      return
-    }
-    setVerifyingTask(task.id)
     try {
-      let baseData: any = { taskId: task.id, telegramData: telegramUser }
-      if (walletUser) {
-        baseData.userWallet = walletUser.walletAddress
-      } else if (emailUser?.profile) {
-        baseData.userId = emailUser.profile.id
-        baseData.userEmail = emailUser.email
-      }
       const response = await fetch("/api/verify/telegram-join-real", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(baseData),
+        body: JSON.stringify({
+          taskId: task.id,
+          userId: emailUser?.profile?.id,
+          userEmail: emailUser?.email,
+          username: telegramUser.username,
+          groupId: task.social_url?.split("/").pop(),
+        }),
       })
       const result = await response.json()
-      if (result.verified) {
-        alert(`Task completed! You earned ${result.xpEarned} XP`)
+      if (result.success) {
+        setTasks(prevTasks => 
+          prevTasks.map(t => 
+            t.id === task.id 
+              ? { ...t, user_task_submissions: { ...result.submission } }
+              : t
+          )
+        )
+        alert("Telegram verification successful!")
       } else {
-        alert(result.message || "Verification failed")
+        alert(result.error || "Telegram verification failed")
       }
     } catch (error) {
       console.error("Telegram verification error:", error)
-      alert("Verification failed. Please try again.")
-    } finally {
-      setVerifyingTask(null)
+      alert("Telegram verification failed. Please try again.")
     }
   }
 
-  // In handleCreateTask, set the title automatically based on the selected Twitter task type
   const getTwitterTaskHeading = (twitterTaskType: string) => {
     switch (twitterTaskType) {
-      case "tweet_reaction": return "Tweet reaction";
-      case "twitter_follow": return "Twitter follow";
-      case "tweet": return "Tweet";
-      case "twitter_space": return "Twitter space";
-      default: return "Twitter";
+      case "tweet_reaction":
+        return "React to Tweet"
+      case "twitter_follow":
+        return "Follow on Twitter"
+      case "tweet":
+        return "Tweet"
+      case "twitter_space":
+        return "Join Twitter Space"
+      default:
+        return "Twitter Task"
     }
-  };
+  }
 
   const handleCreateTask = async () => {
     setCreatingTask(true)
     setCreateTaskError("")
     try {
-      let title = newTask.title;
-      if (newTask.type === "social" && newTask.socialPlatform === "twitter" && newTask.twitterTaskType) {
-        title = getTwitterTaskHeading(newTask.twitterTaskType);
-      }
-      // For Discord tasks, automatically set social_action to "join"
-      // For Twitter tasks, automatically set social_action to "follow" (default)
-      const socialAction = newTask.socialPlatform === 'discord' ? 'join' : 
-                         newTask.socialPlatform === 'twitter' ? 'follow' : 
-                         (newTask.socialAction || null);
-      
-      const { error } = await supabase.from("tasks").insert({
+      const taskData = {
         quest_id: quest.id,
-        title,
-        description: "",
+        title: newTask.title,
+        description: newTask.description,
         task_type: newTask.type,
-        xp_reward: 0, // Not used, but required by schema
-        order_index: tasks.length,
-        social_action: socialAction,
-        social_platform: newTask.socialPlatform || null,
-        social_url: newTask.socialUrl || newTask.tweetUrl || newTask.spaceUrl || null,
-        social_username: newTask.twitterUsername || null,
-        social_post_id: null,
-        // ... add other fields as needed
-        tweet_actions: newTask.tweetActions || null,
-        tweet_words: newTask.tweetWords || null,
-        default_tweet: newTask.defaultTweet || null,
-        space_password: newTask.spacePassword || null,
-        show_after_end: newTask.showAfterEnd || null,
-      })
+        xp_reward: newTask.xpReward,
+        order_index: tasks.length + 1,
+        social_platform: newTask.type === "social" ? newTask.socialPlatform : null,
+        social_action: newTask.type === "social" ? newTask.socialAction : null,
+        social_url: newTask.type === "social" ? newTask.socialUrl : null,
+        social_username: newTask.type === "social" ? newTask.socialUsername : null,
+        social_post_id: newTask.type === "social" ? newTask.socialPostId : null,
+        download_url: newTask.type === "download" ? newTask.downloadUrl : null,
+        visit_url: newTask.type === "visit" ? newTask.visitUrl : null,
+      }
+
+      const { data, error } = await supabase.from("tasks").insert(taskData).select().single()
       if (error) throw error
+
+      setTasks(prev => [...prev, data])
       setShowAddTask(false)
-      setNewTask({ type: "social", title: "", description: "", xpReward: 100, socialAction: "follow", socialPlatform: "twitter", socialUrl: "", twitterTaskType: undefined })
-      // Refresh tasks
-      const { data: updatedTasks } = await supabase.from("tasks").select("*").eq("quest_id", quest.id).order("order_index")
-      setTasks(updatedTasks || [])
-    } catch (e: any) {
-      setCreateTaskError(e.message || "Failed to create task")
+      setNewTask({
+        type: "social",
+        title: "",
+        description: "",
+        xpReward: 100,
+        socialAction: "follow",
+        socialPlatform: "twitter",
+        socialUrl: "",
+        socialUsername: "",
+        socialPostId: "",
+      })
+    } catch (error: any) {
+      setCreateTaskError(error.message || "Failed to create task")
     } finally {
       setCreatingTask(false)
     }
   }
 
-  // Edit a task (admin or creator only)
   const handleEditTask = async () => {
-    if (!editingTask) return;
-    
-    setUpdatingTask(true);
-    setUpdateTaskError("");
-    
+    if (!editingTask) return
+    setUpdatingTask(true)
+    setUpdateTaskError("")
     try {
-      let title = editingTask.title;
-      if (editingTask.task_type === "social" && editingTask.social_platform === "twitter") {
-        // For Twitter tasks, we'll keep the existing title logic
-        title = editingTask.title;
+      const taskData = {
+        title: editingTask.title,
+        description: editingTask.description,
+        task_type: editingTask.task_type,
+        xp_reward: editingTask.xp_reward,
+        social_platform: editingTask.task_type === "social" ? editingTask.social_platform : null,
+        social_action: editingTask.task_type === "social" ? editingTask.social_action : null,
+        social_url: editingTask.task_type === "social" ? editingTask.social_url : null,
+        social_username: editingTask.task_type === "social" ? editingTask.social_username : null,
+        social_post_id: editingTask.task_type === "social" ? editingTask.social_post_id : null,
+        download_url: editingTask.task_type === "download" ? editingTask.download_url : null,
+        visit_url: editingTask.task_type === "visit" ? editingTask.visit_url : null,
       }
-      
-      // For Discord tasks, automatically set social_action to "join"
-      // For Twitter tasks, automatically set social_action to "follow" (default)
-      const socialAction = editingTask.social_platform === 'discord' ? 'join' : 
-                         editingTask.social_platform === 'twitter' ? 'follow' : 
-                         editingTask.social_action;
-      
-      const { error } = await supabase.from("tasks").update({
-        title,
-        description: editingTask.description || "",
-        social_action: socialAction,
-        social_platform: editingTask.social_platform || null,
-        social_url: editingTask.social_url || null,
-        social_username: editingTask.social_username || null,
-        social_post_id: editingTask.social_post_id || null,
-      }).eq("id", editingTask.id);
-      
-      if (error) throw error;
-      
-      setShowEditTask(false);
-      setEditingTask(null);
-      
-      // Refresh tasks
-      const { data: updatedTasks } = await supabase.from("tasks").select("*").eq("quest_id", quest.id).order("order_index");
-      setTasks(updatedTasks || []);
-    } catch (e: any) {
-      setUpdateTaskError(e.message || "Failed to update task");
+
+      const { error } = await supabase.from("tasks").update(taskData).eq("id", editingTask.id)
+      if (error) throw error
+
+      setTasks(prev => prev.map(t => t.id === editingTask.id ? { ...t, ...taskData } : t))
+      setShowEditTask(false)
+      setEditingTask(null)
+    } catch (error: any) {
+      setUpdateTaskError(error.message || "Failed to update task")
     } finally {
-      setUpdatingTask(false);
+      setUpdatingTask(false)
     }
-  };
+  }
 
-  // Delete a task (admin or creator only)
   const handleDeleteTask = async (taskId: string) => {
-    if (!window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) return;
+    if (!confirm("Are you sure you want to delete this task?")) return
     try {
-      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
-      if (error) throw error;
-      // Refresh tasks
-      const { data: updatedTasks } = await supabase.from("tasks").select("*").eq("quest_id", quest.id).order("order_index");
-      setTasks(updatedTasks || []);
-    } catch (e: any) {
-      alert(e.message || "Failed to delete task");
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId)
+      if (error) throw error
+
+      setTasks(prev => prev.filter(t => t.id !== taskId))
+    } catch (error: any) {
+      alert(error.message || "Failed to delete task")
     }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading quest...</div>
-      </div>
-    )
   }
 
-  if (!quest) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
-        <div className="text-white text-xl">Quest not found</div>
-      </div>
-    )
-  }
-
-  // Calculate progress and XP
-  const completedTasks = tasks.filter((task: Task) => task.user_task_submissions?.status === "verified").length
-  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0
-  const userXP = tasks
-    .filter((task: Task) => task.user_task_submissions?.status === "verified")
-    .reduce((sum: number, task: Task) => sum + task.xp_reward, 0)
-
-  // Helper for task icons
   const getTaskIcon = (task: Task) => {
     switch (task.task_type) {
       case "social":
-        if (task.social_platform === "twitter") return <Twitter className="w-5 h-5" />
-        if (task.social_platform === "telegram") return <MessageCircle className="w-5 h-5" />
-        if (task.social_platform === "discord") return <MessageSquare className="w-5 h-5" />
-        return <Users className="w-5 h-5" />
+        switch (task.social_platform) {
+          case "twitter":
+            return <Twitter className="w-5 h-5" />
+          case "telegram":
+            return <MessageCircle className="w-5 h-5" />
+          case "discord":
+            return <MessageSquare className="w-5 h-5" />
+          default:
+            return <ExternalLink className="w-5 h-5" />
+        }
       case "download":
         return <Download className="w-5 h-5" />
       case "form":
@@ -404,65 +409,18 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       case "learn":
         return <BookOpen className="w-5 h-5" />
       default:
-        return <Trophy className="w-5 h-5" />
+        return <Target className="w-5 h-5" />
     }
   }
 
-  // Helper: is current user admin or quest creator?
   const isAdminOrCreator = () => {
-    const user = emailUser?.profile || walletUser
-    if (!user) return false
-    if (user.role === 'admin') return true
-    if (quest.creator_id && user.id && quest.creator_id === user.id) return true
-    return false
+    const currentUserId = walletUser?.walletAddress?.toLowerCase() || emailUser?.profile?.id
+    return currentUserId === quest.creator_id
   }
-  // Quiz modal rendering
+
   const renderQuizModal = (task: Task) => {
-    const questions = task.learn_questions || []
-    const answers = quizAnswers[task.id] || Array(questions.length).fill("")
-    return (
-      <Dialog open={!!showQuiz[task.id]} onOpenChange={open => setShowQuiz(s => ({ ...s, [task.id]: open }))}>
-        <DialogContent className="text-white max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Quiz: {task.title}</DialogTitle>
-            <DialogDescription>Answer all questions to complete the quiz.</DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={e => {
-              e.preventDefault()
-              setSubmissionData(d => ({ ...d, [task.id]: { answers } }))
-              handleTaskVerification(task)
-              setShowQuiz(s => ({ ...s, [task.id]: false }))
-            }}
-            className="space-y-4"
-          >
-            {questions.map((q: any, idx: number) => (
-              <div key={idx} className="space-y-1">
-                <div className="font-semibold">{q.question}</div>
-                {q.options && Array.isArray(q.options) && q.options.map((opt: string, oidx: number) => (
-                  <label key={oidx} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name={`quiz-${task.id}-q${idx}`}
-                      value={opt}
-                      checked={answers[idx] === opt}
-                      onChange={() => setQuizAnswers(a => ({ ...a, [task.id]: Object.assign([], answers, { [idx]: opt }) }))}
-                      className="accent-green-500"
-                      required
-                    />
-                    <span>{opt}</span>
-                  </label>
-                ))}
-              </div>
-            ))}
-            <div className="flex justify-end gap-2 mt-4">
-              <Button type="button" variant="outline" onClick={() => setShowQuiz(s => ({ ...s, [task.id]: false }))}>Cancel</Button>
-              <Button type="submit" className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">Submit Quiz</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    )
+    // For now, return null since quiz_questions field doesn't exist in the current schema
+    return null
   }
 
   const TWITTER_TASK_TYPES = [
@@ -493,11 +451,18 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           <div className="lg:col-span-2">
             <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
               <div className="relative">
-                <img
-                  src={quest.image_url || "/placeholder.svg?height=300&width=600"}
-                  alt={quest.title}
-                  className="w-full h-64 object-cover"
-                />
+                {quest.image_url ? (
+                  <img
+                    src={quest.image_url}
+                    alt={quest.title}
+                    className="w-full h-64 object-cover"
+                  />
+                ) : (
+                  <QuestPlaceholderCover 
+                    title={quest.title} 
+                    categoryIcon={quest.quest_categories?.icon || undefined}
+                  />
+                )}
                 <div className="absolute top-4 left-4 flex gap-2">
                   <Badge
                     className="text-white border-0"
@@ -702,360 +667,247 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                       )}
                     </div>
                   )}
-                  {newTask.type === "social" && newTask.socialPlatform === "twitter" && (
-                    <div className="space-y-4">
-                      <label className="text-white block mb-1">Task type</label>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {TWITTER_TASK_TYPES.map((tt) => (
-                          <button
-                            key={tt.value}
-                            type="button"
-                            className={`px-4 py-2 rounded border ${newTask.twitterTaskType === tt.value ? "bg-green-700 text-white border-green-500" : "bg-white/10 text-white border-white/20"}`}
-                            onClick={() => setNewTask((t: typeof newTask) => ({ ...t, twitterTaskType: tt.value }))}
-                          >
-                            {tt.label}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Tweet Reaction */}
-                      {newTask.twitterTaskType === "tweet_reaction" && (
-                        <>
-                          <label className="text-white block mb-1">Tweet URL</label>
-                          <Input value={newTask.tweetUrl || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, tweetUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/username/status/123456789" />
-                          {/* Validation: show error if invalid */}
-                          {/* Actions */}
-                          <label className="text-white block mb-1 mt-2">Actions</label>
-                          <div className="flex gap-4">
-                            {TWEET_REACTION_ACTIONS.map((action) => (
-                              <label key={action.value} className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={Array.isArray(newTask.tweetActions) && newTask.tweetActions.includes(action.value)}
-                                  onChange={e => {
-                                    setNewTask((t: typeof newTask) => {
-                                      const arr = Array.isArray(t.tweetActions) ? [...t.tweetActions] : [];
-                                      if (e.target.checked) {
-                                        if (!arr.includes(action.value)) arr.push(action.value);
-                                      } else {
-                                        const idx = arr.indexOf(action.value);
-                                        if (idx > -1) arr.splice(idx, 1);
-                                      }
-                                      return { ...t, tweetActions: arr };
-                                    });
-                                  }}
-                                />
-                                {action.label}
-                              </label>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                      {/* Twitter Follow */}
-                      {newTask.twitterTaskType === "twitter_follow" && (
-                        <>
-                          <label className="text-white block mb-1">Twitter username</label>
-                          <Input value={newTask.twitterUsername || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, twitterUsername: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="@username" />
-                        </>
-                      )}
-                      {/* Tweet */}
-                      {newTask.twitterTaskType === "tweet" && (
-                        <>
-                          <label className="text-white block mb-1">Tweet words (can include mentions, hashtags, or any type of text)</label>
-                          <Input value={newTask.tweetWords || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, tweetWords: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="@zealy_io" />
-                          <label className="text-white block mb-1 mt-2">Default tweet <span className="text-gray-400 text-xs">(Optional)</span></label>
-                          <Textarea value={newTask.defaultTweet || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, defaultTweet: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="Provide a default tweet for your members." />
-                        </>
-                      )}
-                      {/* Twitter Space */}
-                      {newTask.twitterTaskType === "twitter_space" && (
-                        <>
-                          <label className="text-white block mb-1">Space URL</label>
-                          <Input value={newTask.spaceUrl || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, spaceUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/i/spaces/1mnGeRkQwqQJX" />
-                          <label className="text-white block mb-1 mt-2">Password <span className="text-gray-400 text-xs">(Optional)</span></label>
-                          <Input value={newTask.spacePassword || ""} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, spacePassword: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="Enter password" />
-                          <div className="flex items-center gap-2 mt-2">
-                            <input type="checkbox" checked={!!newTask.showAfterEnd} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, showAfterEnd: e.target.checked }))} />
-                            <span className="text-white text-sm">Show quest visible after the space ends</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {/* Add more type-specific fields as needed, but do not show XP, title, description, username */}
+                  <div>
+                    <label className="text-white block mb-1">Task Title</label>
+                    <Input value={newTask.title} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, title: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                  </div>
+                  <div>
+                    <label className="text-white block mb-1">Description</label>
+                    <Textarea value={newTask.description} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, description: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                  </div>
+                  <div>
+                    <label className="text-white block mb-1">XP Reward</label>
+                    <Input type="number" value={newTask.xpReward} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, xpReward: parseInt(e.target.value) }))} className="bg-white/10 border-white/20 text-white" />
+                  </div>
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setShowAddTask(false)} className="bg-white/10 border-white/20 text-white">Cancel</Button>
-                    <Button type="submit" disabled={creatingTask} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">{creatingTask ? "Creating..." : "Add Task"}</Button>
+                    <Button type="button" variant="outline" onClick={() => setShowAddTask(false)}>Cancel</Button>
+                    <Button type="submit" disabled={creatingTask} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
+                      {creatingTask ? "Creating..." : "Create Task"}
+                    </Button>
                   </div>
                 </form>
               </DialogContent>
             </Dialog>
-            
-            {/* Edit Task Modal */}
+
+            {/* Edit Task Dialog */}
             <Dialog open={showEditTask} onOpenChange={setShowEditTask}>
-              <DialogContent className="text-white max-w-2xl">
+              <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Edit Task</DialogTitle>
-                  <DialogDescription>
-                    Update the task details below, then save your changes.
-                  </DialogDescription>
                 </DialogHeader>
-                <form
-                  onSubmit={e => {
-                    e.preventDefault();
-                    handleEditTask();
-                  }}
-                  className="space-y-4"
-                >
-                  {updateTaskError && (
-                    <div className="text-red-400 text-sm bg-red-900/20 border border-red-500/30 rounded p-2">
-                      {updateTaskError}
-                    </div>
-                  )}
-                  
-                  <div>
-                    <label className="text-white block mb-1">Task Type</label>
-                                          <Select 
-                        value={editingTask?.task_type || "social"} 
-                        onValueChange={(val: "social" | "download" | "form" | "visit" | "learn") => setEditingTask((t: Task | null) => t ? { ...t, task_type: val } : null)}
-                      >
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#111111] border-[#282828]">
-                        <SelectItem value="social" className="text-white">Social</SelectItem>
-                        <SelectItem value="download" className="text-white">Download</SelectItem>
-                        <SelectItem value="form" className="text-white">Form</SelectItem>
-                        <SelectItem value="visit" className="text-white">Visit</SelectItem>
-                        <SelectItem value="learn" className="text-white">Learn</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {editingTask?.task_type === "social" && (
+                {editingTask && (
+                  <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleEditTask(); }}>
+                    {updateTaskError && <div className="p-2 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-sm">{updateTaskError}</div>}
                     <div>
-                      <label className="text-white block mb-1">Social Platform</label>
-                      <Select 
-                        value={editingTask?.social_platform || "twitter"} 
-                        onValueChange={(val: string) => setEditingTask((t: Task | null) => t ? { ...t, social_platform: val } : null)}
-                      >
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#111111] border-[#282828]">
-                          <SelectItem value="twitter" className="text-white">Twitter / X</SelectItem>
-                          <SelectItem value="telegram" className="text-white">Telegram</SelectItem>
-                          <SelectItem value="discord" className="text-white">Discord</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
-                      {editingTask?.social_platform === 'telegram' ? (
-                        <div className="mt-4">
-                          <label className="text-white block mb-1">Channel Link</label>
-                          <Input 
-                            value={editingTask?.social_url || ""} 
-                            onChange={e => setEditingTask((t: Task | null) => t ? { ...t, social_url: e.target.value } : null)} 
-                            className="bg-white/10 border-white/20 text-white" 
-                          />
-                        </div>
-                      ) : editingTask?.social_platform === 'discord' ? (
-                        <div className="mt-4">
-                          <label className="text-white block mb-1">Discord Invite Link</label>
-                          <Input 
-                            value={editingTask?.social_url || ""} 
-                            onChange={e => setEditingTask((t: Task | null) => t ? { ...t, social_url: e.target.value } : null)} 
-                            className="bg-white/10 border-white/20 text-white" 
-                            placeholder="https://discord.gg/your-server"
-                          />
-                        </div>
-                      ) : editingTask?.social_platform === 'twitter' ? (
-                        <div className="mt-4">
-                          <label className="text-white block mb-1">Twitter Username</label>
-                          <Input 
-                            value={editingTask?.social_username || ""} 
-                            onChange={e => setEditingTask((t: Task | null) => t ? { ...t, social_username: e.target.value } : null)} 
-                            className="bg-white/10 border-white/20 text-white" 
-                            placeholder="@username"
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <div className="mt-4">
-                            <label className="text-white block mb-1">Action</label>
-                            <Select 
-                              value={editingTask?.social_action || "follow"} 
-                              onValueChange={(val: "follow" | "join" | "like" | "retweet" | "subscribe") => setEditingTask((t: Task | null) => t ? { ...t, social_action: val } : null)}
-                            >
-                              <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="bg-[#111111] border-[#282828]">
-                                <SelectItem value="follow" className="text-white">Follow</SelectItem>
-                                <SelectItem value="join" className="text-white">Join</SelectItem>
-                                <SelectItem value="like" className="text-white">Like</SelectItem>
-                                <SelectItem value="retweet" className="text-white">Retweet</SelectItem>
-                                <SelectItem value="subscribe" className="text-white">Subscribe</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="mt-4">
-                            <label className="text-white block mb-1">URL/Link</label>
-                            <Input 
-                              value={editingTask?.social_url || ""} 
-                              onChange={e => setEditingTask((t: Task | null) => t ? { ...t, social_url: e.target.value } : null)} 
-                              className="bg-white/10 border-white/20 text-white" 
-                            />
-                          </div>
-                        </>
-                      )}
+                      <label className="text-white block mb-1">Task Title</label>
+                      <Input 
+                        value={editingTask.title} 
+                        onChange={e => setEditingTask(t => ({ ...t!, title: e.target.value }))} 
+                        className="bg-white/10 border-white/20 text-white" 
+                      />
                     </div>
-                  )}
-                  
-                  <div className="flex justify-end gap-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => {
-                        setShowEditTask(false);
-                        setEditingTask(null);
-                      }} 
-                      className="bg-white/10 border-white/20 text-white"
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={updatingTask} 
-                      className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
-                    >
-                      {updatingTask ? "Updating..." : "Update Task"}
-                    </Button>
-                  </div>
-                </form>
+                    <div>
+                      <label className="text-white block mb-1">Description</label>
+                      <Textarea 
+                        value={editingTask.description} 
+                        onChange={e => setEditingTask(t => ({ ...t!, description: e.target.value }))} 
+                        className="bg-white/10 border-white/20 text-white" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-white block mb-1">XP Reward</label>
+                      <Input 
+                        type="number" 
+                        value={editingTask.xp_reward} 
+                        onChange={e => setEditingTask(t => ({ ...t!, xp_reward: parseInt(e.target.value) }))} 
+                        className="bg-white/10 border-white/20 text-white" 
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="outline" onClick={() => setShowEditTask(false)}>Cancel</Button>
+                      <Button type="submit" disabled={updatingTask} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
+                        {updatingTask ? "Updating..." : "Update Task"}
+                      </Button>
+                    </div>
+                  </form>
+                )}
               </DialogContent>
             </Dialog>
+
+            {/* Tasks List */}
             <div className="space-y-4">
-              {tasks.map((task: Task, index: number) => (
-                <div key={task.id}>
-                  <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-lg bg-[#111111] border border-[#282828] hover:bg-emerald-800/80 transition-colors">
-                    <div className="flex-shrink-0 mt-1">
-                      {task.user_task_submissions?.status === "verified" ? (
-                        <CheckCircle className="w-6 h-6 text-green-400" />
-                      ) : (
-                        <Circle className="w-6 h-6 text-gray-400" />
-                      )}
+              {tasks.map((task, index) => {
+                const isCompleted = task.user_task_submissions
+                const isVerifying = verifyingTask === task.id
+                return (
+                  <div key={task.id} className="flex items-start gap-4 p-4 bg-[#181818] rounded-lg border border-[#282828]">
+                    <div className="flex-shrink-0">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        isCompleted ? 'bg-green-500' : 'bg-gray-600'
+                      }`}>
+                        {isCompleted ? (
+                          <CheckCircle className="w-5 h-5 text-white" />
+                        ) : (
+                          <span className="text-white font-semibold">{index + 1}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0 w-full">
-                      <div className="flex flex-col gap-2 w-full">
-                        {/* Heading and Complete Task button */}
-                        <div className="flex items-center gap-2 mb-2">
-                          {getTaskIcon(task)}
-                          <h3 className={`font-semibold ${task.user_task_submissions?.status === "verified" ? "text-green-400" : "text-white"}`}>{task.title}</h3>
-                          <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/30">+{quest.total_xp} XP</Badge>
-                          <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">{task.task_type}</Badge>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            {getTaskIcon(task)}
+                            <h3 className="text-white font-semibold">{task.title}</h3>
+                            {isCompleted && (
+                              <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+                                Completed
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-gray-300 text-sm mb-3">{task.description}</p>
+                          
+                          {/* Task-specific content */}
+                          {task.task_type === "social" && task.social_platform === "twitter" && (
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">
+                                {getTwitterTaskHeading(task.social_action || "follow")}
+                              </div>
+                              {task.social_username && (
+                                <div className="text-sm text-gray-300">
+                                  @{task.social_username}
+                                </div>
+                              )}
+                              {task.social_post_id && (
+                                <div className="text-sm text-gray-300">
+                                  Post ID: {task.social_post_id}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {task.task_type === "social" && task.social_platform === "telegram" && (
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">Join Telegram Channel</div>
+                              {task.social_url && (
+                                <div className="text-sm text-gray-300">
+                                  <a href={getAbsoluteUrl(task.social_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
+                                    {task.social_url}
+                                  </a>
+                                </div>
+                              )}
+                                                             {!isCompleted && (
+                                 <TelegramLoginWidget
+                                   botUsername="your_bot_username"
+                                   onAuth={(telegramUser) => handleTelegramAuth(task, telegramUser)}
+                                 />
+                               )}
+                            </div>
+                          )}
+                          
+                          {task.task_type === "social" && task.social_platform === "discord" && (
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">Join Discord Server</div>
+                              {task.social_url && (
+                                <div className="text-sm text-gray-300">
+                                  <a href={getAbsoluteUrl(task.social_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
+                                    {task.social_url}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {task.task_type === "download" && task.download_url && (
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">Download File</div>
+                              <div className="text-sm text-gray-300">
+                                <a href={getAbsoluteUrl(task.download_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
+                                  {task.download_url}
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {task.task_type === "visit" && task.visit_url && (
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">Visit Website</div>
+                              <div className="text-sm text-gray-300">
+                                <a href={getAbsoluteUrl(task.visit_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
+                                  {task.visit_url}
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                          
+                                                     {task.task_type === "learn" && (
+                             <div className="space-y-2">
+                               <div className="text-sm text-gray-400">Complete Quiz</div>
+                               <div className="text-sm text-gray-300">
+                                 Quiz task
+                               </div>
+                             </div>
+                           )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-yellow-400 font-semibold">{task.xp_reward} XP</span>
                           {isAdminOrCreator() && (
-                            <>
+                            <div className="flex gap-1">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => {
-                                  setEditingTask(task);
-                                  setShowEditTask(true);
+                                  setEditingTask(task)
+                                  setShowEditTask(true)
                                 }}
-                                className="text-blue-400 border-blue-400/30 hover:bg-blue-500/20 ml-2"
+                                className="h-8 w-8 p-0"
                               >
-                                Edit
+                                <FileText className="w-4 h-4" />
                               </Button>
                               <Button
                                 size="sm"
-                                variant="outline"
+                                variant="destructive"
                                 onClick={() => handleDeleteTask(task.id)}
-                                className="text-red-400 border-red-400/30 hover:bg-red-500/20 ml-2"
+                                className="h-8 w-8 p-0"
                               >
-                                Delete
+                                <Trash className="w-4 h-4" />
                               </Button>
-                            </>
-                          )}
-                        </div>
-                        <p className="text-gray-400 text-sm mb-3">{task.description}</p>
-                        {task.social_url && (
-                          <p className="text-xs text-green-400 hover:underline">
-                            <a href={task.social_url} target="_blank" rel="noopener noreferrer">
-                              {task.social_url}
-                            </a>
-                          </p>
-                        )}
-                        {/* Action button at the bottom on mobile, right on desktop */}
-                        <div className="mt-2 sm:mt-0 w-full sm:w-auto flex flex-col sm:flex-row gap-2 justify-end">
-                          {/* Only show Go to X/Verify/Complete Quiz for non-admins/creators */}
-                          {!isAdminOrCreator() && (
-                            <>
-                              {/* Quiz actions */}
-                              {mounted && task.task_type === "learn" && !task.user_task_submissions?.status && (
-                                <>
-                                  <Button
-                                    onClick={() => setShowQuiz(s => ({ ...s, [task.id]: true }))}
-                                    className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
-                                  >
-                                    Complete Quiz
-                                  </Button>
-                                  {renderQuizModal(task)}
-                                </>
-                              )}
-                              {/* Twitter (X) social task action: require X auth, show Go to X and Verify buttons */}
-                              {mounted && task.task_type === "social" && task.social_platform === "twitter" && !task.user_task_submissions?.status && (
-                                (() => {
-                                  // Find Twitter identity from Supabase identities
-                                  const [twitterIdentity] = (emailUser?.identities || []).filter((i: any) => i.provider === 'twitter');
-                                  if (!twitterIdentity) {
-                                    return (
-                                      <Button
-                                        className="bg-black text-white border-0"
-                                        onClick={() => window.location.href = '/profile'}
-                                      >
-                                        Connect X in Profile to Complete
-                                      </Button>
-                                    );
-                                  } else {
-                                    return (
-                                      <>
-                                        {/* Go to X button: profile or post */}
-                                        <a
-                                          href={task.social_action === 'follow' && task.social_username ? `https://x.com/${task.social_username}` :
-                                            (task.social_action === 'like' || task.social_action === 'retweet') && task.social_username && task.social_post_id ? `https://x.com/${task.social_username}/status/${task.social_post_id}` : task.social_url || '#'}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                        >
-                                          <Button
-                                            variant="outline"
-                                            className="border-blue-500 text-blue-400 hover:bg-blue-900/40 mb-2"
-                                          >
-                                            Go to X
-                                          </Button>
-                                        </a>
-                                        <Button
-                                          onClick={() => handleTaskVerification(task)}
-                                          disabled={verifyingTask === task.id}
-                                          className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
-                                        >
-                                          Verify
-                                        </Button>
-                                      </>
-                                    );
-                                  }
-                                })()
-                              )}
-                            </>
+                            </div>
                           )}
                         </div>
                       </div>
+                      
+                      {/* Action buttons */}
+                      {!isCompleted && (
+                        <div className="mt-4 flex gap-2">
+                          {task.task_type === "learn" ? (
+                            <Button
+                              onClick={() => setShowQuiz(s => ({ ...s, [task.id]: true }))}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              Start Quiz
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => handleTaskVerification(task)}
+                              disabled={isVerifying}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              {isVerifying ? "Verifying..." : "Verify Task"}
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {index < tasks.length - 1 && <Separator className="bg-white/10" />}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>
+
+        {/* Quiz Modals */}
+        {tasks.map(task => renderQuizModal(task))}
       </div>
     </div>
   )

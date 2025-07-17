@@ -11,15 +11,18 @@ export default function QuestStatsBar({ totalXP, participants, taskCount }: Ques
     <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
       <span className="flex items-center gap-1">
         <Zap className="w-4 h-4 text-yellow-400" />
-        {totalXP} Total XP
+        <span className="hidden sm:inline">{totalXP} Total XP</span>
+        <span className="sm:hidden">{totalXP} XP</span>
       </span>
       <span className="flex items-center gap-1">
         <Users className="w-4 h-4" />
-        {participants} Participants
+        <span className="hidden sm:inline">{participants} Participants</span>
+        <span className="sm:hidden">{participants}</span>
       </span>
       <span className="flex items-center gap-1">
         <Trophy className="w-4 h-4" />
-        {taskCount} Tasks
+        <span className="hidden sm:inline">{taskCount} Tasks</span>
+        <span className="sm:hidden">{taskCount}</span>
       </span>
     </div>
   );

@@ -10,16 +10,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User, LogOut, Settings, Trophy, Zap, Building2, Home, BarChart3, Users, Menu, X, Search, Wallet, Copy, Check } from "lucide-react"
+import { User, LogOut, Trophy, Zap, Building2, Home, BarChart3, Users, Menu, X, Search, Copy, Check } from "lucide-react"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { useRef } from "react";
 import Image from "next/image";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface NavigationProps {
   onAuthClick: () => void
@@ -86,11 +83,28 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
 
   const currentUser = user || emailUser
   const displayName = user?.username || emailUser?.profile?.username || "User"
-  const displayAddress = user?.walletAddress || emailUser?.email
   const userStats = {
     xp: user?.totalXP || emailUser?.profile?.total_xp || 0,
     level: user?.level || emailUser?.profile?.level || 1,
     rank: user?.rank || emailUser?.profile?.rank || "---",
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchTerm.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
+      setMobileMenuOpen(false)
+    }
+  }
+
+  const handleCopyAddress = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1200)
+    } catch (error) {
+      console.error('Failed to copy address:', error)
+    }
   }
 
   // Only render sign-in/profile button after loading is false
@@ -107,36 +121,46 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
             Sign In
           </Button>
         )}
+        {!loading && currentUser && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMobileProfileOpen(true)}
+            className="p-2"
+          >
+            <Avatar className="w-6 h-6">
+              <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
+              <AvatarFallback className="bg-[#111111] border border-[#282828] text-white text-xs">
+                {displayName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </Button>
+        )}
       </div>
 
       {/* Spacer for mobile top navigation */}
       <div className="md:hidden h-14 w-full"></div>
 
       {/* Main Navigation (desktop and mobile) */}
-      <nav className="hidden md:block sticky top-0 z-50 border-b border-[#282828]" style={{ background: '#111111' }}>
-        <div className=" px-4">
-          <div className="items-center h-auto md:h-16 gap-auto grid grid-cols-2 justify-end">
+      <nav className="hidden md:block sticky top-0 z-50 border-b border-[#282828] bg-[#111111]">
+        <div className="px-4">
+          <div className="flex items-center justify-between h-16">
             {/* Left: Search bar */}
-            <div className="hidden md:inline-grid justify-self-start">
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  if (searchTerm.trim()) router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
-                }}
-                className="relative flex items-center w-full max-w-md mx-auto"
-              >
+            <div className="flex-1 max-w-md">
+              <form onSubmit={handleSearch} className="relative">
                 <input
                   type="text"
                   placeholder="Search projects or quests..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-3 py-2 rounded-md bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                  className="w-full pl-10 pr-3 py-2 rounded-md bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
               </form>
             </div>
+
             {/* Right: Profile/User and Hamburger */}
-            <div className="flex items-center justify-end gap-4 w-full col-span-2 md:col-span-1">
+            <div className="flex items-center gap-4">
               {!loading && (currentUser ? (
                 <>
                   {/* User Stats - Desktop */}
@@ -163,8 +187,8 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                     emailUser={emailUser}
                     userStats={userStats}
                     handleSignOut={handleSignOut}
-                    setCopied={setCopied}
                     copied={copied}
+                    onCopyAddress={handleCopyAddress}
                   />
                 </>
               ) : (
@@ -202,22 +226,13 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                 <Link href="/leaderboard" className="flex items-center gap-2 px-3 py-2 rounded-md text-gray-300 hover:text-white hover:bg-[#161616] transition-colors" onClick={() => setMobileMenuOpen(false)}>
                   <Trophy className="w-4 h-4" /> Leaderboard
                 </Link>
-                <form
-                  onSubmit={e => {
-                    e.preventDefault();
-                    if (searchTerm.trim()) {
-                      setMobileMenuOpen(false);
-                      router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`)
-                    }
-                  }}
-                  className="relative flex items-center w-full mt-4"
-                >
+                <form onSubmit={handleSearch} className="relative flex items-center w-full mt-4">
                   <input
                     type="text"
                     placeholder="Search projects or quests..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-3 py-2 rounded-md bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                    className="w-full pl-10 pr-3 py-2 rounded-md bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                 </form>
@@ -230,14 +245,15 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
       {/* Mobile Profile Modal */}
       <Dialog open={mobileProfileOpen} onOpenChange={setMobileProfileOpen}>
         <DialogContent className="max-w-xs w-full bg-[#111111] border-[#282828] p-0">
+          <DialogTitle className="sr-only">User Profile</DialogTitle>
           <ProfileDropdown
             displayName={displayName}
             user={user}
             emailUser={emailUser}
             userStats={userStats}
             handleSignOut={handleSignOut}
-            setCopied={setCopied}
             copied={copied}
+            onCopyAddress={handleCopyAddress}
           />
         </DialogContent>
       </Dialog>
@@ -251,17 +267,21 @@ function ProfileDropdown({
   emailUser,
   userStats,
   handleSignOut,
-  setCopied,
   copied,
+  onCopyAddress,
 }: {
   displayName: string;
   user: WalletUser | null;
   emailUser: any;
   userStats: { xp: number; level: number; rank: string };
   handleSignOut: () => void;
-  setCopied: (v: boolean) => void;
   copied: boolean;
+  onCopyAddress: (address: string) => void;
 }) {
+  const displayAddress = user?.walletAddress
+    ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
+    : emailUser?.email
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -275,34 +295,26 @@ function ProfileDropdown({
           <div className="hidden sm:block text-left">
             <div className="text-white text-sm font-medium">{displayName}</div>
             <div className="flex items-center gap-1 text-xs text-gray-400">
-              {user?.walletAddress
-                ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-                : emailUser?.email}
+              {displayAddress}
               {user?.walletAddress && (
                 <span
                   role="button"
                   tabIndex={0}
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    await navigator.clipboard.writeText(user.walletAddress);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 1200);
-                  }}
-                  onKeyDown={async (e) => {
+                  onClick={() => onCopyAddress(user.walletAddress)}
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      await navigator.clipboard.writeText(user.walletAddress);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 1200);
+                      onCopyAddress(user.walletAddress);
                     }
                   }}
                   className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
                   title="Copy wallet address"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
-                  </svg>
+                  {copied ? (
+                    <Check className="w-4 h-4 text-green-400" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-emerald-400" />
+                  )}
                 </span>
               )}
             </div>
@@ -313,34 +325,26 @@ function ProfileDropdown({
         <div className="px-2 py-1.5">
           <p className="text-sm font-medium text-white">{displayName}</p>
           <div className="flex items-center gap-1 text-xs text-gray-400">
-            {user?.walletAddress
-              ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-              : emailUser?.email}
+            {displayAddress}
             {user?.walletAddress && (
               <span
                 role="button"
                 tabIndex={0}
-                onClick={async (e) => {
-                  e.preventDefault();
-                  await navigator.clipboard.writeText(user.walletAddress);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1200);
-                }}
-                onKeyDown={async (e) => {
+                onClick={() => onCopyAddress(user.walletAddress)}
+                onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    await navigator.clipboard.writeText(user.walletAddress);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 1200);
+                    onCopyAddress(user.walletAddress);
                   }
                 }}
                 className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
                 title="Copy wallet address"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
-                </svg>
+                {copied ? (
+                  <Check className="w-4 h-4 text-green-400" />
+                ) : (
+                  <Copy className="w-4 h-4 text-emerald-400" />
+                )}
               </span>
             )}
           </div>
