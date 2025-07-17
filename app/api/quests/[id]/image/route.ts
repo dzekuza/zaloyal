@@ -1,10 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, context: { params: { id: string } }) {
   try {
     const { imageUrl, userWallet } = await request.json()
-    const questId = params.id
+    const questId = context.params.id
 
     if (!userWallet || !questId) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })

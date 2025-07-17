@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export default function DiscordCallbackPage() {
   const [status, setStatus] = useState<"verifying" | "success" | "fail">("verifying");
   const [error, setError] = useState("");
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {

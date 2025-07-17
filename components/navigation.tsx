@@ -17,6 +17,7 @@ import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { useRef } from "react";
 
 interface NavigationProps {
   onAuthClick: () => void
@@ -135,146 +136,15 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
                 </div>
 
                 {/* User Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10 py-3 h-14">
-                      <Avatar className="w-8 h-8">
-                        <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
-                        <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
-                          {displayName.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="hidden sm:block text-left">
-                        <div className="text-white text-sm font-medium">{displayName}</div>
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
-                          {user?.walletAddress
-                            ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-                            : emailUser?.email}
-                          {user?.walletAddress && (
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                await navigator.clipboard.writeText(user.walletAddress);
-                                setCopied(true);
-                                setTimeout(() => setCopied(false), 1200);
-                              }}
-                              onKeyDown={async (e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  await navigator.clipboard.writeText(user.walletAddress);
-                                  setCopied(true);
-                                  setTimeout(() => setCopied(false), 1200);
-                                }
-                              }}
-                              className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
-                              title="Copy wallet address"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
-                              </svg>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 border-[#282828] bg-[#111111]">
-                    <div className="px-2 py-1.5">
-                      <p className="text-sm font-medium text-white">{displayName}</p>
-                      <div className="flex items-center gap-1 text-xs text-gray-400">
-                        {user?.walletAddress
-                          ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-                          : emailUser?.email}
-                        {user?.walletAddress && (
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              await navigator.clipboard.writeText(user.walletAddress);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 1200);
-                            }}
-                            onKeyDown={async (e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                await navigator.clipboard.writeText(user.walletAddress);
-                                setCopied(true);
-                                setTimeout(() => setCopied(false), 1200);
-                              }
-                            }}
-                            className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
-                            title="Copy wallet address"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
-                            </svg>
-                          </span>
-                        )}
-                      </div>
-                      {/* Wallet connect/disconnect button (moved here) */}
-                      {user ? (
-                        <Button variant="ghost" className="w-full mt-2 flex items-center justify-start px-2 py-1 text-sm text-red-500 hover:bg-red-500/10" onClick={async () => { await walletAuth.disconnectWallet(); window.location.reload(); }}>
-                          <LogOut className="w-4 h-4 mr-2" />
-                          Disconnect Wallet
-                        </Button>
-                      ) : (
-                        <Button variant="ghost" className="w-full mt-2 flex items-center justify-start px-2 py-1 text-sm text-blue-500 hover:bg-blue-500/10" onClick={async () => { await walletAuth.connectWallet(); window.location.reload(); }}>
-                          <Wallet className="w-4 h-4 mr-2" />
-                          Connect Wallet
-                        </Button>
-                      )}
-                    </div>
-                    <DropdownMenuSeparator className="bg-[#282828]" />
-
-                    {/* Mobile Stats */}
-                    <div className="lg:hidden px-2 py-2">
-                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                        <div>
-                          <div className="text-yellow-400 font-bold">{userStats.xp}</div>
-                          <div className="text-gray-400">XP</div>
-                        </div>
-                        <div>
-                          <div className="text-blue-400 font-bold">L{userStats.level}</div>
-                          <div className="text-gray-400">Level</div>
-                        </div>
-                        <div>
-                          <div className="text-green-400 font-bold">#{userStats.rank}</div>
-                          <div className="text-gray-400">Rank</div>
-                        </div>
-                      </div>
-                    </div>
-                    <DropdownMenuSeparator className="lg:hidden bg-emerald-700" />
-
-                    <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
-                      <Link href="/profile">
-                        <User className="w-4 h-4 mr-2" />
-                        Profile
-                      </Link>
-                    </DropdownMenuItem>
-
-                    {/* Always show Register Project link for authenticated users */}
-                    <DropdownMenuSeparator className="bg-emerald-700" />
-                    <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
-                      <Link href="/register-project">
-                        <Building2 className="w-4 h-4 mr-2" />
-                        Register Project
-                      </Link>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={handleSignOut}
-                      className="text-red-400 hover:text-red-300"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <ProfileDropdown
+                  displayName={displayName}
+                  user={user}
+                  emailUser={emailUser}
+                  userStats={userStats}
+                  handleSignOut={handleSignOut}
+                  setCopied={setCopied}
+                  copied={copied}
+                />
               </>
             ) : (
               <Button
@@ -336,4 +206,147 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
       </div>
     </nav>
   )
+}
+
+function ProfileDropdown({
+  displayName,
+  user,
+  emailUser,
+  userStats,
+  handleSignOut,
+  setCopied,
+  copied,
+}: {
+  displayName: string;
+  user: WalletUser | null;
+  emailUser: any;
+  userStats: { xp: number; level: number; rank: string };
+  handleSignOut: () => void;
+  setCopied: (v: boolean) => void;
+  copied: boolean;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10 py-3 h-14">
+          <Avatar className="w-8 h-8">
+            <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
+            <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+              {displayName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="hidden sm:block text-left">
+            <div className="text-white text-sm font-medium">{displayName}</div>
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              {user?.walletAddress
+                ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
+                : emailUser?.email}
+              {user?.walletAddress && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    await navigator.clipboard.writeText(user.walletAddress);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1200);
+                  }}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      await navigator.clipboard.writeText(user.walletAddress);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1200);
+                    }
+                  }}
+                  className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
+                  title="Copy wallet address"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
+                  </svg>
+                </span>
+              )}
+            </div>
+          </div>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 border-[#282828] bg-[#111111]">
+        <div className="px-2 py-1.5">
+          <p className="text-sm font-medium text-white">{displayName}</p>
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            {user?.walletAddress
+              ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
+              : emailUser?.email}
+            {user?.walletAddress && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  await navigator.clipboard.writeText(user.walletAddress);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1200);
+                }}
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    await navigator.clipboard.writeText(user.walletAddress);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1200);
+                  }
+                }}
+                className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
+                title="Copy wallet address"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V5.25A2.25 2.25 0 0014.25 3h-6A2.25 2.25 0 006 5.25v12A2.25 2.25 0 008.25 19H9" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5V18.75A2.25 2.25 0 0115.75 21h-6A2.25 2.25 0 017.5 18.75V7.5A2.25 2.25 0 019.75 5.25h6A2.25 2.25 0 0118 7.5z" />
+                </svg>
+              </span>
+            )}
+          </div>
+        </div>
+        <DropdownMenuSeparator className="bg-[#282828]" />
+        <div className="lg:hidden px-2 py-2">
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div>
+              <div className="text-yellow-400 font-bold">{userStats.xp}</div>
+              <div className="text-gray-400">XP</div>
+            </div>
+            <div>
+              <div className="text-blue-400 font-bold">L{userStats.level}</div>
+              <div className="text-gray-400">Level</div>
+            </div>
+            <div>
+              <div className="text-green-400 font-bold">#{userStats.rank}</div>
+              <div className="text-gray-400">Rank</div>
+            </div>
+          </div>
+        </div>
+        <DropdownMenuSeparator className="lg:hidden bg-emerald-700" />
+        <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
+          <Link href="/profile">
+            <User className="w-4 h-4 mr-2" />
+            Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="bg-emerald-700" />
+        <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
+          <Link href="/register-project">
+            <Building2 className="w-4 h-4 mr-2" />
+            Register Project
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={handleSignOut}
+          className="text-red-400 hover:text-red-300"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
