@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID!;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET!;
@@ -15,7 +16,7 @@ interface Guild {
 
 export async function POST(req: NextRequest) {
   try {
-    const { code, guildId }: { code: string; guildId: string } = await req.json();
+    const { code, guildId, taskId }: { code: string; guildId: string; taskId?: string } = await req.json();
     if (!code || !guildId) {
       return NextResponse.json({ error: "Missing code or guildId" }, { status: 400 });
     }
@@ -62,6 +63,36 @@ export async function POST(req: NextRequest) {
 
     // 3. Check if user is in the provided guild
     const isMember = guilds.some((guild) => guild.id === guildId);
+    
+    // If this is a task verification, update the task submission
+    if (taskId && isMember) {
+      // Get user from the session or token
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Get task details
+        const { data: task } = await supabase.from("tasks").select("*").eq("id", taskId).single();
+        if (task) {
+          // Create task submission
+          await supabase.from("user_task_submissions").upsert({
+            user_id: user.id,
+            task_id: taskId,
+            quest_id: task.quest_id,
+            status: "verified",
+            submission_data: { guild_id: guildId, verified_at: new Date().toISOString() },
+            verification_data: { method: "discord_oauth", verified: true },
+            xp_earned: task.xp_reward,
+            verified_at: new Date().toISOString(),
+          });
+
+          // Update user XP
+          await supabase.rpc("increment_user_xp", {
+            user_wallet: user.email, // Use email as identifier
+            xp_amount: task.xp_reward,
+          });
+        }
+      }
+    }
+    
     return NextResponse.json({ isMember });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);

@@ -20,6 +20,7 @@ import {
   Circle,
   Twitter,
   MessageCircle,
+  MessageSquare,
   ExternalLink,
   Users,
   Zap,
@@ -67,6 +68,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   const [showAddTask, setShowAddTask] = useState(false)
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState("")
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [showEditTask, setShowEditTask] = useState(false)
+  const [updatingTask, setUpdatingTask] = useState(false)
+  const [updateTaskError, setUpdateTaskError] = useState("")
   const [newTask, setNewTask] = useState<any>({
     type: "social",
     title: "",
@@ -154,6 +159,20 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 groupId: task.social_url?.split("/").pop(),
               }),
             })
+          } else if (task.social_platform === "discord") {
+            // For Discord, we need to redirect to OAuth flow
+            const guildId = task.social_url?.split("/").pop() || task.social_url;
+            if (guildId) {
+              // Import the Discord OAuth URL utility
+              const { getDiscordOAuthUrl } = await import("@/utils/discord");
+              const oauthUrl = getDiscordOAuthUrl(guildId, task.id);
+              window.location.href = oauthUrl;
+              return;
+            } else {
+              alert("Discord server URL is required for verification");
+              setVerifyingTask(null);
+              return;
+            }
           }
           break
         case "download":
@@ -248,6 +267,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       if (newTask.type === "social" && newTask.socialPlatform === "twitter" && newTask.twitterTaskType) {
         title = getTwitterTaskHeading(newTask.twitterTaskType);
       }
+      // For Discord tasks, automatically set social_action to "join"
+      // For Twitter tasks, automatically set social_action to "follow" (default)
+      const socialAction = newTask.socialPlatform === 'discord' ? 'join' : 
+                         newTask.socialPlatform === 'twitter' ? 'follow' : 
+                         (newTask.socialAction || null);
+      
       const { error } = await supabase.from("tasks").insert({
         quest_id: quest.id,
         title,
@@ -255,7 +280,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         task_type: newTask.type,
         xp_reward: 0, // Not used, but required by schema
         order_index: tasks.length,
-        social_action: newTask.socialAction || null,
+        social_action: socialAction,
         social_platform: newTask.socialPlatform || null,
         social_url: newTask.socialUrl || newTask.tweetUrl || newTask.spaceUrl || null,
         social_username: newTask.twitterUsername || null,
@@ -279,6 +304,51 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       setCreatingTask(false)
     }
   }
+
+  // Edit a task (admin or creator only)
+  const handleEditTask = async () => {
+    if (!editingTask) return;
+    
+    setUpdatingTask(true);
+    setUpdateTaskError("");
+    
+    try {
+      let title = editingTask.title;
+      if (editingTask.task_type === "social" && editingTask.social_platform === "twitter") {
+        // For Twitter tasks, we'll keep the existing title logic
+        title = editingTask.title;
+      }
+      
+      // For Discord tasks, automatically set social_action to "join"
+      // For Twitter tasks, automatically set social_action to "follow" (default)
+      const socialAction = editingTask.social_platform === 'discord' ? 'join' : 
+                         editingTask.social_platform === 'twitter' ? 'follow' : 
+                         editingTask.social_action;
+      
+      const { error } = await supabase.from("tasks").update({
+        title,
+        description: editingTask.description || "",
+        social_action: socialAction,
+        social_platform: editingTask.social_platform || null,
+        social_url: editingTask.social_url || null,
+        social_username: editingTask.social_username || null,
+        social_post_id: editingTask.social_post_id || null,
+      }).eq("id", editingTask.id);
+      
+      if (error) throw error;
+      
+      setShowEditTask(false);
+      setEditingTask(null);
+      
+      // Refresh tasks
+      const { data: updatedTasks } = await supabase.from("tasks").select("*").eq("quest_id", quest.id).order("order_index");
+      setTasks(updatedTasks || []);
+    } catch (e: any) {
+      setUpdateTaskError(e.message || "Failed to update task");
+    } finally {
+      setUpdatingTask(false);
+    }
+  };
 
   // Delete a task (admin or creator only)
   const handleDeleteTask = async (taskId: string) => {
@@ -323,6 +393,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       case "social":
         if (task.social_platform === "twitter") return <Twitter className="w-5 h-5" />
         if (task.social_platform === "telegram") return <MessageCircle className="w-5 h-5" />
+        if (task.social_platform === "discord") return <MessageSquare className="w-5 h-5" />
         return <Users className="w-5 h-5" />
       case "download":
         return <Download className="w-5 h-5" />
@@ -602,6 +673,14 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           <label className="text-white block mb-1">Channel Link</label>
                           <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
                         </div>
+                      ) : newTask.socialPlatform === 'discord' ? (
+                        <div>
+                          <label className="text-white block mb-1">Discord Invite Link</label>
+                          <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://discord.gg/your-server" />
+                        </div>
+                      ) : newTask.socialPlatform === 'twitter' ? (
+                        // For Twitter, we don't show Action and URL fields since we have specific Twitter fields below
+                        null
                       ) : (
                         <>
                           <label className="text-white block mb-1">Action</label>
@@ -710,6 +789,150 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 </form>
               </DialogContent>
             </Dialog>
+            
+            {/* Edit Task Modal */}
+            <Dialog open={showEditTask} onOpenChange={setShowEditTask}>
+              <DialogContent className="text-white max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Edit Task</DialogTitle>
+                  <DialogDescription>
+                    Update the task details below, then save your changes.
+                  </DialogDescription>
+                </DialogHeader>
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    handleEditTask();
+                  }}
+                  className="space-y-4"
+                >
+                  {updateTaskError && (
+                    <div className="text-red-400 text-sm bg-red-900/20 border border-red-500/30 rounded p-2">
+                      {updateTaskError}
+                    </div>
+                  )}
+                  
+                  <div>
+                    <label className="text-white block mb-1">Task Type</label>
+                                          <Select 
+                        value={editingTask?.task_type || "social"} 
+                        onValueChange={(val: "social" | "download" | "form" | "visit" | "learn") => setEditingTask((t: Task | null) => t ? { ...t, task_type: val } : null)}
+                      >
+                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#111111] border-[#282828]">
+                        <SelectItem value="social" className="text-white">Social</SelectItem>
+                        <SelectItem value="download" className="text-white">Download</SelectItem>
+                        <SelectItem value="form" className="text-white">Form</SelectItem>
+                        <SelectItem value="visit" className="text-white">Visit</SelectItem>
+                        <SelectItem value="learn" className="text-white">Learn</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {editingTask?.task_type === "social" && (
+                    <div>
+                      <label className="text-white block mb-1">Social Platform</label>
+                      <Select 
+                        value={editingTask?.social_platform || "twitter"} 
+                        onValueChange={(val: string) => setEditingTask((t: Task | null) => t ? { ...t, social_platform: val } : null)}
+                      >
+                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#111111] border-[#282828]">
+                          <SelectItem value="twitter" className="text-white">Twitter / X</SelectItem>
+                          <SelectItem value="telegram" className="text-white">Telegram</SelectItem>
+                          <SelectItem value="discord" className="text-white">Discord</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      {editingTask?.social_platform === 'telegram' ? (
+                        <div className="mt-4">
+                          <label className="text-white block mb-1">Channel Link</label>
+                          <Input 
+                            value={editingTask?.social_url || ""} 
+                            onChange={e => setEditingTask((t: Task | null) => t ? { ...t, social_url: e.target.value } : null)} 
+                            className="bg-white/10 border-white/20 text-white" 
+                          />
+                        </div>
+                      ) : editingTask?.social_platform === 'discord' ? (
+                        <div className="mt-4">
+                          <label className="text-white block mb-1">Discord Invite Link</label>
+                          <Input 
+                            value={editingTask?.social_url || ""} 
+                            onChange={e => setEditingTask((t: Task | null) => t ? { ...t, social_url: e.target.value } : null)} 
+                            className="bg-white/10 border-white/20 text-white" 
+                            placeholder="https://discord.gg/your-server"
+                          />
+                        </div>
+                      ) : editingTask?.social_platform === 'twitter' ? (
+                        <div className="mt-4">
+                          <label className="text-white block mb-1">Twitter Username</label>
+                          <Input 
+                            value={editingTask?.social_username || ""} 
+                            onChange={e => setEditingTask((t: Task | null) => t ? { ...t, social_username: e.target.value } : null)} 
+                            className="bg-white/10 border-white/20 text-white" 
+                            placeholder="@username"
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="mt-4">
+                            <label className="text-white block mb-1">Action</label>
+                            <Select 
+                              value={editingTask?.social_action || "follow"} 
+                              onValueChange={(val: "follow" | "join" | "like" | "retweet" | "subscribe") => setEditingTask((t: Task | null) => t ? { ...t, social_action: val } : null)}
+                            >
+                              <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#111111] border-[#282828]">
+                                <SelectItem value="follow" className="text-white">Follow</SelectItem>
+                                <SelectItem value="join" className="text-white">Join</SelectItem>
+                                <SelectItem value="like" className="text-white">Like</SelectItem>
+                                <SelectItem value="retweet" className="text-white">Retweet</SelectItem>
+                                <SelectItem value="subscribe" className="text-white">Subscribe</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="mt-4">
+                            <label className="text-white block mb-1">URL/Link</label>
+                            <Input 
+                              value={editingTask?.social_url || ""} 
+                              onChange={e => setEditingTask((t: Task | null) => t ? { ...t, social_url: e.target.value } : null)} 
+                              className="bg-white/10 border-white/20 text-white" 
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowEditTask(false);
+                        setEditingTask(null);
+                      }} 
+                      className="bg-white/10 border-white/20 text-white"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={updatingTask} 
+                      className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
+                    >
+                      {updatingTask ? "Updating..." : "Update Task"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
             <div className="space-y-4">
               {tasks.map((task: Task, index: number) => (
                 <div key={task.id}>
@@ -734,7 +957,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => {/* TODO: Implement edit task modal */}}
+                                onClick={() => {
+                                  setEditingTask(task);
+                                  setShowEditTask(true);
+                                }}
                                 className="text-blue-400 border-blue-400/30 hover:bg-blue-500/20 ml-2"
                               >
                                 Edit

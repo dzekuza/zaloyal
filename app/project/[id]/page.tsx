@@ -116,6 +116,7 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState("")
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null)
+  const [showEditQuest, setShowEditQuest] = useState(false)
   const [xpToCollect, setXpToCollect] = useState(0)
   const [showCreateQuest, setShowCreateQuest] = useState(false)
   const [creatingQuest, setCreatingQuest] = useState(false)
@@ -343,9 +344,9 @@ export default function ProjectDetailPage() {
                     </div>
                     <div className="flex flex-col gap-2">
                       {isOwner && (
-                        <Dialog open={editingQuest?.id === quest.id} onOpenChange={open => setEditingQuest(open ? quest : null)}>
+                        <Dialog open={showEditQuest && editingQuest?.id === quest.id} onOpenChange={open => { setShowEditQuest(open); if (!open) setEditingQuest(null); }}>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="w-full bg-green-600 hover:bg-green-700 text-white border-0" onClick={e => { e.preventDefault(); e.stopPropagation(); }}>Edit Quest</Button>
+                            <Button size="sm" variant="outline" className="w-full bg-green-600 hover:bg-green-700 text-white border-0" onClick={e => { e.preventDefault(); e.stopPropagation(); setEditingQuest(quest); setShowEditQuest(true); }}>Edit Quest</Button>
                           </DialogTrigger>
                           <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
                             <DialogHeader>
@@ -354,7 +355,7 @@ export default function ProjectDetailPage() {
                                 Update the quest details and image below, then save your changes.
                               </DialogDescription>
                             </DialogHeader>
-                            <EditQuestForm quest={quest} onSave={() => { setEditingQuest(null); router.push(`/project/${projectId}`); }} />
+                            <EditQuestForm quest={quest} onSave={() => { setEditingQuest(null); setShowEditQuest(false); router.push(`/project/${projectId}`); }} />
                           </DialogContent>
                         </Dialog>
                       )}
