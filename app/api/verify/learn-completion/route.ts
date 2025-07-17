@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
+      success: passed,
       verified: passed,
       message: passed
         ? `Quiz completed! Score: ${score}% - You earned ${task.xp_reward} XP`
@@ -117,6 +118,13 @@ export async function POST(request: NextRequest) {
       score,
       correctAnswers,
       totalQuestions,
+      submission: {
+        user_id: user.id,
+        task_id: taskId,
+        quest_id: task.quest_id,
+        status: passed ? "verified" : "rejected",
+        xp_earned: passed ? task.xp_reward : 0,
+      }
     })
   } catch (error) {
     console.error("Learn completion error:", error)

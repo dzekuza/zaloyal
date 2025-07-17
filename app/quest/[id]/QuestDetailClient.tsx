@@ -958,11 +958,41 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                   )}
                   <div>
                     <label className="text-white block mb-1">Task Title</label>
-                    <Input value={newTask.title} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, title: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                    <Input 
+                      value={newTask.type === "learn" ? newTask.quizHeadline : newTask.title} 
+                      onChange={e => {
+                        if (newTask.type === "learn") {
+                          setNewTask((t: typeof newTask) => ({ 
+                            ...t, 
+                            quizHeadline: e.target.value,
+                            title: e.target.value // Also update title for consistency
+                          }))
+                        } else {
+                          setNewTask((t: typeof newTask) => ({ ...t, title: e.target.value }))
+                        }
+                      }} 
+                      className="bg-white/10 border-white/20 text-white" 
+                      placeholder={newTask.type === "learn" ? "Enter quiz question" : "Enter task title"}
+                    />
                   </div>
                   <div>
                     <label className="text-white block mb-1">Description</label>
-                    <Textarea value={newTask.description} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, description: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                    <Textarea 
+                      value={newTask.type === "learn" ? newTask.quizDescription : newTask.description} 
+                      onChange={e => {
+                        if (newTask.type === "learn") {
+                          setNewTask((t: typeof newTask) => ({ 
+                            ...t, 
+                            quizDescription: e.target.value,
+                            description: e.target.value // Also update description for consistency
+                          }))
+                        } else {
+                          setNewTask((t: typeof newTask) => ({ ...t, description: e.target.value }))
+                        }
+                      }} 
+                      className="bg-white/10 border-white/20 text-white" 
+                      placeholder={newTask.type === "learn" ? "Enter quiz description" : "Enter task description"}
+                    />
                   </div>
                   <div>
                     <label className="text-white block mb-1">XP Reward</label>
