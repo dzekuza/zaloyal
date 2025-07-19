@@ -566,18 +566,23 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     // Check if user is the project owner (this is the main check)
     const isProjectOwner = quest.project_id && quest.projects?.owner_id ? currentUserUUID === quest.projects.owner_id : false
     
-    console.log('Project owner check:', { 
+    // Also check if user is the quest creator as fallback
+    const isQuestCreator = quest.creator_id ? currentUserUUID === quest.creator_id : false
+    
+    console.log('Admin check:', { 
       currentUserUUID,
       projectId: quest.project_id,
       projectOwnerId: quest.projects?.owner_id,
+      questCreatorId: quest.creator_id,
       isProjectOwner,
+      isQuestCreator,
       walletUser: walletUser?.walletAddress,
       emailUser: emailUser?.profile?.id,
       questData: quest,
       projectsData: quest.projects
     })
     
-    return isProjectOwner
+    return isProjectOwner || isQuestCreator
   }
 
   const renderQuizModal = (task: Task) => {

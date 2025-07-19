@@ -98,10 +98,32 @@ export async function POST(request: NextRequest) {
 
     // Update user XP if passed
     if (passed) {
-      const { error: xpError } = await supabase.rpc("increment_user_xp", {
-        user_wallet: userWallet.toLowerCase(),
-        xp_amount: task.xp_reward,
-      })
+      let xpError;
+      if (userWallet) {
+        const { error } = await supabase.rpc("increment_user_xp", {
+          user_wallet: userWallet.toLowerCase(),
+          xp_amount: task.xp_reward,
+        })
+        xpError = error;
+      } else if (userEmail) {
+        // For email users, update XP directly
+        const { data: currentUser } = await supabase
+          .from("users")
+          .select("total_xp")
+          .eq("email", userEmail)
+          .single()
+        
+        if (currentUser) {
+          const { error } = await supabase
+            .from("users")
+            .update({ 
+              total_xp: (currentUser.total_xp || 0) + task.xp_reward,
+              updated_at: new Date().toISOString()
+            })
+            .eq("email", userEmail)
+          xpError = error;
+        }
+      }
 
       if (xpError) {
         console.error("XP update error:", xpError)
