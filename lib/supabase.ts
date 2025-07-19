@@ -264,6 +264,16 @@ export interface Database {
           submitted_at: string
           verified_at: string | null
           verifier_notes: string | null
+          verified: boolean
+          social_username: string | null
+          social_post_url: string | null
+          quiz_answers: any | null
+          manual_verification_note: string | null
+          xp_removed: boolean
+          xp_removal_reason: string | null
+          xp_removed_at: string | null
+          created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
@@ -277,6 +287,16 @@ export interface Database {
           submitted_at?: string
           verified_at?: string | null
           verifier_notes?: string | null
+          verified?: boolean
+          social_username?: string | null
+          social_post_url?: string | null
+          quiz_answers?: any | null
+          manual_verification_note?: string | null
+          xp_removed?: boolean
+          xp_removal_reason?: string | null
+          xp_removed_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -290,6 +310,16 @@ export interface Database {
           submitted_at?: string
           verified_at?: string | null
           verifier_notes?: string | null
+          verified?: boolean
+          social_username?: string | null
+          social_post_url?: string | null
+          quiz_answers?: any | null
+          manual_verification_note?: string | null
+          xp_removed?: boolean
+          xp_removal_reason?: string | null
+          xp_removed_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
     }

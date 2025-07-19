@@ -44,6 +44,7 @@ import { supabase } from "@/lib/supabase"
 import EditQuestForm from "@/components/edit-quest-form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import QuestResponsesViewer from "@/components/quest-responses-viewer"
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
@@ -63,9 +64,7 @@ function QuestPlaceholderCover({ title, categoryIcon }: { title: string; categor
     <div className="h-64 w-full bg-gradient-to-br from-[#1a1a1a] via-[#0f0f0f] to-[#1a1a1a] flex items-center justify-center relative overflow-hidden">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-0 left-0 w-full h-full" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }}></div>
+        <div className="absolute top-0 left-0 w-full h-full quest-placeholder-bg"></div>
       </div>
       
       {/* Quest icon or fallback */}
@@ -107,6 +106,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   const [updatingTask, setUpdatingTask] = useState(false)
   const [updateTaskError, setUpdateTaskError] = useState("")
   const [currentUserUUID, setCurrentUserUUID] = useState<string | null>(null)
+  const [showResponsesViewer, setShowResponsesViewer] = useState(false)
+  const [questCompleted, setQuestCompleted] = useState(false)
   const [newTask, setNewTask] = useState<any>({
     type: "social",
     title: "",
@@ -192,6 +193,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     
     fetchUserUUID()
   }, [walletUser])
+
+  // Check if quest is completed (all tasks have submissions)
+  useEffect(() => {
+    const checkQuestCompletion = () => {
+      const allTasksCompleted = tasks.every(task => task.user_task_submissions)
+      setQuestCompleted(allTasksCompleted)
+    }
+    checkQuestCompletion()
+  }, [tasks])
 
   if (!mounted) return null;
 
@@ -608,7 +618,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                     className="w-4 h-4 text-green-500 bg-white/10 border-white/20 rounded"
                     onChange={(e) => {
                       const currentAnswers = quizAnswers[task.id] || [];
-                      let newAnswers;
+                      let newAnswers: number[];
                       
                       if (quizData.multiSelect) {
                         if (e.target.checked) {
@@ -674,7 +684,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   console.log('Full quest object:', JSON.stringify(quest, null, 2))
 
   return (
-    <div className="min-h-screen" style={{ background: '#181818' }}>
+    <div className="min-h-screen quest-page-bg">
       <div className="w-full px-2 sm:px-4 py-8">
         {/* Back Button */}
         <Link href={quest.project_id ? `/project/${quest.project_id}` : "/"} className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors">
@@ -701,10 +711,11 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 )}
                 <div className="absolute top-4 left-4 flex gap-2">
                   <Badge
-                    className="text-white border-0"
+                    className="text-white border-0 quest-badge-gradient"
                     style={{
-                      background: `linear-gradient(to right, ${quest.quest_categories?.color || '#10b981'}, ${quest.quest_categories?.color || '#059669'})`,
-                    }}
+                      '--quest-color': quest.quest_categories?.color || '#10b981',
+                      '--quest-color-secondary': quest.quest_categories?.color || '#059669'
+                    } as React.CSSProperties}
                   >
                     {quest.quest_categories?.icon} {quest.quest_categories?.name}
                   </Badge>
@@ -967,15 +978,17 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                               <input
                                 type={newTask.quizMultiSelect ? "checkbox" : "radio"}
                                 name="correctAnswer"
+                                id={`correct-answer-${index}`}
+                                aria-label={`Mark answer ${index + 1} as correct`}
                                 checked={newTask.quizCorrectAnswers.includes(index)}
                                 onChange={(e) => {
-                                  let newCorrectAnswers;
+                                  let newCorrectAnswers: number[];
                                   if (newTask.quizMultiSelect) {
                                     if (e.target.checked) {
                                       newCorrectAnswers = [...newTask.quizCorrectAnswers, index];
-                                                                         } else {
-                                       newCorrectAnswers = newTask.quizCorrectAnswers.filter((i: number) => i !== index);
-                                     }
+                                    } else {
+                                      newCorrectAnswers = newTask.quizCorrectAnswers.filter((i: number) => i !== index);
+                                    }
                                   } else {
                                     newCorrectAnswers = e.target.checked ? [index] : [];
                                   }
@@ -1233,6 +1246,48 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             {renderQuizModal(task)}
           </div>
         ))}
+
+        {/* View All Responses Button */}
+        {questCompleted && isAdminOrCreator() && (
+          <Card className="mt-6 bg-[#111111] border-[#282828]">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-white font-semibold text-lg mb-2">Quest Completed!</h3>
+                  <p className="text-gray-400 text-sm">
+                    All tasks have been completed. You can now view all user responses and manage XP distribution.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setShowResponsesViewer(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View All Responses
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Responses Viewer Dialog */}
+        <Dialog open={showResponsesViewer} onOpenChange={setShowResponsesViewer}>
+          <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle className="text-white">Quest Responses</DialogTitle>
+              <DialogDescription className="text-gray-400">
+                View all user responses and manage XP distribution for completed tasks.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4">
+              <QuestResponsesViewer
+                quest={quest}
+                tasks={tasks}
+                isAdmin={isAdminOrCreator()}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
