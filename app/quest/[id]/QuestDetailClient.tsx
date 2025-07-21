@@ -744,43 +744,43 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
           {/* Quest Stats Sidebar (desktop only) */}
           <div className="space-y-6 hidden lg:block">
-            <Card className="text-card-foreground shadow-sm bg-[#111111] rounded-lg backdrop-blur-sm overflow-hidden mb-2">
-              <CardHeader className="bg-[#111111] border-b border-[#282828]">
-                <CardTitle className="text-white">Quest Stats</CardTitle>
+            <Card className="bg-[#111111] rounded-lg mb-4">
+              <CardHeader className="pt-4 pb-2 px-6">
+                <CardTitle className="text-lg font-bold text-white">Quest Stats</CardTitle>
               </CardHeader>
-              <CardContent className="bg-[#111111] space-y-4 p-6 pt-6">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Total Rewards</span>
-                  <span className="text-yellow-400 font-semibold">{quest.total_xp} XP</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Participants</span>
-                  <span className="text-white">{quest.participant_count}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Tasks</span>
-                  <span className="text-white">{tasks.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Status</span>
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">{quest.status}</Badge>
+              <CardContent className="pb-4 px-6">
+                <div className="flex flex-col gap-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Total Rewards</span>
+                    <span className="font-bold text-yellow-400">{quest.total_xp} XP</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Participants</span>
+                    <span className="font-bold text-white">{quest.participant_count}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Tasks</span>
+                    <span className="font-bold text-white">{tasks.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Status</span>
+                    <span className="font-bold text-green-400">active</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="text-card-foreground shadow-sm bg-[#111111] rounded-lg backdrop-blur-sm overflow-hidden mb-2">
-              <CardHeader className="bg-[#111111] border-b border-[#282828]">
-                <CardTitle className="text-white">Creator</CardTitle>
+            <Card className="bg-[#111111] rounded-lg mb-4">
+              <CardHeader className="pt-4 pb-2 px-6">
+                <CardTitle className="text-lg font-bold text-white">Creator</CardTitle>
               </CardHeader>
-              <CardContent className="bg-[#111111] pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold">
-                      {quest.users?.username?.charAt(0).toUpperCase() || "A"}
-                    </span>
+              <CardContent className="pb-4 px-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center text-white font-bold text-xl">
+                    {quest.users?.username?.charAt(0).toUpperCase() || "A"}
                   </div>
-                  <div>
-                    <p className="text-white font-semibold">{quest.users?.username || "Anonymous"}</p>
-                    <p className="text-gray-400 text-sm">Verified Creator</p>
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white">{quest.users?.username || "Anonymous"}</span>
+                    <span className="text-xs text-green-400">Verified Creator</span>
                   </div>
                 </div>
               </CardContent>
@@ -835,21 +835,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         {/* Tasks Section */}
         <Card className="text-card-foreground shadow-sm bg-[#111111] rounded-lg backdrop-blur-sm overflow-hidden mb-2">
           <CardHeader className="bg-[#111111] border-b border-[#282828]">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-white">Quest Tasks</CardTitle>
-                <CardDescription className="text-gray-300">Complete all tasks to earn the full XP reward</CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
+              <div className="flex flex-col items-start w-full sm:w-auto">
+                <CardTitle className="text-2xl font-bold text-white text-left">Quest Tasks</CardTitle>
+                <CardDescription className="text-base text-gray-300 text-left">Complete all tasks to earn the full XP reward</CardDescription>
               </div>
               {isAdminOrCreator() && (
-                <Button onClick={() => setShowAddTask(true)} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white flex items-center gap-2">
+                <Button onClick={() => setShowAddTask(true)} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white flex items-center gap-2 w-full sm:w-auto">
                   <Plus className="w-4 h-4" /> Add Task
                 </Button>
-              )}
-              {/* Debug info */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="text-xs text-gray-400 mt-2">
-                  Debug: isProjectOwner = {isAdminOrCreator() ? 'true' : 'false'}
-                </div>
               )}
             </div>
           </CardHeader>
