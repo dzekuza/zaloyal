@@ -325,13 +325,13 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
       {/* Left Column - Users List */}
-      <div className="lg:col-span-1 bg-[#111111] rounded-lg border border-[#282828] overflow-hidden">
-        <div className="p-4 border-b border-[#282828]">
+      <Card className="lg:col-span-1 bg-[#111111] rounded-lg border border-[#282828] overflow-hidden">
+        <CardContent className="border-b border-[#282828] p-4">
           <h3 className="text-white font-semibold flex items-center gap-2">
             <Users className="w-5 h-5" />
             Participants ({Object.keys(userSubmissions).length})
           </h3>
-        </div>
+        </CardContent>
         <div className="overflow-y-auto h-[calc(600px-80px)]">
           {Object.entries(userSubmissions).map(([userId, userData]) => (
             <div
@@ -372,13 +372,13 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Right Column - User Responses */}
-      <div className="lg:col-span-2 bg-[#111111] rounded-lg border border-[#282828] overflow-hidden">
+      <Card className="lg:col-span-2 bg-[#111111] rounded-lg border border-[#282828] overflow-hidden">
         {selectedUserData ? (
           <>
-            <div className="p-4 border-b border-[#282828]">
+            <CardContent className="border-b border-[#282828] p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-white font-semibold">
@@ -398,7 +398,7 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
                   </div>
                 </div>
               </div>
-            </div>
+            </CardContent>
             <div className="overflow-y-auto h-[calc(600px-80px)] p-4">
               {selectedUserData.submissions.map(renderSubmissionResponse)}
             </div>
@@ -412,7 +412,7 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
             </div>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 } 
