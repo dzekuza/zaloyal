@@ -191,130 +191,114 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
     if (!task) return null
 
     return (
-      <div key={submission.id} className="border border-[#282828] rounded-lg p-4 mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          {getTaskIcon(task)}
-          <h4 className="font-semibold text-white">{task.title}</h4>
-          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-            +{submission.xp_earned || 0} XP
-          </Badge>
-          {submission.xp_removed && (
-            <Badge variant="destructive" className="text-xs">
-              XP Removed
+      <Card key={submission.id} className="mb-4">
+        <CardContent>
+          <div className="flex items-center gap-2 mb-3">
+            {getTaskIcon(task)}
+            <h4 className="font-semibold text-white">{task.title}</h4>
+            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+              +{submission.xp_earned || 0} XP
             </Badge>
-          )}
-        </div>
-
-        <div className="space-y-2 text-sm">
-          {submission.social_username && (
-            <div>
-              <span className="text-gray-400">Username:</span>
-              <span className="text-white ml-2">@{submission.social_username}</span>
-            </div>
-          )}
-          
-          {submission.social_post_url && (
-            <div>
-              <span className="text-gray-400">Post URL:</span>
-              <a 
-                href={submission.social_post_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-green-400 hover:text-green-300 ml-2"
-              >
-                View Post
-              </a>
-            </div>
-          )}
-
-          {submission.quiz_answers && (
-            <div>
-              <span className="text-gray-400">Quiz Answers:</span>
-              <div className="text-white ml-2 mt-1">
-                {submission.quiz_answers.map((answer: any, index: number) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="text-gray-500">Q{index + 1}:</span>
-                    <span>{answer}</span>
-                  </div>
-                ))}
+            {submission.xp_removed && (
+              <Badge variant="destructive" className="text-xs">
+                XP Removed
+              </Badge>
+            )}
+          </div>
+          <div className="space-y-2 text-sm">
+            {submission.social_username && (
+              <div>
+                <span className="text-gray-400">Username:</span>
+                <span className="text-white ml-2">@{submission.social_username}</span>
               </div>
-            </div>
-          )}
-
-          {submission.manual_verification_note && (
-            <div>
-              <span className="text-gray-400">Verification Note:</span>
-              <span className="text-white ml-2">{submission.manual_verification_note}</span>
-            </div>
-          )}
-
-          {submission.xp_removal_reason && (
-            <div>
-              <span className="text-red-400">XP Removal Reason:</span>
-              <span className="text-red-300 ml-2">{submission.xp_removal_reason}</span>
-            </div>
-          )}
-
-          <div className="text-gray-400 text-xs">
-            Completed: {new Date(submission.created_at).toLocaleDateString()}
-          </div>
-        </div>
-
-        {isAdmin && !submission.xp_removed && (
-          <div className="mt-3 pt-3 border-t border-[#282828]">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => setShowRemoveXPDialog(submission.id)}
+            )}
+            {submission.social_post_url && (
+              <div>
+                <span className="text-gray-400">Post URL:</span>
+                <a 
+                  href={submission.social_post_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-green-400 hover:text-green-300 ml-2"
                 >
-                  <Trash className="w-4 h-4 mr-2" />
-                  Remove XP
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Remove XP</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to remove {submission.xp_earned} XP from this user? 
-                    This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-300">Reason for removal</label>
-                    <Textarea
-                      value={removeXPReason}
-                      onChange={(e) => setRemoveXPReason(e.target.value)}
-                      placeholder="Enter the reason for removing XP..."
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="destructive"
-                      onClick={() => handleRemoveXP(submission.id)}
-                      disabled={removingXP === submission.id}
-                    >
-                      {removingXP === submission.id ? "Removing..." : "Remove XP"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowRemoveXPDialog(null)
-                        setRemoveXPReason("")
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                  View Post
+                </a>
+              </div>
+            )}
+            {submission.quiz_answers && (
+              <div>
+                <span className="text-gray-400">Quiz Answers:</span>
+                <div className="text-white ml-2 mt-1">
+                  {submission.quiz_answers.map((answer: any, index: number) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-gray-500">Q{index + 1}:</span>
+                      <span>{answer}</span>
+                    </div>
+                  ))}
                 </div>
-              </DialogContent>
-            </Dialog>
+              </div>
+            )}
+            {submission.manual_verification_note && (
+              <div>
+                <span className="text-gray-400">Verification Note:</span>
+                <span className="text-white ml-2">{submission.manual_verification_note}</span>
+              </div>
+            )}
+            {submission.xp_removal_reason && (
+              <div>
+                <span className="text-red-400">XP Removal Reason:</span>
+                <span className="text-red-300 ml-2">{submission.xp_removal_reason}</span>
+              </div>
+            )}
+            <div className="text-gray-400 text-xs">
+              Completed: {new Date(submission.created_at).toLocaleDateString()}
+            </div>
           </div>
-        )}
-      </div>
+          {isAdmin && !submission.xp_removed && (
+            <div className="mt-3 pt-3 border-t border-[#282828]">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => setShowRemoveXPDialog(submission.id)}
+                  >
+                    <Trash className="w-4 h-4 mr-2" />
+                    Remove XP
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Remove XP</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to remove {submission.xp_earned} XP from this user? 
+                      This action cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-300">Reason for removal</label>
+                      <Textarea
+                        value={removeXPReason}
+                        onChange={(e) => setRemoveXPReason(e.target.value)}
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleRemoveXP(submission.id)}
+                        disabled={!removeXPReason.trim() || removingXP}
+                      >
+                        {removingXP ? "Removing..." : "Confirm Remove"}
+                      </Button>
+                    </DialogFooter>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     )
   }
 
