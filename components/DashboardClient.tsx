@@ -35,24 +35,25 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
       <div className="container mx-auto px-4 py-8">
         {/* User Profile Header */}
         <Card className="bg-[#111111] rounded-lg mb-8">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-              <div className="flex items-center gap-4">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col items-center md:flex-row md:items-center gap-4 md:gap-6 w-full">
+              <div className="flex flex-col items-center gap-2 w-full md:w-auto">
                 <div className="relative">
                   <img
                     src={profile?.avatar || "/placeholder.svg"}
                     alt="Profile"
-                    className="w-20 h-20 rounded-full border-2 border-white/20"
+                    className="w-20 h-20 rounded-full border-2 border-white/20 mx-auto"
                   />
                   <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
                     L{profile?.level}
                   </div>
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-white">{profile?.username}</h1>
-                  <p className="text-gray-400 text-sm font-mono">{profile?.walletAddress}</p>
-                  <p className="text-gray-200 text-sm font-mono">{profile?.walletAddress}</p>
-                  <div className="flex items-center gap-4 mt-2 text-sm">
+                <h1 className="text-base sm:text-2xl font-bold text-white text-center mt-2">{profile?.username}</h1>
+                <p className="text-gray-400 text-xs sm:text-sm font-mono text-center break-all">{profile?.walletAddress}</p>
+              </div>
+              <div className="flex-1 w-full md:max-w-md mt-4 md:mt-0">
+                <div className="space-y-2 w-full">
+                  <div className="flex flex-wrap justify-center md:justify-between gap-2 text-xs sm:text-sm mb-2">
                     <span className="flex items-center gap-1 text-yellow-200">
                       <Zap className="w-4 h-4" />
                       {profile?.total_xp} XP
@@ -66,20 +67,18 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
                       {profile?.completedQuests} Quests
                     </span>
                   </div>
-                </div>
-              </div>
-              <div className="flex-1 max-w-md">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Level Progress</span>
-                    <span className="text-white">
-                      {profile?.total_xp}/{nextLevelXP} XP
-                    </span>
+                  <div className="flex flex-col gap-1 w-full">
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="text-gray-400">Level Progress</span>
+                      <span className="text-white">
+                        {profile?.total_xp}/{nextLevelXP} XP
+                      </span>
+                    </div>
+                    <Progress value={levelProgress} className="h-2 w-full" />
+                    <p className="text-xs text-gray-400 text-right w-full">
+                      {nextLevelXP - profile?.total_xp} XP to Level {profile?.level + 1}
+                    </p>
                   </div>
-                  <Progress value={levelProgress} className="h-2" />
-                  <p className="text-xs text-gray-400">
-                    {nextLevelXP - profile?.total_xp} XP to Level {profile?.level + 1}
-                  </p>
                 </div>
               </div>
             </div>
@@ -87,17 +86,17 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
         </Card>
         {/* Dashboard Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-sm">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-white/20">
+          <TabsList className="flex whitespace-nowrap overflow-x-auto -mx-2 px-2 bg-white/10 backdrop-blur-sm">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-white/20 min-w-max">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="quests" className="data-[state=active]:bg-white/20">
-              Active Quests
+            <TabsTrigger value="quests" className="data-[state=active]:bg-white/20 min-w-max">
+              Quests
             </TabsTrigger>
-            <TabsTrigger value="achievements" className="data-[state=active]:bg-white/20">
+            <TabsTrigger value="achievements" className="data-[state=active]:bg-white/20 min-w-max">
               Achievements
             </TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:bg-white/20">
+            <TabsTrigger value="history" className="data-[state=active]:bg-white/20 min-w-max">
               History
             </TabsTrigger>
           </TabsList>

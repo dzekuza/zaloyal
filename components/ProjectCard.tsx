@@ -117,7 +117,7 @@ export default function ProjectCard({
                 <Button 
                   size="sm" 
                   variant="destructive" 
-                  className="px-3 py-1 text-xs" 
+                  className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white shadow-md border-0"
                   onClick={onDelete}
                 >
                   Delete
