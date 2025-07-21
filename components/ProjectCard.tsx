@@ -73,7 +73,7 @@ export default function ProjectCard({
   );
 
   return (
-    <Card className="group bg-[#111111] border-white/20 transition-all duration-300 hover:border-white/30 overflow-hidden">
+    <Card className="group bg-[#111111] rounded-lg transition-all duration-300 hover:bg-[#181818] overflow-hidden">
       {/* Cover Image */}
       <div className="relative overflow-hidden">
         {project.cover_image_url ? (

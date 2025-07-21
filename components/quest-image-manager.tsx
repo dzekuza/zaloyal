@@ -58,7 +58,7 @@ export default function QuestImageManager({ questId, currentImageUrl, onImageUpd
   }
 
   return (
-    <Card className="bg-[#111111] border-[#282828]">
+    <Card className="bg-[#111111] rounded-lg">
       <CardHeader>
         <CardTitle className="text-white">Quest Image</CardTitle>
         <CardDescription className="text-gray-300">Upload or update your quest image</CardDescription>

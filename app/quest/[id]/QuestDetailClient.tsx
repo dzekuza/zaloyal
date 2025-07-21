@@ -700,7 +700,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         {/* Quest Header */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
-            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+            <Card className="bg-[#111111] rounded-lg backdrop-blur-sm overflow-hidden mb-2">
               <div className="relative">
                 {quest.image_url ? (
                   <img
@@ -744,7 +744,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
           {/* Quest Stats Sidebar (desktop only) */}
           <div className="space-y-6 hidden lg:block">
-            <Card className="text-card-foreground shadow-sm bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+            <Card className="text-card-foreground shadow-sm bg-[#111111] rounded-lg backdrop-blur-sm overflow-hidden mb-2">
               <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Quest Stats</CardTitle>
               </CardHeader>
@@ -767,7 +767,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 </div>
               </CardContent>
             </Card>
-            <Card className="text-card-foreground shadow-sm bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+            <Card className="text-card-foreground shadow-sm bg-[#111111] rounded-lg backdrop-blur-sm overflow-hidden mb-2">
               <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Creator</CardTitle>
               </CardHeader>
@@ -788,7 +788,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           </div>
           {/* Mobile sidebar below main card */}
           <div className="space-y-2 block lg:hidden mt-8">
-            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-lg border mb-2">
               <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Quest Stats</CardTitle>
               </CardHeader>
@@ -811,7 +811,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-lg border mb-2">
               <CardHeader className="bg-[#111111] border-b border-[#282828]">
                 <CardTitle className="text-white">Creator</CardTitle>
               </CardHeader>
@@ -833,7 +833,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         </div>
 
         {/* Tasks Section */}
-        <Card className="text-card-foreground shadow-sm bg-[#111111] border-[#282828] backdrop-blur-sm overflow-hidden rounded-xl border mb-2">
+        <Card className="text-card-foreground shadow-sm bg-[#111111] rounded-lg backdrop-blur-sm overflow-hidden mb-2">
           <CardHeader className="bg-[#111111] border-b border-[#282828]">
             <div className="flex items-center justify-between">
               <div>
@@ -902,8 +902,25 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://discord.gg/your-server" />
                         </div>
                       ) : newTask.socialPlatform === 'twitter' ? (
-                        // For Twitter, we don't show Action and URL fields since we have specific Twitter fields below
-                        null
+                        <>
+                          <label className="text-white block mb-1">Action Type</label>
+                          <Select value={newTask.socialAction || ''} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
+                            <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                              <SelectValue placeholder="Select Action" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#111111] border-[#282828]">
+                              <SelectItem value="follow" className="text-white">Follow</SelectItem>
+                              <SelectItem value="like" className="text-white">Like</SelectItem>
+                              <SelectItem value="retweet" className="text-white">Retweet</SelectItem>
+                              <SelectItem value="post" className="text-white">Post</SelectItem>
+                              <SelectItem value="reply" className="text-white">Reply</SelectItem>
+                              <SelectItem value="quote" className="text-white">Quote</SelectItem>
+                              <SelectItem value="bookmark" className="text-white">Bookmark</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <label className="text-white block mb-1 mt-2">URL</label>
+                          <Input value={newTask.socialUrl || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/..." required />
+                        </>
                       ) : (
                         <>
                           <label className="text-white block mb-1">Action</label>

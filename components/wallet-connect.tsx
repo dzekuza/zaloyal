@@ -51,7 +51,7 @@ export default function WalletConnect({ onLinked }: { onLinked?: () => void } = 
 
   if (isAuthenticated === false) {
     return (
-      <Card className="bg-[#111111] border-[#282828]">
+      <Card className="bg-[#111111] rounded-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-white flex items-center justify-center gap-2">
             <Wallet className="w-5 h-5" />
@@ -74,7 +74,7 @@ export default function WalletConnect({ onLinked }: { onLinked?: () => void } = 
   }
 
   return (
-    <Card className="bg-[#111111] border-[#282828]">
+    <Card className="bg-[#111111] rounded-lg">
       <CardHeader className="text-center">
         <CardTitle className="text-white flex items-center justify-center gap-2">
           <Wallet className="w-5 h-5" />

@@ -34,7 +34,7 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
     <div className="min-h-screen bg-[#181818]">
       <div className="container mx-auto px-4 py-8">
         {/* User Profile Header */}
-        <Card className="bg-[#111111] border-[#282828] mb-8">
+        <Card className="bg-[#111111] rounded-lg mb-8">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="flex items-center gap-4">

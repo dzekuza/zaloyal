@@ -30,7 +30,7 @@ export default function AuthRequired({
 
   return (
     <div className={`flex items-center justify-center min-h-[50vh] px-4 ${className}`}>
-      <Card className="bg-[#111111] border-[#282828] max-w-md w-full">
+      <Card className="bg-[#111111] rounded-lg max-w-md w-full">
         <CardContent className="p-6 text-center">
           <div className="flex flex-col items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">

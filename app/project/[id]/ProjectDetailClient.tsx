@@ -169,7 +169,7 @@ export default function ProjectDetailClient({
                   Add Quest
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-2xl">
+              <DialogContent className="bg-[#111111] border-[#282828] text-white max-h-[80vh] overflow-y-auto w-full max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Create New Quest</DialogTitle>
                   <DialogDescription className="text-gray-300">
@@ -226,7 +226,7 @@ export default function ProjectDetailClient({
                           Edit
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-2xl">
+                      <DialogContent className="bg-[#111111] border-[#282828] text-white max-h-[80vh] overflow-y-auto w-full max-w-2xl">
                         <DialogHeader>
                           <DialogTitle>Edit Quest</DialogTitle>
                           <DialogDescription className="text-gray-300">
@@ -256,7 +256,7 @@ export default function ProjectDetailClient({
                     Create First Quest
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-2xl">
+                <DialogContent className="bg-[#111111] border-[#282828] text-white max-h-[80vh] overflow-y-auto w-full max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Create New Quest</DialogTitle>
                     <DialogDescription className="text-gray-300">
