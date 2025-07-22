@@ -207,34 +207,38 @@ export default function ProjectDetailClient({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {quests.map((quest) => (
-            <Link key={quest.id} href={`/quest/${quest.id}`} tabIndex={0} aria-label={`View quest ${quest.title}`}
-              className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400 rounded-lg">
-              <QuestCard quest={quest}>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1 border-[#282828] text-white hover:bg-[#1a1a1a] pointer-events-none">
+            <QuestCard quest={quest} key={quest.id}>
+              <div className="flex gap-2">
+                <Link href={`/quest/${quest.id}`} tabIndex={0} aria-label={`View quest ${quest.title}`} className="flex-1">
+                  <Button variant="outline" size="sm" className="w-full border-[#282828] text-white hover:bg-[#1a1a1a]">
                     View Quest
                   </Button>
-                  {isOwner && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]" onClick={e => e.preventDefault()}>
-                          Edit
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Edit Quest</DialogTitle>
-                          <DialogDescription className="text-gray-300">
-                            Update quest details
-                          </DialogDescription>
-                        </DialogHeader>
-                        <QuestFormWrapper quest={quest} projectId={project.id} />
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-              </QuestCard>
-            </Link>
+                </Link>
+                {isOwner && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-[#282828] text-white hover:bg-[#1a1a1a] bg-[#181818] z-10"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        Edit
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Edit Quest</DialogTitle>
+                        <DialogDescription className="text-gray-300">
+                          Update quest details
+                        </DialogDescription>
+                      </DialogHeader>
+                      <QuestFormWrapper quest={quest} projectId={project.id} />
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+            </QuestCard>
           ))}
         </div>
 

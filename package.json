@@ -90,5 +90,22 @@
     "ts-jest": "^29.1.1",
     "tsx": "^4.20.3",
     "typescript": "^5"
-  }
+  },
+  "description": "*Automatically synced with your [v0.dev](https://v0.dev) deployments*",
+  "main": "jest.config.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dzekuza/zaloyal.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/dzekuza/zaloyal/issues"
+  },
+  "homepage": "https://github.com/dzekuza/zaloyal#readme"
 }

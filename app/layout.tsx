@@ -10,7 +10,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head suppressHydrationWarning>
-        <title>BeLink Web3 Quest Platform</title>
+        <title>belink.now Web3 Quest Platform</title>
         <meta name="description" content="Web3 Quest Platform for Community Engagement" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>

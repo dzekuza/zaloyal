@@ -40,6 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import Link from "next/link";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -211,10 +212,10 @@ export default function ClientLayout({
                           }
                           className="data-[active=true]:text-green-500 data-[active=true]:bg-transparent"
                         >
-                          <a href={item.url}>
+                          <Link href={item.url} className="flex items-center gap-2">
                             <item.icon />
                             <span>{item.title}</span>
-                          </a>
+                          </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}
@@ -316,7 +317,7 @@ function ProfileDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10 py-2 h-10 md:py-3 md:h-14">
+        <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10 py-2 h-10 md:py-3 md:h-14 w-full justify-start text-left">
           <Avatar className="w-6 h-6 md:w-8 md:h-8">
             <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
             <AvatarFallback className="bg-[#111111] border border-[#282828] text-white text-xs md:text-sm">
@@ -324,8 +325,8 @@ function ProfileDropdown({
             </AvatarFallback>
           </Avatar>
           <div className="hidden sm:block text-left">
-            <div className="text-white text-sm font-medium">{displayName}</div>
-            <div className="flex items-center gap-1 text-xs text-gray-400">
+            <div className="font-semibold text-white text-base truncate">{displayName}</div>
+            <div className="flex items-center gap-1 text-xs text-gray-400 truncate">
               {displayAddress}
               {user?.walletAddress && (
                 <span
@@ -352,10 +353,10 @@ function ProfileDropdown({
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 md:w-64 border-[#282828] bg-[#111111]">
-        <div className="px-2 py-1.5">
-          <p className="text-sm font-medium text-white">{displayName}</p>
-          <div className="flex items-center gap-1 text-xs text-gray-400">
+      <DropdownMenuContent align="end" className="w-56 md:w-64 border-[#282828] bg-[#111111] p-0">
+        <div className="px-0 py-1.5 text-left">
+          <p className="text-sm font-medium text-white pl-4">{displayName}</p>
+          <div className="flex items-center gap-1 text-xs text-gray-400 pl-4">
             {displayAddress}
             {user?.walletAddress && (
               <span
@@ -381,14 +382,14 @@ function ProfileDropdown({
           </div>
         </div>
         <DropdownMenuSeparator className="bg-[#282828]" />
-        <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
+        <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white text-left pl-4">
           <a href="/profile">
             <User className="w-4 h-4 mr-2" />
             Profile
           </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-[#282828]" />
-        <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
+        <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white text-left pl-4">
           <a href="/register-project">
             <Building2 className="w-4 h-4 mr-2" />
             Register Project
@@ -396,7 +397,7 @@ function ProfileDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={handleSignOut}
-          className="text-red-400 hover:text-red-300"
+          className="text-red-400 hover:text-red-300 text-left pl-4"
         >
           <LogOut className="w-4 h-4 mr-2" />
           Sign Out

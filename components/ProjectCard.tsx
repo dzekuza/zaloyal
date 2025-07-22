@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, Zap, Trophy, Globe, Twitter, MessageSquare, Building2 } from "lucide-react";
+import Image from "next/image";
 
 interface ProjectCardProps {
   project: any;
@@ -20,10 +21,16 @@ function PlaceholderCover({ name, logoUrl }: { name: string; logoUrl?: string })
       {/* Logo or fallback */}
       <div className="relative z-10 flex items-center justify-center">
         {logoUrl ? (
-          <img
+          <Image
             src={logoUrl}
             alt={`${name} logo`}
+            width={80}
+            height={80}
+            loading="lazy"
+            decoding="async"
             className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 border-white/20 bg-white/10 object-cover"
+            style={{ color: "transparent" }}
+            unoptimized
           />
         ) : (
           <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 border-white/20 bg-white/10 flex items-center justify-center">
@@ -68,10 +75,16 @@ export default function ProjectCard({
       {/* Cover Image */}
       <div className="relative overflow-hidden">
         {project.cover_image_url ? (
-          <img
+          <Image
             src={project.cover_image_url}
             alt={project.name}
+            width={800}
+            height={224}
+            loading="lazy"
+            decoding="async"
             className="h-40 sm:h-48 md:h-56 w-full object-cover group-hover:scale-105 transition-transform duration-300"
+            style={{ color: "transparent" }}
+            unoptimized
           />
         ) : (
           <div className="h-40 sm:h-48 md:h-56 w-full">
@@ -123,10 +136,16 @@ export default function ProjectCard({
         {/* Bottom Overlay - Logo (only if cover image exists) */}
         {project.cover_image_url && project.logo_url && (
           <div className="absolute bottom-3 left-3">
-            <img
+            <Image
               src={project.logo_url}
               alt={`${project.name} logo`}
+              width={32}
+              height={32}
+              loading="lazy"
+              decoding="async"
               className="h-8 w-8 rounded-full border border-white/30 bg-white object-cover"
+              style={{ color: "transparent" }}
+              unoptimized
             />
           </div>
         )}
