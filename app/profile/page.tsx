@@ -252,6 +252,13 @@ export default function ProfilePage() {
   const handleLinkX = async () => {
     setLinkingTwitter(true);
     try {
+      // Ensure user is authenticated before linking
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: 'You must be logged in to link your X (Twitter) account.', variant: 'destructive' });
+        setLinkingTwitter(false);
+        return;
+      }
       // Start the linking flow
       const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
       if (error) throw error;
