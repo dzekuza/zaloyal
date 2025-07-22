@@ -217,27 +217,15 @@ export default function ProfilePage() {
     }
   }
 
-  // Replace handleLinkTwitter to update x_* fields
-  const handleLinkX = async () => {
-    const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
-    if (error) {
-      alert('Failed to link X (Twitter): ' + error.message);
-      return;
-    }
-    await updateEmailUserWithIdentities();
-    alert('X (Twitter) account linked!');
-  };
-
   const handleUnlinkTwitter = async () => {
     setUnlinkingTwitter(true)
     try {
-      const { data: identities, error: identitiesError } = await supabase.auth.getUserIdentities()
-      if (!identitiesError) {
-        const twitterIdentity = identities.identities.find((identity: any) => identity.provider === 'twitter')
+      const { data: identities } = await supabase.auth.getUserIdentities()
+      if (identities && identities.identities) {
+        const twitterIdentity = identities.identities.find((i: any) => i.provider === 'twitter')
         if (twitterIdentity) {
           await supabase.auth.unlinkIdentity(twitterIdentity)
-          await updateEmailUserWithIdentities();
-          // Optionally clear X fields in users table as before
+          // Clear X fields in users table
           if (emailUser?.profile?.id) {
             await supabase.from('users').update({
               x_id: null,
@@ -246,12 +234,38 @@ export default function ProfilePage() {
               x_profile_url: null,
             }).eq('id', emailUser.profile.id);
           }
+          // Sign out and force sign in to clear session
+          await supabase.auth.signOut();
+          alert('You have been signed out. Please sign in again to reconnect your X (Twitter) account.');
+          window.location.href = '/';
         }
       }
     } finally {
       setUnlinkingTwitter(false)
     }
   }
+
+  const handleLinkX = async () => {
+    try {
+      // Require fresh sign in before relinking
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Please sign in before linking your X (Twitter) account.');
+        return;
+      }
+      const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
+      if (error) {
+        alert('Failed to link X (Twitter): ' + error.message);
+        return;
+      }
+      await updateEmailUserWithIdentities();
+      alert('X (Twitter) account linked!');
+      window.location.reload();
+    } catch (err) {
+      alert('Twitter link error: ' + String((err as Error)?.message || err));
+      console.error(err);
+    }
+  };
 
   const handleAvatarUploaded = async (avatarUrl: string) => {
     setAvatarUrl(avatarUrl); // update local state for preview
@@ -588,19 +602,7 @@ export default function ProfilePage() {
                       } else {
                         return (
                           <Button
-                            onClick={async () => {
-                              try {
-                                const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
-                                if (error) {
-                                  alert('Error linking Twitter: ' + String(error?.message || error));
-                                } else {
-                                  alert('Twitter account linked!');
-                                  window.location.reload();
-                                }
-                              } catch (err) {
-                                alert('Twitter link error: ' + String((err as Error)?.message || err));
-                              }
-                            }}
+                            onClick={handleLinkX}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             <XIcon className="w-5 h-5 mr-2" />
