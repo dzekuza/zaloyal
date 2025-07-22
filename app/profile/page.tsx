@@ -17,6 +17,7 @@ import { LogOut, Copy, ExternalLink, User, Wallet, Link } from "lucide-react"
 import { SiDiscord, SiX } from "react-icons/si"
 import AvatarUpload from "@/components/avatar-upload"
 import AuthRequired from "@/components/auth-required"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 // react-icons currently returns `ReactNode`, which is incompatible with React 19's
 // stricter JSX.Element return type expectations. Cast the icon components to
@@ -45,6 +46,9 @@ export default function ProfilePage() {
   const [supabaseUser, setSupabaseUser] = useState<any>(null)
   const [unlinkingDiscord, setUnlinkingDiscord] = useState(false)
   const [unlinkingTwitter, setUnlinkingTwitter] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteEmailInput, setDeleteEmailInput] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSupabaseUser(data?.user))
@@ -294,6 +298,28 @@ export default function ProfilePage() {
     }
   };
 
+  // Delete account handler
+  const handleDeleteAccount = async () => {
+    if (!emailUser?.email) return;
+    setDeleting(true);
+    try {
+      // Delete all user data from 'users' table and related tables
+      // 1. Delete from users
+      await supabase.from("users").delete().eq("email", emailUser.email);
+      // 2. Optionally, delete from other tables (e.g., user_quest_progress, user_badges, etc.)
+      // Add more delete queries here as needed
+      // 3. Delete auth user
+      await supabase.auth.admin.deleteUser(emailUser.id);
+      // 4. Sign out and redirect
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    } catch (e) {
+      alert("Failed to delete account. Please try again or contact support.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-[#181818] text-white text-xl">Loading...</div>
   }
@@ -376,13 +402,48 @@ export default function ProfilePage() {
                   {error && <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">{error}</div>}
                   {success && <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm">{success}</div>}
 
-                  {/* Save Button */}
-                  <div className="flex justify-end">
+                  {/* Save & Delete Buttons */}
+                  <div className="flex justify-between gap-2">
                     <Button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white">
                       {saving ? "Saving..." : "Save Changes"}
                     </Button>
+                    <Button variant="destructive" onClick={() => setShowDeleteDialog(true)} disabled={deleting}>
+                      Delete Account
+                    </Button>
                   </div>
                 </div>
+                {/* Delete Account Modal */}
+                <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Account</DialogTitle>
+                      <DialogDescription>
+                        This action is <span className="text-red-400 font-bold">permanent</span> and will remove all your data. To confirm, please re-enter your email address below.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <div className="text-gray-300 text-sm">Current email: <span className="font-mono text-white">{emailUser?.email}</span></div>
+                      <Input
+                        type="email"
+                        placeholder="Re-enter your email to confirm"
+                        value={deleteEmailInput}
+                        onChange={e => setDeleteEmailInput(e.target.value)}
+                        className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400"
+                        autoFocus
+                      />
+                    </div>
+                    <DialogFooter className="mt-4 flex flex-row gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleting}>Cancel</Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteAccount}
+                        disabled={deleting || deleteEmailInput !== emailUser?.email}
+                      >
+                        {deleting ? "Deleting..." : "Confirm Delete Account"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </TabsContent>
 
               {/* Wallet Tab */}

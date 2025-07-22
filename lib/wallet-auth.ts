@@ -22,71 +22,28 @@ class WalletAuth {
   private currentUser: WalletUser | null = null
   private listeners: ((user: WalletUser | null) => void)[] = []
 
-  async connectWallet(): Promise<WalletUser | null> {
-    try {
-      const provider = window.solana
-      if (!provider || !provider.isPhantom) {
-        throw new Error("Phantom Wallet is not installed")
-      }
-
-      await provider.connect()
-      const walletAddress = provider.publicKey.toString()
-      const message = `Sign this message to authenticate with QuestHub: ${Date.now()}`
-      const encodedMessage = new TextEncoder().encode(message)
-
-      // Sign the message with Phantom
-      const signed = await provider.signMessage(encodedMessage, "utf8")
-      const signature = bs58.encode(signed.signature) // base58 encode
-
-      // 1. Get a custom JWT from the backend
-      const jwtRes = await fetch("/api/auth/wallet-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress, signature, message }),
-      })
-      const { token } = await jwtRes.json()
-      if (!token) throw new Error("Failed to get JWT for wallet login")
-
-      // 2. Sign in to Supabase with the custom JWT
-      const { error: jwtError } = await supabase.auth.signInWithIdToken({
-        provider: "custom",
-        token,
-      })
-      if (jwtError) throw jwtError
-
-      // 3. Create (or fetch) the user via server route so RLS is bypassed
-      const res = await fetch("/api/users/upsert", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress }),
-      })
-
-      if (!res.ok) {
-        const { error } = await res.json()
-        throw new Error(`Failed to create user: ${error}`)
-      }
-
-      const { user } = (await res.json()) as { user: any }
-
-      const formattedUser: WalletUser = {
-        walletAddress: user.wallet_address,
-        username: user.username ?? undefined,
-        totalXP: user.total_xp,
-        level: user.level,
-        rank: user.rank ?? undefined,
-      }
-
-      this.currentUser = formattedUser
-      this.notifyListeners()
-
-      // Store in localStorage
-      localStorage.setItem("wallet_user", JSON.stringify(formattedUser))
-
-      return formattedUser
-    } catch (error) {
-      console.error("Wallet connection failed:", error)
-      throw error
+  // Only allow wallet linking, not authentication
+  async connectWallet(): Promise<string> {
+    const provider = window.solana
+    if (!provider || !provider.isPhantom) {
+      throw new Error("Phantom Wallet is not installed")
     }
+    await provider.connect()
+    const walletAddress = provider.publicKey.toString()
+    // Only link wallet to profile, do not authenticate
+    // Save wallet address to user profile
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+    const { error } = await supabase
+      .from("users")
+      .update({ wallet_address: walletAddress })
+      .eq("id", user.id);
+    if (error) throw error;
+    // Optionally update local state
+    this.currentUser = { walletAddress } as WalletUser;
+    this.notifyListeners();
+    localStorage.setItem("wallet_user", JSON.stringify({ walletAddress }));
+    return walletAddress;
   }
 
   async disconnectWallet(): Promise<void> {
@@ -219,13 +176,6 @@ export async function linkWalletToProfile() {
   }
   await provider.connect();
   const walletAddress = provider.publicKey.toString();
-  const message = `Link this wallet to your account: ${Date.now()}`;
-  const encodedMessage = new TextEncoder().encode(message);
-  const signed = await provider.signMessage(encodedMessage, "utf8");
-  const signature = bs58.encode(signed.signature);
-
-  // Optionally verify signature here or on backend
-
   // Save wallet address to user profile
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");

@@ -122,6 +122,16 @@ export default function ClientLayout({
   }, [])
 
   useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        // Clear user state and redirect to home
+        window.location.href = "/";
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
     const handler = () => setShowAuthDialog(true);
     window.addEventListener('open-auth-dialog', handler);
     return () => window.removeEventListener('open-auth-dialog', handler);
@@ -213,7 +223,7 @@ export default function ClientLayout({
               </SidebarGroup>
             </SidebarContent>
             <SidebarFooter>
-              <div className="flex flex-col gap-2 p-2 items-start">
+              <div className="flex flex-col gap-2 p-2">
                 <button
                   type="button"
                   className="flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-gray-300 hover:text-green-500 focus:outline-none mt-2"

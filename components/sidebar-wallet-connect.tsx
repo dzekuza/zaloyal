@@ -15,15 +15,21 @@ import { Wallet, User, LogOut, Building2, Mail } from "lucide-react"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import EmailAuth from "@/components/email-auth"
 import Link from "next/link"
+import { supabase } from "@/lib/supabase"
 
 export default function SidebarWalletConnect() {
   const [user, setUser] = useState<WalletUser | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [authError, setAuthError] = useState("")
 
   useEffect(() => {
     const unsubscribe = walletAuth.onAuthStateChange(setUser)
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsAuthenticated(!!user)
+    }
+    checkAuth()
     return unsubscribe
   }, [])
 
@@ -31,9 +37,7 @@ export default function SidebarWalletConnect() {
     setIsConnecting(true)
     try {
       await walletAuth.connectWallet()
-      setShowAuthDialog(false)
     } catch (error: any) {
-      console.error("Connection failed:", error)
       setAuthError(error.message)
     } finally {
       setIsConnecting(false)
@@ -44,15 +48,15 @@ export default function SidebarWalletConnect() {
     await walletAuth.disconnectWallet()
   }
 
-  const handleEmailAuthSuccess = (authUser: any) => {
-    console.log("Email auth success:", authUser)
-    setShowAuthDialog(false)
-    // Handle email authentication success
-    // You might want to update the user state here
-  }
-
-  const handleEmailAuthError = (error: string) => {
-    setAuthError(error)
+  if (isAuthenticated === false) {
+    return (
+      <div className="space-y-2" style={{ background: '#181818' }}>
+        <Button className="w-full bg-green-600 hover:bg-green-700 text-white border-0" onClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}>
+          <User className="w-4 h-4 mr-2" />
+          Sign In
+        </Button>
+      </div>
+    )
   }
 
   if (user) {
@@ -83,7 +87,6 @@ export default function SidebarWalletConnect() {
             <p className="text-gray-400">Rank</p>
           </div>
         </div>
-
         <Button
           onClick={disconnectWallet}
           variant="outline"
@@ -99,24 +102,18 @@ export default function SidebarWalletConnect() {
 
   return (
     <div className="space-y-2" style={{ background: '#181818' }}>
-      <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-        <DialogTrigger asChild>
-          <Button className="w-full bg-green-600 hover:bg-green-700 text-white border-0">
-            <User className="w-4 h-4 mr-2" />
-            Sign In
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          {/* Only show email authentication */}
-          <EmailAuth onSuccess={handleEmailAuthSuccess} onError={handleEmailAuthError} />
-
-          {authError && (
-            <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
-              {authError}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <Button
+        onClick={connectWallet}
+        disabled={isConnecting}
+        className="w-full bg-green-600 hover:bg-green-700 text-white border-0"
+      >
+        {isConnecting ? "Linking..." : "Link Wallet"}
+      </Button>
+      {authError && (
+        <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+          {authError}
+        </div>
+      )}
     </div>
   )
 }
