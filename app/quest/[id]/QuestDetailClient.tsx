@@ -269,7 +269,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               const twitterIdentity = emailUser.identities.find((i: any) => i.provider === 'twitter');
               userTwitterId = twitterIdentity?.id || twitterIdentity?.identity_data?.user_id;
             }
-            if (!userTwitterId && userObj.twitter_id) userTwitterId = userObj.twitter_id;
             if (!userTwitterId && userObj.x_id) userTwitterId = userObj.x_id;
             let targetAccountId = task.social_username || '';
             if (!targetAccountId) {
@@ -289,7 +288,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               const twitterIdentity = emailUser.identities.find((i: any) => i.provider === 'twitter');
               userTwitterId = twitterIdentity?.id || twitterIdentity?.identity_data?.user_id;
             }
-            if (!userTwitterId && userObj.twitter_id) userTwitterId = userObj.twitter_id;
             if (!userTwitterId && userObj.x_id) userTwitterId = userObj.x_id;
             payload = { ...baseData, userTwitterId, tweetId: task.social_post_id };
           } else if (task.social_action === 'retweet') {
@@ -299,7 +297,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               const twitterIdentity = emailUser.identities.find((i: any) => i.provider === 'twitter');
               userTwitterId = twitterIdentity?.id || twitterIdentity?.identity_data?.user_id;
             }
-            if (!userTwitterId && userObj.twitter_id) userTwitterId = userObj.twitter_id;
             if (!userTwitterId && userObj.x_id) userTwitterId = userObj.x_id;
             payload = { ...baseData, userTwitterId, tweetId: task.social_post_id };
           }

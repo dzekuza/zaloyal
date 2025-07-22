@@ -60,11 +60,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Get task from database
-    const { data: task, error: taskError } = await supabase.from("tasks").select("*").eq("id", taskId).single();
-    console.log('DEBUG: Task lookup result:', task, taskError);
+    const { data: task, error: taskError } = await supabase.from("tasks").select("*", { count: "exact" }).eq("id", taskId).single();
     if (!task || taskError) {
       return NextResponse.json({ error: "Task not found", taskError }, { status: 404 });
     }
+
+    // Get project and its owner
+    const { data: project, error: projectError } = await supabase.from("projects").select("id, owner_id").eq("id", task.quest_id).single();
+    if (!project || projectError) {
+      return NextResponse.json({ error: "Project not found", projectError }, { status: 404 });
+    }
+    const { data: owner, error: ownerError } = await supabase.from("users").select("x_username, x_id, x_avatar_url").eq("id", project.owner_id).single();
+    if (!owner || ownerError) {
+      return NextResponse.json({ error: "Project owner not found", ownerError }, { status: 404 });
+    }
+    // Use owner's X identity as project's X identity
+    const projectXUsername = owner.x_username;
+    const projectXId = owner.x_id;
+    const projectXAvatarUrl = owner.x_avatar_url;
 
     if (!user || !task) {
       return NextResponse.json({ error: "User or task not found" }, { status: 404 })
@@ -80,7 +93,7 @@ export async function POST(request: NextRequest) {
     let verified = false;
     let message = "";
     if (task.social_action === "follow") {
-      const result = await verifyTwitterFollow(xUsername, task.social_username);
+      const result = await verifyTwitterFollow(xUsername, projectXUsername);
       verified = result.verified;
       message = verified ? "Follow verified!" : result.error || "Please follow the account first";
     } else if (task.social_action === "like") {

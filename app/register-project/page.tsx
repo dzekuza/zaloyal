@@ -218,7 +218,7 @@ export default function RegisterProject() {
 
       if (walletUser) {
         // Wallet user: get wallet address from JWT or walletUser
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         walletAddress = authUser?.user_metadata?.wallet_address || walletUser.walletAddress;
         if (walletAddress) {
           // Query with both sides lowercased
@@ -246,7 +246,16 @@ export default function RegisterProject() {
       }
       userId = userData.id;
 
-      // Submit project directly to projects table and return the new project
+      // Fetch the current user's X fields
+      let x_username = null, x_id = null, x_avatar_url = null;
+      if (emailUser?.profile) {
+        x_username = emailUser.profile.x_username || null;
+        x_id = emailUser.profile.x_id || null;
+        x_avatar_url = emailUser.profile.x_avatar_url || null;
+      } else if (walletUser) {
+        // If wallet users can have X, add logic here
+      }
+      // Create the project with X fields
       const { data: insertedProjects, error: projectError } = await supabase.from("projects").insert({
         owner_id: userId,
         name: formData.name,
@@ -263,6 +272,9 @@ export default function RegisterProject() {
         medium_url: formData.mediumUrl || null,
         category: formData.category,
         status: 'approved', // Make project live immediately
+        x_username,
+        x_id,
+        x_avatar_url,
       }).select().single();
 
       if (projectError) {
