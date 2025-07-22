@@ -48,6 +48,15 @@ export default function SidebarWalletConnect() {
     await walletAuth.disconnectWallet()
   }
 
+  const handleTwitterLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'twitter',
+      options: {
+        redirectTo: `${location.origin}/auth/callback`
+      }
+    })
+  }
+
   if (isAuthenticated === false) {
     return (
       <div className="space-y-2" style={{ background: '#181818' }}>
@@ -87,6 +96,14 @@ export default function SidebarWalletConnect() {
             <p className="text-gray-400">Rank</p>
           </div>
         </div>
+        <Button
+          onClick={handleTwitterLogin}
+          variant="outline"
+          size="sm"
+          className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs"
+        >
+          Link X Account
+        </Button>
         <Button
           onClick={disconnectWallet}
           variant="outline"
