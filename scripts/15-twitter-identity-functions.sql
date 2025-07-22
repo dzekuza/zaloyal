@@ -15,17 +15,17 @@ RETURNS TABLE(
 BEGIN
   RETURN QUERY
   SELECT 
-    i.id::TEXT,
-    i.identity_data->>'user_name' as user_name,
-    i.identity_data->>'avatar_url' as avatar_url,
+    u.x_id,
+    u.x_username as user_name,
+    u.x_avatar_url as avatar_url,
     CASE 
-      WHEN i.identity_data->>'user_name' IS NOT NULL 
-      THEN 'https://x.com/' || (i.identity_data->>'user_name')
+      WHEN u.x_username IS NOT NULL 
+      THEN 'https://x.com/' || u.x_username
       ELSE NULL
     END as profile_url
-  FROM auth.identities i
-  WHERE i.user_id = get_twitter_identity.user_id
-    AND i.provider = 'twitter';
+  FROM users u
+  WHERE u.id = get_twitter_identity.user_id
+    AND u.x_id IS NOT NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

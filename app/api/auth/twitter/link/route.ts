@@ -33,11 +33,14 @@ export async function POST(request: NextRequest) {
     const twitterBearerToken = process.env.TWITTER_BEARER_TOKEN;
     
     if (!twitterBearerToken) {
+      console.error('Twitter API not configured - TWITTER_BEARER_TOKEN missing');
       return NextResponse.json(
         { error: 'Twitter API not configured' },
         { status: 500 }
       );
     }
+
+    console.log(`Attempting to verify X username: ${cleanUsername}`);
 
     // Verify the X username exists using Twitter API v2
     const userResponse = await fetch(
@@ -50,7 +53,12 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    console.log(`Twitter API response status: ${userResponse.status}`);
+
     if (!userResponse.ok) {
+      const errorText = await userResponse.text();
+      console.error('Twitter API error response:', errorText);
+      
       if (userResponse.status === 404) {
         return NextResponse.json(
           { error: 'X username not found. Please check the username and try again.' },
@@ -58,7 +66,14 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      console.error('Twitter API error:', await userResponse.text());
+      if (userResponse.status === 401) {
+        console.error('Twitter API authentication failed - check TWITTER_BEARER_TOKEN');
+        return NextResponse.json(
+          { error: 'Twitter API authentication failed. Please contact support.' },
+          { status: 500 }
+        );
+      }
+      
       return NextResponse.json(
         { error: 'Failed to verify X username. Please try again.' },
         { status: 500 }
@@ -66,6 +81,8 @@ export async function POST(request: NextRequest) {
     }
 
     const userData = await userResponse.json();
+    console.log('Twitter API response data:', JSON.stringify(userData, null, 2));
+    
     const twitterUser = userData.data;
 
     if (!twitterUser) {
@@ -82,18 +99,11 @@ export async function POST(request: NextRequest) {
       profileImageUrl = twitterUser.profile_image_url.replace('_normal', '_400x400');
     }
 
-    // Create a Twitter identity object
-    const twitterIdentity = {
-      id: twitterUser.id,
-      provider: 'twitter',
-      identity_data: {
-        user_name: twitterUser.username,
-        name: twitterUser.name,
-        avatar_url: profileImageUrl,
-        profile_url: `https://x.com/${twitterUser.username}`,
-        verified: twitterUser.verified || false
-      }
-    };
+    console.log(`Updating user profile for user ${user.id} with X data:`, {
+      twitter_id: twitterUser.id,
+      twitter_username: twitterUser.username,
+      twitter_avatar_url: profileImageUrl
+    });
 
     // Update user profile with Twitter data
     try {
@@ -121,6 +131,8 @@ export async function POST(request: NextRequest) {
             { status: 500 }
           );
         }
+      } else {
+        console.log('Successfully updated user profile via RPC function');
       }
     } catch (err) {
       console.warn('Database function not available, using direct update');
@@ -139,6 +151,21 @@ export async function POST(request: NextRequest) {
         );
       }
     }
+
+    // Create a Twitter identity object
+    const twitterIdentity = {
+      id: twitterUser.id,
+      provider: 'twitter',
+      identity_data: {
+        user_name: twitterUser.username,
+        name: twitterUser.name,
+        avatar_url: profileImageUrl,
+        profile_url: `https://x.com/${twitterUser.username}`,
+        verified: twitterUser.verified || false
+      }
+    };
+
+    console.log('X account linked successfully for user:', user.id);
 
     return NextResponse.json({
       success: true,
