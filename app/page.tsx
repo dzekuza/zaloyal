@@ -100,9 +100,18 @@ export default async function ProjectDiscovery() {
       "Staking",
     ]
 
-    return <PageContainer>
-      <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
-    </PageContainer>
+    return (
+      <>
+        {/* Header - no padding */}
+        <header className="relative overflow-hidden">
+          {/* ... header content here if any ... */}
+        </header>
+        {/* Main content with padding */}
+        <PageContainer className="px-4 py-8">
+          <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
+        </PageContainer>
+      </>
+    )
   } catch (error) {
     console.error("Error fetching projects:", error);
     return <PageContainer>

@@ -60,13 +60,13 @@ export default function DashboardPage() {
   }
   if (!profile) {
     return (
-      <BackgroundWrapper>
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
         <AuthRequired 
           title="Sign In Required"
           message="Please sign in with your email or wallet to view your dashboard."
-          onAuthClick={() => window.location.href = '/'}
+          onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
         />
-      </BackgroundWrapper>
+      </div>
     );
   }
   return (

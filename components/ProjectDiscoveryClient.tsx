@@ -130,8 +130,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
   return (
     <BackgroundWrapper>
       {/* Hero Section */}
-      <header className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-3xl" />
+      <header className="relative overflow-hidden bg-[#181818]">
         <PageContainer className="relative text-center space-y-6 py-12 md:py-16">
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white">
             Web3 Projects
@@ -155,6 +154,9 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
           </div>
         </PageContainer>
       </header>
+
+      {/* Gap between header and search/filter */}
+      <div className="mb-8" />
 
       {/* Search and Filter Section */}
       <PageContainer>

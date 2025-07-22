@@ -366,10 +366,6 @@ const SidebarHeader = React.forwardRef<
       className={cn("flex flex-col gap-2 p-2 relative", className)}
       {...props}
     >
-      {/* Sidebar close button (top right) */}
-      <div className="absolute top-2 right-2">
-        <SidebarTrigger />
-      </div>
       {/* Existing header content */}
       {props.children}
     </div>

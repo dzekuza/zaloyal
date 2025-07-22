@@ -71,11 +71,13 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
   const handleSignOut = async () => {
     if (user) {
       await walletAuth.disconnectWallet()
+      setUser(null)
     }
     if (emailUser) {
       await supabase.auth.signOut()
-      window.location.reload()
+      setEmailUser(null)
     }
+    window.location.reload()
   }
 
   const displayName = user?.username || emailUser?.profile?.username || "User"
@@ -104,9 +106,9 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
     <>
       {/* Sidebar Navigation */}
       <div className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-full md:w-64 bg-[#111111]/80 backdrop-blur-md border-r border-[#282828] z-40">
-        <div className="flex items-center justify-center py-6">
+        <div className="flex items-center justify-start py-4 pl-4">
           <Link href="/">
-            <Image src="/belinklogo.svg" alt="Belink Logo" width={40} height={40} className="h-10 w-auto" priority />
+            <Image src="/belinklogo.svg" alt="Belink Logo" width={32} height={32} className="h-8 w-auto" priority />
           </Link>
         </div>
         <nav className="flex flex-col flex-1 px-4 py-6">
@@ -123,14 +125,20 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
           </button>
         </nav>
         <div className="px-4 pb-6">
-          <ProfileDropdown
-            displayName={displayName}
-            user={user}
-            emailUser={emailUser}
-            handleSignOut={handleSignOut}
-            copied={copied}
-            onCopyAddress={handleCopyAddress}
-          />
+          {user || emailUser ? (
+            <ProfileDropdown
+              displayName={displayName}
+              user={user}
+              emailUser={emailUser}
+              handleSignOut={handleSignOut}
+              copied={copied}
+              onCopyAddress={handleCopyAddress}
+            />
+          ) : (
+            <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={onAuthClick}>
+              Log In
+            </Button>
+          )}
         </div>
       </div>
       {/* Onboarding Modal */}

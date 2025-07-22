@@ -71,10 +71,12 @@ export default function ProjectCard({
           <img
             src={project.cover_image_url}
             alt={project.name}
-            className="h-40 w-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="h-40 sm:h-48 md:h-56 w-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <PlaceholderCover name={project.name} logoUrl={project.logo_url} />
+          <div className="h-40 sm:h-48 md:h-56 w-full">
+            <PlaceholderCover name={project.name} logoUrl={project.logo_url} />
+          </div>
         )}
         
         {/* Top Overlay - Badges and Actions */}

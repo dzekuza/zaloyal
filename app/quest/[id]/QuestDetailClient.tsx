@@ -257,135 +257,68 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     }
     setVerifyingTask(task.id)
     try {
-      let baseData: any = { taskId: task.id }
-      if (walletUser) {
-        baseData.userWallet = walletUser.walletAddress
-      } else if (emailUser?.profile) {
-        baseData.userId = emailUser.profile.id
-        baseData.userEmail = emailUser.email
+      let baseData: any = { taskId: task.id, userId: userObj.id || userObj.userId || userObj.walletAddress }
+      let type = ''
+      let payload: any = { ...baseData }
+      if (task.task_type === 'social') {
+        if (task.social_platform === 'twitter') {
+          if (task.social_action === 'follow') {
+            type = 'twitter-follow'
+            payload = { ...baseData, userTwitterId: userObj.twitter_id, targetAccountId: task.social_username }
+          } else if (task.social_action === 'like') {
+            type = 'twitter-like'
+            payload = { ...baseData, userTwitterId: userObj.twitter_id, tweetId: task.social_post_id }
+          } else if (task.social_action === 'retweet') {
+            type = 'twitter-retweet'
+            payload = { ...baseData, userTwitterId: userObj.twitter_id, tweetId: task.social_post_id }
+          }
+        } else if (task.social_platform === 'discord' && task.social_action === 'join') {
+          type = 'discord-join'
+          payload = { ...baseData, userDiscordId: userObj.discord_id, guildId: task.social_url?.split("/").pop(), userAccessToken: userObj.discord_access_token }
+        } else if (task.social_platform === 'telegram' && task.social_action === 'join') {
+          type = 'telegram-join'
+          payload = { ...baseData, userTelegramId: userObj.telegram_id, groupId: task.social_url?.split("/").pop() }
+        }
+      } else if (task.task_type === 'form') {
+        type = 'form'
+        payload = { ...baseData }
+      } else if (task.task_type === 'visit') {
+        type = 'visit'
+        payload = { ...baseData }
+      } else if (task.task_type === 'download') {
+        type = 'download'
+        payload = { ...baseData }
+      } else if (task.task_type === 'learn') {
+        type = 'learn'
+        payload = { ...baseData, answers: submissionData[task.id]?.answers || [] }
       }
-      switch (task.task_type) {
-        case "social":
-          if (task.social_platform === "twitter") {
-            if (task.social_action === "follow") {
-              const response = await fetch("/api/verify/twitter-follow-real", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(baseData),
-              })
-              const result = await response.json()
-              if (result.success) {
-                // Update local state to reflect completion
-                setTasks(prevTasks => 
-                  prevTasks.map(t => 
-                    t.id === task.id 
-                      ? { ...t, user_task_submissions: { ...result.submission } }
-                      : t
-                  )
-                )
-                toast.success("Task completed successfully!")
-              } else {
-                toast.error(result.error || "Verification failed")
-              }
-            } else if (task.social_action === "like") {
-              // TODO: Implement real Twitter Like endpoint
-              toast.error("Twitter Like verification is not available. Please contact support.");
-              setVerifyingTask(null);
-              return;
-            }
-          } else if (task.social_platform === "telegram") {
-            const response = await fetch("/api/verify/telegram-join-real", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ...baseData,
-                username: submissionData[task.id]?.username || "",
-                groupId: task.social_url?.split("/").pop(),
-              }),
-            })
-            const result = await response.json()
-            if (result.success) {
-              // Update local state to reflect completion
-              setTasks(prevTasks => 
-                prevTasks.map(t => 
-                  t.id === task.id 
-                    ? { ...t, user_task_submissions: { ...result.submission } }
-                    : t
-                )
-              )
-              toast.success("Task completed successfully!")
-            } else {
-              toast.error(result.error || "Verification failed")
-            }
-          } else if (task.social_platform === "discord") {
-            // For Discord, we need to redirect to OAuth flow
-            const guildId = task.social_url?.split("/").pop() || task.social_url;
-            if (guildId) {
-              // Import the Discord OAuth URL utility
-              const { getDiscordOAuthUrl } = await import("@/utils/discord");
-              const oauthUrl = getDiscordOAuthUrl(guildId, task.id);
-              window.location.href = oauthUrl;
-              return;
-            } else {
-              toast.error("Discord server URL is required for verification");
-              setVerifyingTask(null);
-              return;
-            }
-          }
-          break
-        case "download":
-        case "visit":
-        case "form":
-          const manualResponse = await fetch("/api/verify/manual-completion", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...baseData,
-              submissionData: submissionData[task.id] || {},
-            }),
-          })
-          const manualResult = await manualResponse.json()
-          if (manualResult.success) {
-            setTasks(prevTasks => 
-              prevTasks.map(t => 
-                t.id === task.id 
-                  ? { ...t, user_task_submissions: { ...manualResult.submission } }
-                  : t
-              )
-            )
-            toast.success("Task completed successfully!")
-          } else {
-            toast.error(manualResult.error || "Verification failed")
-          }
-          break
-        case "learn":
-          const learnResponse = await fetch("/api/verify/learn-completion", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...baseData,
-              answers: submissionData[task.id]?.answers || [],
-            }),
-          })
-          const learnResult = await learnResponse.json()
-          if (learnResult.success) {
-            setTasks(prevTasks => 
-              prevTasks.map(t => 
-                t.id === task.id 
-                  ? { ...t, user_task_submissions: { ...learnResult.submission } }
-                  : t
-              )
-            )
-            setShowQuiz(s => ({ ...s, [task.id]: false }))
-            toast.success(learnResult.isCorrect ? "Quiz completed successfully!" : "Quiz completed, but some answers were incorrect.")
-          } else {
-            toast.error(learnResult.error || "Quiz submission failed")
-          }
-          break
+      if (!type) {
+        toast.error('Unsupported task type or missing integration.')
+        setVerifyingTask(null)
+        return
+      }
+      const response = await fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, ...payload }),
+      })
+      const result = await response.json()
+      if (result.success) {
+        setTasks(prevTasks =>
+          prevTasks.map(t =>
+            t.id === task.id
+              ? { ...t, user_task_submissions: { ...result.submission } }
+              : t
+          )
+        )
+        toast.success('Task verified successfully!')
+        if (type === 'learn') setShowQuiz(s => ({ ...s, [task.id]: false }))
+      } else {
+        toast.error(result.error || 'Verification failed')
       }
     } catch (error) {
-      console.error("Verification error:", error)
-      toast.error("Verification failed. Please try again.")
+      console.error('Verification error:', error)
+      toast.error('Verification failed. Please try again.')
     } finally {
       setVerifyingTask(null)
     }
@@ -923,9 +856,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         <CardContent className="bg-[#111111] p-6">
           {/* Add Task Dialog */}
           <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[80vh]">
               <DialogHeader>
                 <DialogTitle>Add New Task</DialogTitle>
+                <DialogDescription>
+                  Fill in the details for the new task
+                </DialogDescription>
               </DialogHeader>
               <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleCreateTask(); }}>
                 {createTaskError && <div className="p-2 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-sm">{createTaskError}</div>}
@@ -1088,9 +1024,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
           {/* Edit Task Dialog */}
           <Dialog open={showEditTask} onOpenChange={setShowEditTask}>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[80vh]">
               <DialogHeader>
                 <DialogTitle>Edit Task</DialogTitle>
+                <DialogDescription>
+                  Edit the details for this task
+                </DialogDescription>
               </DialogHeader>
               {editingTask && (
                 <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleEditTask(); }}>
@@ -1286,6 +1225,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             handleTaskVerification={handleTaskVerification}
             handleDeleteTask={handleDeleteTask}
             walletUser={walletUser}
+            isAuthenticated={!!walletUser || !!emailUser}
+            onSignIn={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
           />
         </CardContent>
       </Card>
@@ -1322,10 +1263,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
       {/* Responses Viewer Dialog */}
       <Dialog open={showResponsesViewer} onOpenChange={setShowResponsesViewer}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle className="text-white">Quest Responses</DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogTitle>Quest Responses</DialogTitle>
+            <DialogDescription>
               View all user responses and manage XP distribution for completed tasks.
             </DialogDescription>
           </DialogHeader>

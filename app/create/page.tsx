@@ -268,7 +268,7 @@ export default function CreateQuest() {
         <AuthRequired 
           title="Sign In Required"
           message="Please sign in with your email or wallet to create quests and projects."
-          onAuthClick={() => window.location.href = '/'}
+          onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
         />
       </div>
     )

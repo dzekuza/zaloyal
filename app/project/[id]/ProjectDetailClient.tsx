@@ -18,6 +18,7 @@ import QuestFormWrapper from "@/components/quest-form-wrapper"
 import PageContainer from "@/components/PageContainer";
 import QuestCard from '@/components/QuestCard';
 import { toast } from "sonner"
+import AuthRequired from '@/components/auth-required';
 
 interface Project {
   id: string;
@@ -110,6 +111,20 @@ export default function ProjectDetailClient({
     )
   }
 
+  if (!currentUserId) {
+    return (
+      <BackgroundWrapper>
+        <div className="min-h-screen flex items-center justify-center">
+          <AuthRequired
+            title="Sign In Required"
+            message="Please sign in with your email or wallet to view this project."
+            onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+          />
+        </div>
+      </BackgroundWrapper>
+    )
+  }
+
   return (
     <BackgroundWrapper>
       {/* Cover Image */}
@@ -158,11 +173,12 @@ export default function ProjectDetailClient({
         </div>
       </div>
 
-      {/* Stats Bar */}
+      {/* Project Stats Bar (separate, below cover) */}
       <ProjectStatsBar questCount={quests.length} participants={project.total_participants || 0} xpToCollect={xpToCollect} />
 
-      {/* Featured Quests */}
+      {/* Main Content: Quests and Connect */}
       <PageContainer>
+        {/* Featured Quests */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">Quests</h2>
           {isOwner && (
@@ -250,64 +266,64 @@ export default function ProjectDetailClient({
             )}
           </div>
         )}
-      </PageContainer>
 
-      {/* Social Links */}
-      {(project.twitter_url || project.discord_url || project.telegram_url || project.medium_url || project.github_url || project.website_url) && (
-        <PageContainer>
-          <h3 className="text-xl font-semibold text-white mb-4">Connect</h3>
-          <div className="flex flex-wrap gap-3">
-            {project.website_url && (
-              <a href={project.website_url} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
-                  <Globe className="h-4 w-4 mr-2" />
-                  Website
-                </Button>
-              </a>
-            )}
-            {project.twitter_url && (
-              <a href={project.twitter_url} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
-                  <Twitter className="h-4 w-4 mr-2" />
-                  Twitter
-                </Button>
-              </a>
-            )}
-            {project.discord_url && (
-              <a href={project.discord_url} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
-                  <DiscordIcon />
-                  <span className="ml-2">Discord</span>
-                </Button>
-              </a>
-            )}
-            {project.telegram_url && (
-              <a href={project.telegram_url} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
-                  <TelegramIcon />
-                  <span className="ml-2">Telegram</span>
-                </Button>
-              </a>
-            )}
-            {project.medium_url && (
-              <a href={project.medium_url} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
-                  <MediumIcon />
-                  <span className="ml-2">Medium</span>
-                </Button>
-              </a>
-            )}
-            {project.github_url && (
-              <a href={project.github_url} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
-                  <Github className="h-4 w-4 mr-2" />
-                  GitHub
-                </Button>
-              </a>
-            )}
+        {/* Social Links */}
+        {(project.twitter_url || project.discord_url || project.telegram_url || project.medium_url || project.github_url || project.website_url) && (
+          <div className="mt-12">
+            <h3 className="text-xl font-semibold text-white mb-4">Connect</h3>
+            <div className="flex flex-wrap gap-3">
+              {project.website_url && (
+                <a href={project.website_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
+                    <Globe className="h-4 w-4 mr-2" />
+                    Website
+                  </Button>
+                </a>
+              )}
+              {project.twitter_url && (
+                <a href={project.twitter_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
+                    <Twitter className="h-4 w-4 mr-2" />
+                    Twitter
+                  </Button>
+                </a>
+              )}
+              {project.discord_url && (
+                <a href={project.discord_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
+                    <DiscordIcon />
+                    <span className="ml-2">Discord</span>
+                  </Button>
+                </a>
+              )}
+              {project.telegram_url && (
+                <a href={project.telegram_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
+                    <TelegramIcon />
+                    <span className="ml-2">Telegram</span>
+                  </Button>
+                </a>
+              )}
+              {project.medium_url && (
+                <a href={project.medium_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
+                    <MediumIcon />
+                    <span className="ml-2">Medium</span>
+                  </Button>
+                </a>
+              )}
+              {project.github_url && (
+                <a href={project.github_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
+                    <Github className="h-4 w-4 mr-2" />
+                    GitHub
+                  </Button>
+                </a>
+              )}
+            </div>
           </div>
-        </PageContainer>
-      )}
+        )}
+      </PageContainer>
     </BackgroundWrapper>
   )
 } 

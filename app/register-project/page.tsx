@@ -155,7 +155,7 @@ export default function RegisterProject() {
         <AuthRequired 
           title="Sign In Required"
           message="Please sign in with your email or wallet to register your project."
-          onAuthClick={() => window.location.href = '/'}
+          onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
         />
       </BackgroundWrapper>
     )

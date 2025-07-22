@@ -16,6 +16,8 @@ interface TaskListProps {
   handleTaskVerification: (task: Task) => Promise<void>;
   handleDeleteTask: (taskId: string) => Promise<void>;
   walletUser: any;
+  isAuthenticated: boolean;
+  onSignIn?: () => void;
 }
 
 function getAbsoluteUrl(url: string): string {
@@ -70,8 +72,24 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
   handleTaskVerification,
   handleDeleteTask,
   walletUser,
+  isAuthenticated,
+  onSignIn,
 }) {
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
+
+  if (!isAuthenticated && !isAdminOrCreator()) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Button
+          variant="default"
+          size="lg"
+          onClick={onSignIn || (() => window.dispatchEvent(new CustomEvent('open-auth-dialog')))}
+        >
+          Sign in to participate
+        </Button>
+      </div>
+    );
+  }
 
   // Helper to handle 'Complete Task' click
   const handleCompleteTask = (task: Task) => {

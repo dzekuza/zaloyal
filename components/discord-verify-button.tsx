@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getDiscordOAuthUrl } from "@/utils/discord";
+import { Button } from "@/components/ui/button";
 
 interface DiscordVerifyButtonProps {
   guildId: string;
@@ -15,12 +16,14 @@ export function DiscordVerifyButton({ guildId, children }: DiscordVerifyButtonPr
   };
 
   return (
-    <button
+    <Button
       type="button"
       onClick={handleClick}
-      className="bg-indigo-600 text-white px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-60"
+      variant="default"
+      size="lg"
       disabled={loading}
       aria-busy={loading}
+      className="bg-indigo-600 hover:bg-indigo-700 text-white"
     >
       {loading ? (
         <span className="flex items-center gap-2">
@@ -30,6 +33,6 @@ export function DiscordVerifyButton({ guildId, children }: DiscordVerifyButtonPr
       ) : (
         children || "Verify Discord Membership"
       )}
-    </button>
+    </Button>
   );
 } 

@@ -10,6 +10,7 @@ import ProjectCard from "@/components/ProjectCard"
 import EditProjectForm from "@/components/edit-project-form"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import PageContainer from "@/components/PageContainer";
+import AuthRequired from '@/components/auth-required';
 
 interface Project {
   id: string;
@@ -48,6 +49,7 @@ export default function MyProjectsPage() {
         setMyProjects([]);
         setAllProjects([]);
         setLoading(false);
+        setCurrentUserId(null);
         return;
       }
       setCurrentUserId(user.id);
@@ -113,10 +115,22 @@ export default function MyProjectsPage() {
     )
   }
 
+  if (!currentUserId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+        <AuthRequired
+          title="Sign In Required"
+          message="Please sign in with your email or wallet to view and manage your projects."
+          onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+        />
+      </div>
+    );
+  }
+
   if (!myProjects.length) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#181818]">
-        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md">
+        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
           <div className="text-center">
             <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
             <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
