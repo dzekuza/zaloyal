@@ -6,7 +6,8 @@ import crypto from 'crypto';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => Promise.resolve(cookieStore) });
     
     // Get the current user session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -49,7 +50,9 @@ export async function GET(request: NextRequest) {
       url: 'https://api.twitter.com/oauth/request_token',
       method: 'POST',
       data: {
-        oauth_callback: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/twitter/callback`,
+        oauth_callback: process.env.NODE_ENV === 'development' 
+          ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/twitter/callback`
+          : (process.env.NEXT_PUBLIC_TWITTER_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/twitter/callback`),
       },
     };
 
@@ -66,9 +69,21 @@ export async function GET(request: NextRequest) {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
         console.error('Twitter OAuth request token error:', response.status, response.statusText);
+        console.error('Error response:', errorText);
+        console.error('Request URL:', request_data.url);
+        console.error('Callback URL:', request_data.data.oauth_callback);
+        
         return NextResponse.json(
-          { error: 'Failed to initiate X authentication. Please try again.' },
+          { 
+            error: 'Failed to initiate X authentication. Please try again.',
+            details: {
+              status: response.status,
+              statusText: response.statusText,
+              errorText: errorText
+            }
+          },
           { status: 500 }
         );
       }
