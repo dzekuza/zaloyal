@@ -12,7 +12,7 @@ export function DiscordVerifyButton({ guildId, children }: DiscordVerifyButtonPr
 
   const handleClick = () => {
     setLoading(true);
-    window.location.href = getDiscordOAuthUrl(guildId);
+    window.location.href = getDiscordOAuthUrl();
   };
 
   return (
