@@ -264,7 +264,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         if (task.social_platform === 'twitter') {
           if (task.social_action === 'follow') {
             type = 'twitter-follow'
-            // Robustly fetch Twitter ID from identities or user profile
             let userTwitterId = null;
             if (emailUser?.identities) {
               const twitterIdentity = emailUser.identities.find((i: any) => i.provider === 'twitter');
@@ -272,9 +271,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             }
             if (!userTwitterId && userObj.twitter_id) userTwitterId = userObj.twitter_id;
             if (!userTwitterId && userObj.x_id) userTwitterId = userObj.x_id;
-            // Fallback: try username if ID not found
             let targetAccountId = task.social_username || '';
             payload = { ...baseData, userTwitterId, targetAccountId };
+            // Debug logging
+            console.log('[Twitter Follow Debug] userObj:', userObj);
+            console.log('[Twitter Follow Debug] task:', task);
+            console.log('[Twitter Follow Debug] payload:', payload);
           } else if (task.social_action === 'like') {
             type = 'twitter-like'
             let userTwitterId = null;
