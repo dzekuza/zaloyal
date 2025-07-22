@@ -8,7 +8,7 @@ interface QuestStatsBarProps {
 
 export default function QuestStatsBar({ totalXP, participants, taskCount }: QuestStatsBarProps) {
   return (
-    <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
+    <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm md:text-base text-gray-400 mb-2 sm:mb-4">
       <span className="flex items-center gap-1">
         <Zap className="w-4 h-4 text-yellow-400" />
         <span className="hidden sm:inline">{totalXP} Total XP</span>

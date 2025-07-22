@@ -199,7 +199,7 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
 
   return (
     <form
-      className="space-y-6 w-full max-w-2xl pr-2"
+      className="space-y-6 w-full px-6 pb-6"
       style={{ scrollbarGutter: 'stable' }}
       onSubmit={e => { e.preventDefault(); handleSave(); }}
     >
@@ -209,92 +209,91 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
         </Alert>
       )}
       {success && (
-        <Alert variant="success">
+        <Alert variant="default">
           <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
-      <Card className="w-full max-w-2xl pr-2">
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-white block mb-1 font-medium">Quest Title</label>
-            <Input 
-              value={title} 
-              onChange={e => setTitle(e.target.value)} 
-              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-              placeholder="Enter quest title"
-              required 
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-white block mb-1 font-medium">Description</label>
-            <Textarea 
-              value={description} 
-              onChange={e => setDescription(e.target.value)} 
-              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-              rows={3}
-              placeholder="Describe the quest"
-            />
-          </div>
-          <div className="space-y-2 flex flex-col items-start">
-            <label className="text-white block mb-1 font-medium">Quest Image</label>
-            <AvatarUpload
-              onAvatarUploaded={setImageUrl}
-              currentAvatar={imageUrl}
-              userId={quest.id === 'new' ? 'temp' : quest.id}
-              size="lg"
-              className="mx-auto"
-              uploadType="quest-image"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-white block mb-1 font-medium">Total XP</label>
-            <Input 
-              type="number" 
-              value={totalXp} 
-              onChange={e => setTotalXp(Number(e.target.value))} 
-              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-              min={0} 
-              required 
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-white block mb-1 font-medium">Status</label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:ring-2 focus:ring-green-500">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#111111] border-[#282828]">
-                <SelectItem value="active" className="text-white hover:bg-[#161616]">
-                  Active
-                </SelectItem>
-                <SelectItem value="draft" className="text-white hover:bg-[#161616]">
-                  Draft
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex justify-end gap-2 pt-4">
-            {quest.id !== 'new' && (
-              <Button 
-                type="button" 
-                variant="destructive" 
-                onClick={handleDelete} 
-                disabled={saving}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                {saving ? "Deleting..." : "Delete Quest"}
-              </Button>
-            )}
+      
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <label className="text-white block mb-1 font-medium">Quest Title</label>
+          <Input 
+            value={title} 
+            onChange={e => setTitle(e.target.value)} 
+            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+            placeholder="Enter quest title"
+            required 
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-white block mb-1 font-medium">Description</label>
+          <Textarea 
+            value={description} 
+            onChange={e => setDescription(e.target.value)} 
+            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+            rows={3}
+            placeholder="Describe the quest"
+          />
+        </div>
+        <div className="space-y-2 flex flex-col items-start">
+          <label className="text-white block mb-1 font-medium">Quest Image</label>
+          <AvatarUpload
+            onAvatarUploaded={setImageUrl}
+            currentAvatar={imageUrl}
+            userId={quest.id === 'new' ? 'temp' : quest.id}
+            size="lg"
+            className="mx-auto"
+            uploadType="quest-image"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-white block mb-1 font-medium">Total XP</label>
+          <Input 
+            type="number" 
+            value={totalXp} 
+            onChange={e => setTotalXp(Number(e.target.value))} 
+            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+            min={0} 
+            required 
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-white block mb-1 font-medium">Status</label>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="bg-white/10 border-white/20 text-white focus:ring-2 focus:ring-green-500">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#111111] border-[#282828]">
+              <SelectItem value="active" className="text-white hover:bg-[#161616]">
+                Active
+              </SelectItem>
+              <SelectItem value="draft" className="text-white hover:bg-[#161616]">
+                Draft
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex justify-end gap-2 pt-4">
+          {quest.id !== 'new' && (
             <Button 
-              type="submit" 
-              disabled={saving} 
-              className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 hover:from-green-600 hover:to-emerald-600"
+              type="button" 
+              variant="destructive" 
+              onClick={handleDelete} 
+              disabled={saving}
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {saving ? "Saving..." : quest.id === 'new' ? "Create Quest" : "Save Changes"}
+              {saving ? "Deleting..." : "Delete Quest"}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          )}
+          <Button 
+            type="submit" 
+            disabled={saving} 
+            className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 hover:from-green-600 hover:to-emerald-600"
+          >
+            {saving ? "Saving..." : quest.id === 'new' ? "Create Quest" : "Save Changes"}
+          </Button>
+        </div>
+      </div>
     </form>
   )
 } 

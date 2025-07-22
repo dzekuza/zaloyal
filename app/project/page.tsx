@@ -9,6 +9,7 @@ import { Users } from "lucide-react"
 import ProjectCard from "@/components/ProjectCard"
 import EditProjectForm from "@/components/edit-project-form"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import PageContainer from "@/components/PageContainer";
 
 interface Project {
   id: string;
@@ -144,72 +145,44 @@ export default function MyProjectsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#181818]">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-white mb-8">My Projects</h1>
-        {myProjects.length === 0 ? (
-          <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
-            <div className="text-center">
-              <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
-              <p className="text-gray-300 mb-6">You haven't registered any projects yet.</p>
-              <Link href="/register-project">
-                <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                  Register Project
+    <PageContainer>
+      <h1 className="text-4xl font-bold text-white mb-8">My Projects</h1>
+      {myProjects.length === 0 ? (
+        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
+          <div className="text-center">
+            <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
+            <p className="text-gray-300 mb-6">You haven't registered any projects yet.</p>
+            <Link href="/register-project">
+              <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                Register Project
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {myProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              currentUserId={currentUserId}
+              onEdit={() => setEditingProject(project)}
+              onDelete={() => handleDelete(project.id)}
+              xpToCollect={project.xpToCollect}
+            >
+              <Link href={`/project/${project.id}`}>
+                <Button
+                  size="sm"
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
+                >
+                  View My Project
                 </Button>
               </Link>
-            </div>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {myProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                currentUserId={currentUserId}
-                onEdit={() => setEditingProject(project)}
-                onDelete={() => handleDelete(project.id)}
-                xpToCollect={project.xpToCollect}
-              >
-                <Link href={`/project/${project.id}`}>
-                  <Button
-                    size="sm"
-                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
-                  >
-                    View My Project
-                  </Button>
-                </Link>
-              </ProjectCard>
-            ))}
-          </div>
-        )}
-        <h2 className="text-3xl font-bold text-white mb-6 mt-12">All Projects</h2>
-        {allProjects.length === 0 ? (
-          <p className="text-gray-300">No other projects found.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {allProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                currentUserId={null}
-                onEdit={undefined}
-                onDelete={undefined}
-                xpToCollect={project.xpToCollect}
-              >
-                <Link href={`/project/${project.id}`}>
-                  <Button
-                    size="sm"
-                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
-                  >
-                    View Project
-                  </Button>
-                </Link>
-              </ProjectCard>
-            ))}
-          </div>
-        )}
-      </div>
+            </ProjectCard>
+          ))}
+        </div>
+      )}
       {/* Edit Project Dialog */}
       <Dialog open={!!editingProject} onOpenChange={open => setEditingProject(open ? editingProject : null)}>
         <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
@@ -222,7 +195,7 @@ export default function MyProjectsPage() {
           {editingProject && <EditProjectForm project={editingProject} onSave={() => setEditingProject(null)} />}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }
 

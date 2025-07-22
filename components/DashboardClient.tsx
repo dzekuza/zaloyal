@@ -33,70 +33,19 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
   return (
     <div className="min-h-screen bg-[#181818]">
       <div className="container mx-auto px-4 py-8">
-        {/* User Profile Header */}
-        <Card className="bg-[#111111] rounded-lg mb-8">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex flex-col items-center md:flex-row md:items-center gap-4 md:gap-6 w-full">
-              <div className="flex flex-col items-center gap-2 w-full md:w-auto">
-                <div className="relative">
-                  <img
-                    src={profile?.avatar || "/placeholder.svg"}
-                    alt="Profile"
-                    className="w-20 h-20 rounded-full border-2 border-white/20 mx-auto"
-                  />
-                  <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
-                    L{profile?.level}
-                  </div>
-                </div>
-                <h1 className="text-base sm:text-2xl font-bold text-white text-center mt-2">{profile?.username}</h1>
-                <p className="text-gray-400 text-xs sm:text-sm font-mono text-center break-all">{profile?.walletAddress}</p>
-              </div>
-              <div className="flex-1 w-full md:max-w-md mt-4 md:mt-0">
-                <div className="space-y-2 w-full">
-                  <div className="flex flex-wrap justify-center md:justify-between gap-2 text-xs sm:text-sm mb-2">
-                    <span className="flex items-center gap-1 text-yellow-200">
-                      <Zap className="w-4 h-4" />
-                      {profile?.total_xp} XP
-                    </span>
-                    <span className="flex items-center gap-1 text-green-200">
-                      <Trophy className="w-4 h-4" />
-                      Rank #{profile?.rank}
-                    </span>
-                    <span className="flex items-center gap-1 text-green-200">
-                      <CheckCircle className="w-4 h-4" />
-                      {profile?.completedQuests} Quests
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 w-full">
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="text-gray-400">Level Progress</span>
-                      <span className="text-white">
-                        {profile?.total_xp}/{nextLevelXP} XP
-                      </span>
-                    </div>
-                    <Progress value={levelProgress} className="h-2 w-full" />
-                    <p className="text-xs text-gray-400 text-right w-full">
-                      {nextLevelXP - profile?.total_xp} XP to Level {profile?.level + 1}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
         {/* Dashboard Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="flex whitespace-nowrap overflow-x-auto -mx-2 px-2 bg-white/10 backdrop-blur-sm">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-white/20 min-w-max">
+          <TabsList className="flex gap-2 whitespace-nowrap overflow-x-auto bg-transparent shadow-none p-0 border-0 justify-start w-auto">
+            <TabsTrigger value="overview" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="quests" className="data-[state=active]:bg-white/20 min-w-max">
+            <TabsTrigger value="quests" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none">
               Quests
             </TabsTrigger>
-            <TabsTrigger value="achievements" className="data-[state=active]:bg-white/20 min-w-max">
+            <TabsTrigger value="achievements" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none">
               Achievements
             </TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:bg-white/20 min-w-max">
+            <TabsTrigger value="history" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none">
               History
             </TabsTrigger>
           </TabsList>

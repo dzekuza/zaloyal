@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
+// Define Telegram types for message, from, chat, and callbackQuery
+interface TelegramUser {
+  id: number;
+  username?: string;
+}
+interface TelegramChat {
+  id: number;
+  type: string;
+}
+interface TelegramMessage {
+  text?: string;
+  from?: TelegramUser;
+  chat?: TelegramChat;
+}
+interface TelegramCallbackQuery {
+  data?: string;
+  message?: TelegramMessage;
+  from?: TelegramUser;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -23,38 +43,28 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleMessage(message: any) {
+async function handleMessage(message: TelegramMessage) {
   const { text, from, chat } = message
   const userId = from?.id
   const username = from?.username
-
-  if (!userId) {
-    return NextResponse.json({ ok: true })
-  }
-
+  if (!chat?.id) return // Guard: chat id must exist
   switch (text) {
     case "/start":
       return sendMessage(chat.id, 
         "Welcome to Zaloyal Verification Bot! 🚀\n\n" +
         "Use /verify to check your channel membership.\n" +
-        "Use /help for more information."
+        "If you have any questions, contact @zaloyal_support."
       )
-
     case "/help":
       return sendMessage(chat.id,
         "📋 Available commands:\n\n" +
         "/start - Start the bot\n" +
-        "/verify - Verify channel membership\n" +
-        "/help - Show this help message\n\n" +
-        "To verify membership:\n" +
-        "1. Join the required channel\n" +
-        "2. Use /verify command\n" +
-        "3. Follow the verification process"
+        "/help - Show this help message\n" +
+        "/verify - Verify your channel membership"
       )
-
     case "/verify":
+      if (userId === undefined) return;
       return handleVerificationRequest(chat.id, userId, username)
-
     default:
       return sendMessage(chat.id, 
         "Unknown command. Use /help to see available commands."
@@ -118,21 +128,18 @@ async function handleVerificationRequest(chatId: number, userId: number, usernam
   }
 }
 
-async function handleCallbackQuery(callbackQuery: any) {
+async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery) {
   const { data, message, from } = callbackQuery
   const userId = from?.id
-
-  if (!userId || !message) {
-    return NextResponse.json({ ok: true })
-  }
-
-  // Handle different callback data
+  const username = from?.username
+  const chatId = message?.chat?.id
+  if (!chatId) return // Guard: chat id must exist
   switch (data) {
     case "verify":
-      return handleVerificationRequest(message.chat.id, userId, from.username)
-    
+      if (userId === undefined) return;
+      return handleVerificationRequest(chatId, userId, username)
     default:
-      return NextResponse.json({ ok: true })
+      return
   }
 }
 

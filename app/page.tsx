@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase"
 import ProjectDiscoveryClient from "@/components/ProjectDiscoveryClient";
 import { cache } from "react"
+import PageContainer from "@/components/PageContainer";
 
 interface Project {
   id: string;
@@ -99,10 +100,14 @@ export default async function ProjectDiscovery() {
       "Staking",
     ]
 
-    return <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
+    return <PageContainer>
+      <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
+    </PageContainer>
   } catch (error) {
     console.error("Error fetching projects:", error);
-    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900"><p className="text-white text-xl">Error loading projects.</p></div>
+    return <PageContainer>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900"><p className="text-white text-xl">Error loading projects.</p></div>
+    </PageContainer>
   }
 }
 

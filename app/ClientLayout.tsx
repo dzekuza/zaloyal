@@ -25,6 +25,7 @@ import { Calendar, Home, Inbox, Users } from "lucide-react"
 import Navigation from "@/components/navigation"
 import EmailAuth from "@/components/email-auth"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
+import { usePathname } from "next/navigation"
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -64,6 +65,7 @@ export default function ClientLayout({
 }) {
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [authError, setAuthError] = useState("")
+  const pathname = usePathname();
 
   const handleEmailAuthSuccess = (authUser: unknown) => {
     console.log("Email auth success:", authUser)
@@ -94,7 +96,15 @@ export default function ClientLayout({
                   <SidebarMenu>
                     {items.map((item) => (
                       <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton asChild>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={
+                            item.url === "/project"
+                              ? pathname.startsWith("/project")
+                              : pathname === item.url
+                          }
+                          className="data-[active=true]:text-green-500 data-[active=true]:bg-transparent"
+                        >
                           <a href={item.url}>
                             <item.icon />
                             <span>{item.title}</span>

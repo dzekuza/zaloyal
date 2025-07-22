@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import ProjectStatsBar from "@/components/ProjectStatsBar"
 import BackgroundWrapper from "@/components/BackgroundWrapper";
 import QuestFormWrapper from "@/components/quest-form-wrapper"
+import PageContainer from "@/components/PageContainer";
 
 interface Project {
   id: string;
@@ -129,7 +130,7 @@ export default function ProjectDetailClient({
 
         {/* Project info overlay */}
         <div className="absolute bottom-0 left-0 w-full">
-          <div className="container mx-auto w-full max-w-full px-2 sm:px-6 pb-4">
+          <PageContainer className="w-full max-w-full pb-4 px-2 sm:px-6">
             <div className="flex flex-row items-end gap-6">
               {/* Logo */}
               <div className="flex items-center h-20">
@@ -150,7 +151,7 @@ export default function ProjectDetailClient({
                 <p className="text-gray-300 text-base sm:text-lg max-w-full sm:max-w-2xl text-left mt-1">{project.description}</p>
               </div>
             </div>
-          </div>
+          </PageContainer>
         </div>
       </div>
 
@@ -158,7 +159,7 @@ export default function ProjectDetailClient({
       <ProjectStatsBar questCount={quests.length} participants={project.total_participants || 0} xpToCollect={xpToCollect} />
 
       {/* Featured Quests */}
-      <div className="container mx-auto px-4 py-8">
+      <PageContainer>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">Quests</h2>
           {isOwner && (
@@ -184,62 +185,62 @@ export default function ProjectDetailClient({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {quests.map((quest) => (
-            <Card key={quest.id} className="bg-[#111111] border-[#282828] text-white hover:bg-[#1a1a1a] transition-colors">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{quest.title}</CardTitle>
-                    <CardDescription className="text-gray-300 mt-2">
-                      {quest.description}
-                    </CardDescription>
+            <Link key={quest.id} href={`/quest/${quest.id}`} tabIndex={0} aria-label={`View quest ${quest.title}`}
+              className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400 rounded-lg">
+              <Card className="bg-[#111111] border-[#282828] text-white hover:bg-[#1a1a1a] transition-colors cursor-pointer">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{quest.title}</CardTitle>
+                      <CardDescription className="text-gray-300 mt-2">
+                        {quest.description}
+                      </CardDescription>
+                    </div>
+                    <Badge 
+                      variant={isQuestCompleted(quest) ? "secondary" : "default"}
+                      className={isQuestCompleted(quest) ? "bg-gray-600 text-gray-300" : "bg-green-600 text-white"}
+                    >
+                      {isQuestCompleted(quest) ? "Completed" : "Active"}
+                    </Badge>
                   </div>
-                  <Badge 
-                    variant={isQuestCompleted(quest) ? "secondary" : "default"}
-                    className={isQuestCompleted(quest) ? "bg-gray-600 text-gray-300" : "bg-green-600 text-white"}
-                  >
-                    {isQuestCompleted(quest) ? "Completed" : "Active"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between text-sm text-gray-300 mb-4">
-                  <div className="flex items-center gap-1">
-                    <Zap className="h-4 w-4" />
-                    <span>{quest.total_xp || 0} XP</span>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between text-sm text-gray-300 mb-4">
+                    <div className="flex items-center gap-1">
+                      <Zap className="h-4 w-4" />
+                      <span>{quest.total_xp || 0} XP</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      <span>{quest.participants || 0} participants</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    <span>{quest.participants || 0} participants</span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Link href={`/quest/${quest.id}`}>
-                    <Button variant="outline" size="sm" className="flex-1 border-[#282828] text-white hover:bg-[#1a1a1a]">
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1 border-[#282828] text-white hover:bg-[#1a1a1a] pointer-events-none">
                       View Quest
                     </Button>
-                  </Link>
-                  {isOwner && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
-                          Edit
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-[#111111] border-[#282828] text-white max-h-[80vh] overflow-y-auto w-full max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Edit Quest</DialogTitle>
-                          <DialogDescription className="text-gray-300">
-                            Update quest details
-                          </DialogDescription>
-                        </DialogHeader>
-                        <QuestFormWrapper quest={quest} projectId={project.id} />
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    {isOwner && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]" onClick={e => e.preventDefault()}>
+                            Edit
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-[#111111] border-[#282828] text-white max-h-[80vh] overflow-y-auto w-full max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Edit Quest</DialogTitle>
+                            <DialogDescription className="text-gray-300">
+                              Update quest details
+                            </DialogDescription>
+                          </DialogHeader>
+                          <QuestFormWrapper quest={quest} projectId={project.id} />
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
 
@@ -271,11 +272,11 @@ export default function ProjectDetailClient({
             )}
           </div>
         )}
-      </div>
+      </PageContainer>
 
       {/* Social Links */}
       {(project.twitter_url || project.discord_url || project.telegram_url || project.medium_url || project.github_url || project.website_url) && (
-        <div className="container mx-auto px-4 py-8">
+        <PageContainer>
           <h3 className="text-xl font-semibold text-white mb-4">Connect</h3>
           <div className="flex flex-wrap gap-3">
             {project.website_url && (
@@ -327,7 +328,7 @@ export default function ProjectDetailClient({
               </a>
             )}
           </div>
-        </div>
+        </PageContainer>
       )}
     </BackgroundWrapper>
   )

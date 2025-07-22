@@ -163,22 +163,7 @@ export default function Leaderboard() {
     <BackgroundWrapper>
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-green-400 bg-clip-text text-transparent mb-4">
-            Leaderboard
-          </h1>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Compete with the best Web3 quest participants and climb the ranks
-          </p>
-          {/* Hydration-safe: Only show after mount */}
-          {mounted && currentUser && (
-            <Link href="/register-project">
-              <button className="mt-6 px-6 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold shadow-lg hover:from-green-600 hover:to-emerald-600 transition-colors">
-                Create Project
-              </button>
-            </Link>
-          )}
-        </div>
+        {/* Removed h1, subtitle, and Create Project button */}
 
         {/* Top 3 Podium */}
         {users.length >= 3 && (
@@ -362,7 +347,7 @@ export default function Leaderboard() {
                         </span>
                       ))}
                     </div>
-                    <Badge className={`bg-gradient-to-r ${getRankBadgeColor(user.rank)} text-white border-0`}>
+                    <Badge className="bg-gradient-to-r from-green-400 to-emerald-500 text-white border-0">
                       #{user.rank}
                     </Badge>
                   </div>

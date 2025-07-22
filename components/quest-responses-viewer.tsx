@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import {
   Users,
@@ -287,7 +288,7 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
                       <Button
                         variant="destructive"
                         onClick={() => handleRemoveXP(submission.id)}
-                        disabled={!removeXPReason.trim() || removingXP}
+                        disabled={(!removeXPReason.trim() || !!removingXP)}
                       >
                         {removingXP ? "Removing..." : "Confirm Remove"}
                       </Button>
@@ -323,16 +324,16 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 h-auto lg:h-[600px]">
       {/* Left Column - Users List */}
       <Card className="lg:col-span-1 bg-[#111111] rounded-lg border border-[#282828] overflow-hidden">
-        <CardContent className="border-b border-[#282828] p-4">
-          <h3 className="text-white font-semibold flex items-center gap-2">
+        <CardContent className="border-b border-[#282828] p-3 sm:p-4">
+          <h3 className="text-white font-semibold flex items-center gap-2 text-base sm:text-lg">
             <Users className="w-5 h-5" />
             Participants ({Object.keys(userSubmissions).length})
           </h3>
         </CardContent>
-        <div className="overflow-y-auto h-[calc(600px-80px)]">
+        <div className="overflow-y-auto h-64 sm:h-[calc(600px-80px)]">
           {Object.entries(userSubmissions).map(([userId, userData]) => (
             <div
               key={userId}
@@ -378,28 +379,28 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
       <Card className="lg:col-span-2 bg-[#111111] rounded-lg border border-[#282828] overflow-hidden">
         {selectedUserData ? (
           <>
-            <CardContent className="border-b border-[#282828] p-4">
-              <div className="flex items-center justify-between">
+            <CardContent className="border-b border-[#282828] p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                  <h3 className="text-white font-semibold">
+                  <h3 className="text-white font-semibold text-base sm:text-lg">
                     {selectedUserData.user?.username || selectedUserData.user?.wallet_address?.slice(0, 8) + '...' || 'Unknown User'}
                   </h3>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-400 text-xs sm:text-sm">
                     {selectedUserData.completedTasks}/{selectedUserData.totalTasks} tasks completed
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-green-400 font-semibold text-lg flex items-center gap-2">
+                  <div className="text-green-400 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <Trophy className="w-5 h-5" />
                     {selectedUserData.totalXP} XP
                   </div>
-                  <div className="text-gray-400 text-sm">
+                  <div className="text-gray-400 text-xs sm:text-sm">
                     {Math.round((selectedUserData.completedTasks / selectedUserData.totalTasks) * 100)}% complete
                   </div>
                 </div>
               </div>
             </CardContent>
-            <div className="overflow-y-auto h-[calc(600px-80px)] p-4">
+            <div className="overflow-y-auto h-64 sm:h-[calc(600px-80px)] p-3 sm:p-4">
               {selectedUserData.submissions.map(renderSubmissionResponse)}
             </div>
           </>

@@ -74,7 +74,7 @@ export default function EditProjectForm({ project, onSave }: EditProjectFormProp
 
   return (
     <form
-      className="space-y-6 w-full max-w-2xl pr-2"
+      className="space-y-6 w-full px-6 pb-6"
       style={{ scrollbarGutter: 'stable' }}
       onSubmit={e => { e.preventDefault(); handleSave(); }}
     >
@@ -84,158 +84,157 @@ export default function EditProjectForm({ project, onSave }: EditProjectFormProp
         </Alert>
       )}
       {success && (
-        <Alert variant="success">
+        <Alert variant="default">
           <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
-      <Card className="w-full max-w-2xl pr-2">
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-white block mb-1 font-medium">Project Name</label>
-            <Input 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-              placeholder="Enter project name"
-              required 
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-white block mb-1 font-medium">Description</label>
-            <Textarea 
-              value={description} 
-              onChange={e => setDescription(e.target.value)} 
-              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-              rows={3}
-              placeholder="Describe your project"
-              required 
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-white block mb-1 font-medium">Category</label>
-            <Input 
-              value={category} 
-              onChange={e => setCategory(e.target.value)} 
-              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-              placeholder="e.g., DeFi, NFT, Gaming"
-              required 
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-white block mb-1 font-medium">Website URL</label>
-            <Input 
-              value={websiteUrl} 
-              onChange={e => setWebsiteUrl(e.target.value)} 
-              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-              placeholder="https://yourproject.com"
-              type="url"
-            />
-          </div>
-          
-          <div className="space-y-6">
-            <div className="space-y-2 flex flex-col items-start">
-              <label className="text-white block mb-1 font-medium">Project Logo</label>
-              <div className="mb-2">
-                <AvatarUpload
-                  onAvatarUploaded={setLogoUrl}
-                  currentAvatar={logoUrl}
-                  userId={project.id}
-                  size="md"
-                  className="mx-auto"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2 flex flex-col items-start">
-              <label className="text-white block mb-1 font-medium">Cover Image</label>
-              <div className="w-full">
-                <ImageUpload
-                  onImageUploaded={setCoverImageUrl}
-                  onImageRemoved={() => setCoverImageUrl("")}
-                  currentImage={coverImageUrl}
-                  maxSizeMB={5}
-                  label="Upload Cover"
-                />
-              </div>
+      
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <label className="text-white block mb-1 font-medium">Project Name</label>
+          <Input 
+            value={name} 
+            onChange={e => setName(e.target.value)} 
+            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+            placeholder="Enter project name"
+            required 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label className="text-white block mb-1 font-medium">Description</label>
+          <Textarea 
+            value={description} 
+            onChange={e => setDescription(e.target.value)} 
+            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+            rows={3}
+            placeholder="Describe your project"
+            required 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label className="text-white block mb-1 font-medium">Category</label>
+          <Input 
+            value={category} 
+            onChange={e => setCategory(e.target.value)} 
+            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+            placeholder="e.g., DeFi, NFT, Gaming"
+            required 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label className="text-white block mb-1 font-medium">Website URL</label>
+          <Input 
+            value={websiteUrl} 
+            onChange={e => setWebsiteUrl(e.target.value)} 
+            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+            placeholder="https://yourproject.com"
+            type="url"
+          />
+        </div>
+        
+        <div className="space-y-6">
+          <div className="space-y-2 flex flex-col items-start">
+            <label className="text-white block mb-1 font-medium">Project Logo</label>
+            <div className="mb-2">
+              <AvatarUpload
+                onAvatarUploaded={setLogoUrl}
+                currentAvatar={logoUrl}
+                userId={project.id}
+                size="md"
+                className="mx-auto"
+              />
             </div>
           </div>
+          
+          <div className="space-y-2 flex flex-col items-start">
+            <label className="text-white block mb-1 font-medium">Cover Image</label>
+            <div className="w-full">
+              <ImageUpload
+                onImageUploaded={setCoverImageUrl}
+                onImageRemoved={() => setCoverImageUrl("")}
+                currentImage={coverImageUrl}
+                maxSizeMB={5}
+                label="Upload Cover"
+              />
+            </div>
+          </div>
+        </div>
 
-          {/* Social Links */}
-          <div className="space-y-4">
-            <h3 className="text-white font-medium">Social Links</h3>
+        {/* Social Links */}
+        <div className="space-y-4">
+          <h3 className="text-white font-medium">Social Links</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-white block mb-1 text-sm">Twitter</label>
+              <Input 
+                value={twitterUrl} 
+                onChange={e => setTwitterUrl(e.target.value)} 
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+                placeholder="https://twitter.com/yourproject"
+                type="url"
+              />
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-white block mb-1 text-sm">Twitter</label>
-                <Input 
-                  value={twitterUrl} 
-                  onChange={e => setTwitterUrl(e.target.value)} 
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-                  placeholder="https://twitter.com/yourproject"
-                  type="url"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-white block mb-1 text-sm">Discord</label>
-                <Input 
-                  value={discordUrl} 
-                  onChange={e => setDiscordUrl(e.target.value)} 
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-                  placeholder="https://discord.gg/yourproject"
-                  type="url"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-white block mb-1 text-sm">Telegram</label>
-                <Input 
-                  value={telegramUrl} 
-                  onChange={e => setTelegramUrl(e.target.value)} 
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-                  placeholder="https://t.me/yourproject"
-                  type="url"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-white block mb-1 text-sm">GitHub</label>
-                <Input 
-                  value={githubUrl} 
-                  onChange={e => setGithubUrl(e.target.value)} 
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-                  placeholder="https://github.com/yourproject"
-                  type="url"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-white block mb-1 text-sm">Medium</label>
-                <Input 
-                  value={mediumUrl} 
-                  onChange={e => setMediumUrl(e.target.value)} 
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-                  placeholder="https://medium.com/@yourproject"
-                  type="url"
-                />
-              </div>
+            <div className="space-y-2">
+              <label className="text-white block mb-1 text-sm">Discord</label>
+              <Input 
+                value={discordUrl} 
+                onChange={e => setDiscordUrl(e.target.value)} 
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+                placeholder="https://discord.gg/yourproject"
+                type="url"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-white block mb-1 text-sm">Telegram</label>
+              <Input 
+                value={telegramUrl} 
+                onChange={e => setTelegramUrl(e.target.value)} 
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+                placeholder="https://t.me/yourproject"
+                type="url"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-white block mb-1 text-sm">GitHub</label>
+              <Input 
+                value={githubUrl} 
+                onChange={e => setGithubUrl(e.target.value)} 
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+                placeholder="https://github.com/yourproject"
+                type="url"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-white block mb-1 text-sm">Medium</label>
+              <Input 
+                value={mediumUrl} 
+                onChange={e => setMediumUrl(e.target.value)} 
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+                placeholder="https://medium.com/@yourproject"
+                type="url"
+              />
             </div>
           </div>
-          
-          <div className="flex justify-end pt-4">
-            <Button 
-              type="submit" 
-              disabled={saving} 
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+        
+        <div className="flex justify-end pt-4">
+          <Button 
+            type="submit" 
+            disabled={saving} 
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
+      </div>
     </form>
   )
 } 

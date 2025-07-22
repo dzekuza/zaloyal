@@ -14,32 +14,26 @@ interface ProjectCardProps {
 
 function PlaceholderCover({ name, logoUrl }: { name: string; logoUrl?: string }) {
   return (
-    <div className="h-40 w-full bg-gradient-to-br from-[#1a1a1a] via-[#0f0f0f] to-[#1a1a1a] flex items-center justify-center relative overflow-hidden">
+    <div className="h-40 sm:h-48 md:h-56 w-full bg-gradient-to-br from-[#1a1a1a] via-[#0f0f0f] to-[#1a1a1a] flex items-center justify-center relative overflow-hidden">
       {/* Background pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-0 left-0 w-full h-full" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }}></div>
-      </div>
-      
+      <div className="absolute inset-0 opacity-10 quest-placeholder-bg"></div>
       {/* Logo or fallback */}
       <div className="relative z-10 flex items-center justify-center">
         {logoUrl ? (
           <img
             src={logoUrl}
             alt={`${name} logo`}
-            className="h-16 w-16 rounded-full border-2 border-white/20 bg-white/10 object-cover"
+            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 border-white/20 bg-white/10 object-cover"
           />
         ) : (
-          <div className="h-16 w-16 rounded-full border-2 border-white/20 bg-white/10 flex items-center justify-center">
-            <Building2 className="h-8 w-8 text-white/60" />
+          <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 border-white/20 bg-white/10 flex items-center justify-center">
+            <Building2 className="h-8 w-8 sm:h-10 sm:w-10 text-white/60" />
           </div>
         )}
       </div>
-      
       {/* Project name overlay */}
       <div className="absolute bottom-3 left-3 right-3">
-        <h3 className="text-white font-semibold text-lg truncate">{name}</h3>
+        <h3 className="text-white font-semibold text-lg sm:text-xl md:text-2xl truncate">{name}</h3>
       </div>
     </div>
   );
@@ -73,7 +67,7 @@ export default function ProjectCard({
   );
 
   return (
-    <Card className="group bg-[#111111] rounded-lg transition-all duration-300 hover:bg-[#181818] overflow-hidden">
+    <Card className="group bg-[#111111] rounded-lg border border-[#282828] transition-all duration-300 hover:bg-[#181818] overflow-hidden">
       {/* Cover Image */}
       <div className="relative overflow-hidden">
         {project.cover_image_url ? (
@@ -141,17 +135,17 @@ export default function ProjectCard({
 
       {/* Card Body */}
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg text-white group-hover:text-green-400 transition-colors line-clamp-1">
+        <CardTitle className="text-lg sm:text-xl md:text-2xl text-white group-hover:text-green-400 transition-colors line-clamp-1">
           {project.name}
         </CardTitle>
-        <CardDescription className="text-gray-300 text-sm line-clamp-2">
+        <CardDescription className="text-gray-300 text-sm sm:text-base line-clamp-2">
           {project.description}
         </CardDescription>
       </CardHeader>
 
       <CardContent className="pt-0 space-y-4">
         {/* Stats Row */}
-        <div className="flex justify-between items-center text-xs text-gray-400">
+        <div className="flex flex-wrap justify-between items-center text-xs sm:text-sm md:text-base text-gray-400 gap-2">
           <span className="flex items-center gap-1">
             <Trophy className="h-3 w-3 text-yellow-400" />
             <span className="hidden sm:inline">{project.quest_count} Quests</span>
@@ -170,7 +164,7 @@ export default function ProjectCard({
         </div>
 
         {/* Social Links */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {project.website_url && <IconLink href={project.website_url} icon={Globe} />}
           {project.twitter_url && <IconLink href={project.twitter_url} icon={Twitter} />}
           {project.discord_url && <IconLink href={project.discord_url} icon={MessageSquare} />}

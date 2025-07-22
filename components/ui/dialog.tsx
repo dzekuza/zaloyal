@@ -38,7 +38,10 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 bg-[#111111] p-4 px-2 sm:px-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-white sm:max-w-lg sm:p-6 w-full max-w-full h-full sm:h-auto overflow-y-auto",
+        // Remove duplicate/conflicting classes
+        // Old: "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 bg-[#111111] rounded-lg px-4 py-4 sm:px-6 sm:py-6 shadow-lg duration-200 ... sm:max-w-lg w-full max-w-full h-full sm:h-auto overflow-y-auto",
+        // New:
+        "fixed left-1/2 top-1/2 z-50 grid w-full sm:max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 bg-[#111111] rounded-lg px-4 py-4 sm:px-6 sm:py-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] h-full sm:h-auto overflow-y-auto",
         className
       )}
       {...props}
