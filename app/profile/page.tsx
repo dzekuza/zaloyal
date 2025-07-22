@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import WalletConnect from "@/components/wallet-connect"
 import TelegramLoginWidget from "@/components/telegram-login-widget"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { LogOut, Copy, ExternalLink, User, Wallet, Link } from "lucide-react"
 import { SiDiscord, SiX } from "react-icons/si"
 import AvatarUpload from "@/components/avatar-upload"
@@ -44,6 +44,7 @@ export default function ProfilePage() {
   const [socialLinks, setSocialLinks] = useState<any>({})
 
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [supabaseUser, setSupabaseUser] = useState<any>(null)
   const [unlinkingDiscord, setUnlinkingDiscord] = useState(false)
@@ -66,6 +67,66 @@ export default function ProfilePage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSupabaseUser(data?.user))
   }, [])
+
+  // Handle OAuth callback messages
+  useEffect(() => {
+    const successParam = searchParams.get('success');
+    const errorParam = searchParams.get('error');
+    
+    if (successParam === 'twitter_linked') {
+      toast({
+        title: "Success!",
+        description: "X account linked successfully!",
+      });
+      // Refresh user data
+      updateEmailUserWithIdentities();
+      // Clear URL parameters
+      router.replace('/profile');
+    } else if (errorParam) {
+      let errorMessage = 'An error occurred while linking your X account.';
+      
+      switch (errorParam) {
+        case 'not_authenticated':
+          errorMessage = 'You must be logged in to link your X account.';
+          break;
+        case 'access_denied':
+          errorMessage = 'X account linking was cancelled.';
+          break;
+        case 'invalid_oauth_response':
+          errorMessage = 'Invalid response from X. Please try again.';
+          break;
+        case 'api_not_configured':
+          errorMessage = 'X API is not configured. Please contact support.';
+          break;
+        case 'access_token_failed':
+          errorMessage = 'Failed to get access token from X. Please try again.';
+          break;
+        case 'invalid_access_token':
+          errorMessage = 'Invalid access token from X. Please try again.';
+          break;
+        case 'profile_fetch_failed':
+          errorMessage = 'Failed to fetch profile from X. Please try again.';
+          break;
+        case 'profile_update_failed':
+          errorMessage = 'Failed to update profile. Please try again.';
+          break;
+        case 'oauth_error':
+          errorMessage = 'OAuth error occurred. Please try again.';
+          break;
+        case 'callback_error':
+          errorMessage = 'Callback error occurred. Please try again.';
+          break;
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      // Clear URL parameters
+      router.replace('/profile');
+    }
+  }, [searchParams, toast, router]);
 
   const discordInfo = emailUser?.profile?.discord_id ? {
     id: emailUser.profile.discord_id,
@@ -233,6 +294,12 @@ export default function ProfilePage() {
   // Handle Twitter linking with the new hook
   const handleLinkX = async () => {
     const result = await linkTwitter();
+    if (result.success && result.redirecting) {
+      // The user will be redirected to X for authentication
+      // The callback will handle the success/error messages
+      return;
+    }
+    
     if (result.success) {
       // Refresh user data after successful linking
       await updateEmailUserWithIdentities();

@@ -13,6 +13,8 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    // React 19 compatibility
+    reactCompiler: false,
   },
   // Enable compression
   compress: true,

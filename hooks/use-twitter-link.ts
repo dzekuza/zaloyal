@@ -24,7 +24,7 @@ export const useTwitterLink = () => {
   
   const { toast } = useToast();
 
-  const linkTwitter = useCallback(async (username?: string) => {
+  const linkTwitter = useCallback(async () => {
     setState(prev => ({ ...prev, isLinking: true, error: null }));
     
     try {
@@ -34,49 +34,32 @@ export const useTwitterLink = () => {
         throw new Error('You must be logged in to link your X (Twitter) account.');
       }
 
-      // If no username provided, prompt the user
-      if (!username) {
-        const inputUsername = prompt('Please enter your X (Twitter) username:');
-        if (!inputUsername) {
-          setState(prev => ({ ...prev, isLinking: false }));
-          return { success: false };
-        }
-        username = inputUsername;
-      }
-
-      // Clean the username
-      const cleanUsername = username.replace(/^@/, '');
-
-      // Call our API to link the X account
-      const response = await fetch('/api/auth/twitter/link', {
-        method: 'POST',
+      // Call our API to initiate OAuth flow
+      const response = await fetch('/api/auth/twitter/authorize', {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username: cleanUsername }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to link X account');
+        throw new Error(errorData.error || 'Failed to initiate X authentication');
       }
 
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to link X account');
+        throw new Error(result.error || 'Failed to initiate X authentication');
       }
 
-      // Update the user's identities in the UI
-      await supabase.auth.getSession();
-      
-      setState(prev => ({ ...prev, isLinking: false, error: null }));
-      toast({
-        title: "Success!",
-        description: `X account @${result.user.username} linked successfully!`,
-      });
-      
-      return { success: true, identity: result.identity };
+      // Redirect to X for authentication
+      if (result.authUrl) {
+        window.location.href = result.authUrl;
+        return { success: true, redirecting: true };
+      }
+
+      throw new Error('No authentication URL received');
 
     } catch (error) {
       console.error('Twitter link error:', error);
