@@ -74,6 +74,22 @@ export async function POST(request: NextRequest) {
         );
       }
       
+      if (userResponse.status === 429) {
+        console.error('Twitter API rate limit exceeded');
+        return NextResponse.json(
+          { error: 'Twitter API rate limit exceeded. Please wait a few minutes and try again.' },
+          { status: 429 }
+        );
+      }
+      
+      if (userResponse.status === 403) {
+        console.error('Twitter API forbidden - possible API access issue');
+        return NextResponse.json(
+          { error: 'Twitter API access denied. Please contact support.' },
+          { status: 500 }
+        );
+      }
+      
       return NextResponse.json(
         { error: 'Failed to verify X username. Please try again.' },
         { status: 500 }

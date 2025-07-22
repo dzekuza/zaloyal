@@ -34,7 +34,6 @@ interface Project {
   logo_url?: string | null;
   cover_image_url?: string | null;
   website_url?: string | null;
-  twitter_url?: string | null;
   discord_url?: string | null;
   github_url?: string | null;
   telegram_url?: string | null;
@@ -272,7 +271,7 @@ export default function ProjectDetailClient({
         )}
 
         {/* Social Links */}
-        {(project.twitter_url || project.discord_url || project.telegram_url || project.medium_url || project.github_url || project.website_url) && (
+        {(project.discord_url || project.telegram_url || project.medium_url || project.github_url || project.website_url) && (
           <div className="mt-12">
             <h3 className="text-xl font-semibold text-white mb-4">Connect</h3>
             <div className="flex flex-wrap gap-3">
@@ -281,14 +280,6 @@ export default function ProjectDetailClient({
                   <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
                     <Globe className="h-4 w-4 mr-2" />
                     Website
-                  </Button>
-                </a>
-              )}
-              {project.twitter_url && (
-                <a href={project.twitter_url} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]">
-                    <Twitter className="h-4 w-4 mr-2" />
-                    Twitter
                   </Button>
                 </a>
               )}

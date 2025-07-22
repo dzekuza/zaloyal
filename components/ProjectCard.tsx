@@ -4,6 +4,30 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Zap, Trophy, Globe, Twitter, MessageSquare, Building2 } from "lucide-react";
 import Image from "next/image";
 
+interface Project {
+  id: string;
+  owner_id: string;
+  name: string;
+  description?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  status?: string;
+  category?: string | null;
+  featured?: boolean | null;
+  verified?: boolean | null;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
+  website_url?: string | null;
+  discord_url?: string | null;
+  github_url?: string | null;
+  telegram_url?: string | null;
+  medium_url?: string | null;
+  total_xp_distributed?: number;
+  quest_count?: number;
+  total_participants?: number;
+  xpToCollect?: number;
+}
+
 interface ProjectCardProps {
   project: any;
   currentUserId?: string | null;
@@ -184,7 +208,6 @@ export default function ProjectCard({
         {/* Social Links */}
         <div className="flex items-center gap-2 flex-wrap">
           {project.website_url && <IconLink href={project.website_url} icon={Globe} />}
-          {project.twitter_url && <IconLink href={project.twitter_url} icon={Twitter} />}
           {project.discord_url && <IconLink href={project.discord_url} icon={MessageSquare} />}
           {project.twitter_username && (
             <a

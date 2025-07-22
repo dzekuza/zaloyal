@@ -45,7 +45,7 @@ interface Quest {
 const getProject = cache(async (projectId: string) => {
   const { data: project, error } = await supabase
     .from("projects")
-    .select('id, owner_id, name, description, logo_url, cover_image_url, category, status, featured, verified, website_url, twitter_url, discord_url, github_url, telegram_url, medium_url, total_participants')
+    .select('id, owner_id, name, description, logo_url, cover_image_url, category, status, featured, verified, website_url, discord_url, github_url, telegram_url, medium_url, total_participants')
     .eq("id", projectId)
     .single()
   
