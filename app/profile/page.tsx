@@ -262,33 +262,12 @@ export default function ProfilePage() {
       // Start the linking flow
       const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
       if (error) throw error;
-      // Wait for the user to complete the OAuth flow, then fetch updated identities
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      const { data: identitiesData } = await supabase.auth.getUserIdentities();
-      let twitterIdentity = null;
-      if (identitiesData && identitiesData.identities) {
-        twitterIdentity = identitiesData.identities.find((i: any) => i.provider === 'twitter');
-      }
-      if (twitterIdentity) {
-        const x_id = twitterIdentity.id || twitterIdentity.identity_data?.user_id || null;
-        const x_username = twitterIdentity.identity_data?.username || null;
-        const x_avatar_url = twitterIdentity.identity_data?.avatar_url || null;
-        // Update users table
-        if (emailUser?.profile?.id) {
-          const { error: updateError } = await supabase.from('users').update({
-            x_id,
-            x_username,
-            x_avatar_url,
-          }).eq('id', emailUser.profile.id);
-          if (updateError) {
-            toast({ title: 'Failed to save X username to your profile.', variant: 'destructive' });
-          } else {
-            toast({ title: 'X account linked and username saved!', variant: 'default' });
-          }
-        }
+      // Redirect to the callback page to handle session refresh
+      if (data?.url) {
+        window.location.href = data.url;
       } else {
-        toast({ title: 'Could not find X identity after linking.', variant: 'destructive' });
+        // Fallback: go to /x-callback
+        window.location.href = "/x-callback";
       }
     } catch (err: any) {
       toast({ title: 'Failed to link X account: ' + (err.message || err), variant: 'destructive' });
