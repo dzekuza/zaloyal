@@ -23,6 +23,7 @@ export default function EditProjectForm({ project, onSave }: EditProjectFormProp
   const [logoUrl, setLogoUrl] = useState(project.logo_url || "")
   const [coverImageUrl, setCoverImageUrl] = useState(project.cover_image_url || "")
   const [twitterUrl, setTwitterUrl] = useState(project.twitter_url || "")
+  const [twitterUsername, setTwitterUsername] = useState(project.twitter_username || "")
   const [discordUrl, setDiscordUrl] = useState(project.discord_url || "")
   const [telegramUrl, setTelegramUrl] = useState(project.telegram_url || "")
   const [githubUrl, setGithubUrl] = useState(project.github_url || "")
@@ -55,6 +56,7 @@ export default function EditProjectForm({ project, onSave }: EditProjectFormProp
         logo_url: logoUrl,
         cover_image_url: coverImageUrl,
         twitter_url: twitterUrl.trim() || null,
+        twitter_username: twitterUsername.trim() || null,
         discord_url: discordUrl.trim() || null,
         telegram_url: telegramUrl.trim() || null,
         github_url: githubUrl.trim() || null,
@@ -176,6 +178,16 @@ export default function EditProjectForm({ project, onSave }: EditProjectFormProp
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
                 placeholder="https://twitter.com/yourproject"
                 type="url"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-white block mb-1 text-sm">Twitter Username</label>
+              <Input 
+                value={twitterUsername} 
+                onChange={e => setTwitterUsername(e.target.value)} 
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
+                placeholder="e.g. belinkxyz"
               />
             </div>
             

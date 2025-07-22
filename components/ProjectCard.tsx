@@ -186,6 +186,16 @@ export default function ProjectCard({
           {project.website_url && <IconLink href={project.website_url} icon={Globe} />}
           {project.twitter_url && <IconLink href={project.twitter_url} icon={Twitter} />}
           {project.discord_url && <IconLink href={project.discord_url} icon={MessageSquare} />}
+          {project.twitter_username && (
+            <a
+              href={`https://twitter.com/${project.twitter_username}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:underline text-sm"
+            >
+              @{project.twitter_username}
+            </a>
+          )}
         </div>
 
         {/* Action Button */}
