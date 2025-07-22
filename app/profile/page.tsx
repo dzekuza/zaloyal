@@ -18,6 +18,7 @@ import { SiDiscord, SiX } from "react-icons/si"
 import AvatarUpload from "@/components/avatar-upload"
 import AuthRequired from "@/components/auth-required"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 // react-icons currently returns `ReactNode`, which is incompatible with React 19's
 // stricter JSX.Element return type expectations. Cast the icon components to
@@ -49,6 +50,9 @@ export default function ProfilePage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [linkingTwitter, setLinkingTwitter] = useState(false);
+
+  const { toast } = useToast();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSupabaseUser(data?.user))
@@ -246,24 +250,43 @@ export default function ProfilePage() {
   }
 
   const handleLinkX = async () => {
+    setLinkingTwitter(true);
     try {
-      // Require fresh sign in before relinking
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert('Please sign in before linking your X (Twitter) account.');
-        return;
-      }
+      // Start the linking flow
       const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
-      if (error) {
-        alert('Failed to link X (Twitter): ' + error.message);
-        return;
+      if (error) throw error;
+      // Wait for the user to complete the OAuth flow, then fetch updated identities
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const { data: identitiesData } = await supabase.auth.getUserIdentities();
+      let twitterIdentity = null;
+      if (identitiesData && identitiesData.identities) {
+        twitterIdentity = identitiesData.identities.find((i: any) => i.provider === 'twitter');
       }
-      await updateEmailUserWithIdentities();
-      alert('X (Twitter) account linked!');
-      window.location.reload();
-    } catch (err) {
-      alert('Twitter link error: ' + String((err as Error)?.message || err));
-      console.error(err);
+      if (twitterIdentity) {
+        const x_id = twitterIdentity.id || twitterIdentity.identity_data?.user_id || null;
+        const x_username = twitterIdentity.identity_data?.username || null;
+        const x_avatar_url = twitterIdentity.identity_data?.avatar_url || null;
+        // Update users table
+        if (emailUser?.profile?.id) {
+          const { error: updateError } = await supabase.from('users').update({
+            x_id,
+            x_username,
+            x_avatar_url,
+          }).eq('id', emailUser.profile.id);
+          if (updateError) {
+            toast({ title: 'Failed to save X username to your profile.', variant: 'destructive' });
+          } else {
+            toast({ title: 'X account linked and username saved!', variant: 'default' });
+          }
+        }
+      } else {
+        toast({ title: 'Could not find X identity after linking.', variant: 'destructive' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Failed to link X account: ' + (err.message || err), variant: 'destructive' });
+    } finally {
+      setLinkingTwitter(false);
     }
   };
 
@@ -604,9 +627,9 @@ export default function ProfilePage() {
                           <Button
                             onClick={handleLinkX}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            disabled={linkingTwitter}
                           >
-                            <XIcon className="w-5 h-5 mr-2" />
-                            Connect X
+                            {linkingTwitter ? 'Linking...' : 'Connect X'}
                           </Button>
                         );
                       }

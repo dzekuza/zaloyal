@@ -272,6 +272,11 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             if (!userTwitterId && userObj.twitter_id) userTwitterId = userObj.twitter_id;
             if (!userTwitterId && userObj.x_id) userTwitterId = userObj.x_id;
             let targetAccountId = task.social_username || '';
+            if (!targetAccountId) {
+              toast.error('Twitter username to follow is missing. Please contact the quest creator.');
+              setVerifyingTask(null);
+              return;
+            }
             payload = { ...baseData, userTwitterId, targetAccountId };
             // Debug logging
             console.log('[Twitter Follow Debug] userObj:', userObj);
