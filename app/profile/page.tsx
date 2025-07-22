@@ -19,6 +19,7 @@ import AvatarUpload from "@/components/avatar-upload"
 import AuthRequired from "@/components/auth-required"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { useTwitterLink } from "@/hooks/use-twitter-link";
 
 // react-icons currently returns `ReactNode`, which is incompatible with React 19's
 // stricter JSX.Element return type expectations. Cast the icon components to
@@ -46,13 +47,21 @@ export default function ProfilePage() {
 
   const [supabaseUser, setSupabaseUser] = useState<any>(null)
   const [unlinkingDiscord, setUnlinkingDiscord] = useState(false)
-  const [unlinkingTwitter, setUnlinkingTwitter] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [linkingTwitter, setLinkingTwitter] = useState(false);
 
   const { toast } = useToast();
+  
+  // Use the new Twitter linking hook
+  const { 
+    isLinking: linkingTwitter, 
+    isUnlinking: unlinkingTwitter, 
+    error: twitterError,
+    linkTwitter, 
+    unlinkTwitter, 
+    getTwitterIdentity 
+  } = useTwitterLink();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSupabaseUser(data?.user))
@@ -221,84 +230,35 @@ export default function ProfilePage() {
     }
   }
 
-  const handleUnlinkTwitter = async () => {
-    setUnlinkingTwitter(true)
-    try {
-      const { data: identities } = await supabase.auth.getUserIdentities()
-      if (identities && identities.identities) {
-        const twitterIdentity = identities.identities.find((i: any) => i.provider === 'twitter')
-        if (twitterIdentity) {
-          await supabase.auth.unlinkIdentity(twitterIdentity)
-          // Clear X fields in users table
-          if (emailUser?.profile?.id) {
-            await supabase.from('users').update({
-              x_id: null,
-              x_username: null,
-              x_avatar_url: null,
-              x_profile_url: null,
-            }).eq('id', emailUser.profile.id);
-          }
-          // Sign out and force sign in to clear session
-          await supabase.auth.signOut();
-          alert('You have been signed out. Please sign in again to reconnect your X (Twitter) account.');
-          window.location.href = '/';
+  // Handle Twitter linking with the new hook
+  const handleLinkX = async () => {
+    const result = await linkTwitter();
+    if (result.success) {
+      // Refresh user data after successful linking
+      await updateEmailUserWithIdentities();
+      // Refetch profile data
+      if (emailUser?.email) {
+        const { data: profile } = await supabase.from("users").select("*").eq("email", emailUser.email).single();
+        if (profile) {
+          setEmailUser((prev: any) => ({ ...prev, profile }));
         }
       }
-    } finally {
-      setUnlinkingTwitter(false)
     }
-  }
+  };
 
-  const handleLinkX = async () => {
-    setLinkingTwitter(true);
-    try {
-      const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
-      if (error) throw error;
-      if (data?.url) {
-        // Open popup
-        const width = 600, height = 700;
-        const left = window.screenX + (window.outerWidth - width) / 2;
-        const top = window.screenY + (window.outerHeight - height) / 2;
-        const popup = window.open(
-          data.url,
-          'zaloyal-x-oauth',
-          `width=${width},height=${height},left=${left},top=${top},resizable,scrollbars=yes`
-        );
-        if (!popup) throw new Error('Popup blocked. Please allow popups and try again.');
-        // Listen for message from popup
-        const onMessage = async (event: MessageEvent) => {
-          if (event.origin !== window.location.origin) return;
-          if (event.data === 'zaloyal-x-oauth-success') {
-            // Explicitly refresh session after OAuth
-            await supabase.auth.getSession();
-            setLinkingTwitter(false);
-            window.removeEventListener('message', onMessage);
-            popup.close();
-            // Optionally, refresh user state
-            updateEmailUserWithIdentities();
-          } else if (event.data === 'zaloyal-x-oauth-fail') {
-            setLinkingTwitter(false);
-            window.removeEventListener('message', onMessage);
-            popup.close();
-            toast({ title: 'Failed to link X account.', variant: 'destructive' });
-          }
-        };
-        window.addEventListener('message', onMessage);
-        // Poll for popup close (in case user closes it manually)
-        const popupInterval = setInterval(() => {
-          if (popup.closed) {
-            setLinkingTwitter(false);
-            window.removeEventListener('message', onMessage);
-            clearInterval(popupInterval);
-          }
-        }, 500);
-      } else {
-        setLinkingTwitter(false);
-        toast({ title: 'No OAuth URL returned.', variant: 'destructive' });
+  // Handle Twitter unlinking with the new hook
+  const handleUnlinkTwitter = async () => {
+    const result = await unlinkTwitter();
+    if (result.success) {
+      // Refresh user data after successful unlinking
+      await updateEmailUserWithIdentities();
+      // Refetch profile data
+      if (emailUser?.email) {
+        const { data: profile } = await supabase.from("users").select("*").eq("email", emailUser.email).single();
+        if (profile) {
+          setEmailUser((prev: any) => ({ ...prev, profile }));
+        }
       }
-    } catch (err: any) {
-      setLinkingTwitter(false);
-      toast({ title: 'Failed to link X account: ' + (err.message || err), variant: 'destructive' });
     }
   };
 
@@ -605,6 +565,12 @@ export default function ProfilePage() {
                       })()}
                     </div>
                     
+                    {twitterError && (
+                      <div className="mb-3 p-3 bg-red-900/20 border border-red-500/30 rounded-md">
+                        <div className="text-red-400 text-sm">{twitterError}</div>
+                      </div>
+                    )}
+                    
                     {(() => {
                       // Find Twitter identity from Supabase identities
                       const [twitterIdentity] = (emailUser?.identities || [])
@@ -630,7 +596,14 @@ export default function ProfilePage() {
                               disabled={unlinkingTwitter}
                               className="w-full bg-red-600 hover:bg-red-700 text-white"
                             >
-                              {unlinkingTwitter ? 'Unlinking...' : 'Unlink X'}
+                              {unlinkingTwitter ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                  Unlinking...
+                                </>
+                              ) : (
+                                'Unlink X'
+                              )}
                             </Button>
                           </div>
                         );
@@ -638,10 +611,20 @@ export default function ProfilePage() {
                         return (
                           <Button
                             onClick={handleLinkX}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white"
                             disabled={linkingTwitter}
                           >
-                            {linkingTwitter ? 'Linking...' : 'Connect X'}
+                            {linkingTwitter ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Linking...
+                              </>
+                            ) : (
+                              <>
+                                <XIcon className="w-5 h-5 mr-2" />
+                                Connect X
+                              </>
+                            )}
                           </Button>
                         );
                       }
