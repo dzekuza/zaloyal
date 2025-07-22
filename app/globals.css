@@ -84,6 +84,25 @@
   line-clamp: 2;
 }
 
+/* Custom scrollbar for dialog modals */
+.dialog-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.dialog-scrollbar::-webkit-scrollbar-track {
+  background: #181818;
+}
+.dialog-scrollbar::-webkit-scrollbar-thumb {
+  background: #22c55e;
+  border-radius: 3px;
+}
+.dialog-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #16a34a;
+}
+.dialog-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #22c55e #181818;
+}
+
 /*
   NOTE: If you see errors like "Unknown at rule @tailwind" or "@apply", ensure your editor is set up for Tailwind CSS and your project uses PostCSS with the Tailwind plugin. See README or Tailwind docs for setup help.
 */

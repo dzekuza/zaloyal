@@ -429,6 +429,9 @@ export default function CreateQuest() {
       const { error: tasksError } = await supabase.from("tasks").insert(tasksToInsert)
       if (tasksError) throw tasksError
       alert("Quest published successfully!")
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('onboarding_quest', 'true');
+      }
       setQuestForm({
         title: "",
         description: "",
@@ -999,16 +1002,45 @@ export default function CreateQuest() {
 
         {/* Task Dialog */}
         <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
-          <DialogContent className="text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingTaskIndex !== null ? "Edit Task" : "Add New Task"}</DialogTitle>
-              <DialogDescription className="text-gray-300">
+              <DialogDescription>
                 Configure the task details and verification requirements
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6">
               {/* Basic Task Info */}
               <div className="space-y-4">
+                <div>
+                  <Label className="text-white">Task Title</Label>
+                  <Input
+                    value={currentTask.title}
+                    onChange={e => setCurrentTask(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Enter task title"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white">Task Description</Label>
+                  <Textarea
+                    value={currentTask.description}
+                    onChange={e => setCurrentTask(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Describe the task..."
+                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white">XP Reward</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={currentTask.xpReward}
+                    onChange={e => setCurrentTask(prev => ({ ...prev, xpReward: Number(e.target.value) }))}
+                    placeholder="100"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                  />
+                </div>
                 <div>
                   <Label className="text-white">Task Type</Label>
                   <Select
@@ -1030,15 +1062,10 @@ export default function CreateQuest() {
                     </SelectContent>
                   </Select>
                 </div>
-
-
               </div>
-
               <Separator className="bg-white/20" />
-
               {/* Task-specific fields */}
               {renderTaskSpecificFields()}
-
               <div className="flex gap-4 pt-4">
                 <Button
                   onClick={() => setShowTaskDialog(false)}

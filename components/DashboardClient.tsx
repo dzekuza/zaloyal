@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Zap, CheckCircle, Star, Clock } from "lucide-react";
+import QuestCard from '@/components/QuestCard';
 
 export default function DashboardClient({ profile, activeQuests, completedQuests, badges, achievements }: any) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -134,42 +135,11 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
           <TabsContent value="quests" className="space-y-6">
             <div className="grid gap-6">
               {activeQuests.map((quest: any) => (
-                <Card
-                  key={quest.id}
-                  className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm"
-                >
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-semibold text-white mb-2">{quest.title}</h3>
-                        <div className="flex items-center gap-4 text-sm text-gray-400 mb-3">
-                          <span className="flex items-center gap-1">
-                            <CheckCircle className="w-4 h-4" />
-                            {quest.completedTasks}/{quest.totalTasks} tasks
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Zap className="w-4 h-4 text-yellow-400" />
-                            {quest.total_xp_earned}/{quest.totalXP} XP
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {quest.timeLeft} left
-                          </span>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-400">Progress</span>
-                            <span className="text-white">{quest.completion_percentage}%</span>
-                          </div>
-                          <Progress value={quest.completion_percentage} className="h-2" />
-                        </div>
-                      </div>
-                      <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                        Continue Quest
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <QuestCard key={quest.id} quest={quest}>
+                  <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                    Continue Quest
+                  </Button>
+                </QuestCard>
               ))}
             </div>
           </TabsContent>

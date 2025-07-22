@@ -19,9 +19,10 @@ interface Quest {
 interface QuestFormWrapperProps {
   quest?: Quest;
   projectId: string;
+  onSave?: () => void;
 }
 
-export default function QuestFormWrapper({ quest, projectId }: QuestFormWrapperProps) {
+export default function QuestFormWrapper({ quest, projectId, onSave }: QuestFormWrapperProps) {
   if (!quest) {
     // Create new quest
     const newQuest = {
@@ -33,8 +34,8 @@ export default function QuestFormWrapper({ quest, projectId }: QuestFormWrapperP
       status: 'active',
       image_url: ''
     }
-    return <EditQuestForm quest={newQuest} />
+    return <EditQuestForm quest={newQuest} onSave={onSave} />
   }
   
-  return <EditQuestForm quest={quest} />
+  return <EditQuestForm quest={quest} onSave={onSave} />
 } 

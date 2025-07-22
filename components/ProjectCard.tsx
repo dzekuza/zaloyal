@@ -32,9 +32,6 @@ function PlaceholderCover({ name, logoUrl }: { name: string; logoUrl?: string })
         )}
       </div>
       {/* Project name overlay */}
-      <div className="absolute bottom-3 left-3 right-3">
-        <h3 className="text-white font-semibold text-lg sm:text-xl md:text-2xl truncate">{name}</h3>
-      </div>
     </div>
   );
 }

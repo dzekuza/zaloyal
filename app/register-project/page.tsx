@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import {
   ArrowLeft,
@@ -30,6 +30,7 @@ import WalletConnect from "@/components/wallet-connect"
 import { useRouter } from "next/navigation"
 import BackgroundWrapper from "@/components/BackgroundWrapper";
 import AuthRequired from "@/components/auth-required";
+import { toast } from 'sonner';
 
 interface ProjectForm {
   // Step 1: Basic Info
@@ -270,11 +271,17 @@ export default function RegisterProject() {
         throw projectError;
       }
 
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('onboarding_project', 'true');
+      }
+
       setCreatedProjectId(insertedProjects?.id || null);
       setSubmitted(true)
+      toast.success('Project created!');
     } catch (error) {
       console.error("Project registration error:", error)
       alert("Failed to submit project application. Please try again.")
+      toast.error('Failed to submit project application.');
     } finally {
       setSubmitting(false)
     }
@@ -472,14 +479,14 @@ export default function RegisterProject() {
                         <Building2 className="w-4 h-4" />
                         Category *
                       </Label>
-                      <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                      <Select value={formData.category} onValueChange={value => setFormData(prev => ({ ...prev, category: value }))}>
+                        <SelectTrigger className="bg-[#181818] border-[#282828] text-white rounded-md px-4 py-2 focus:ring-2 focus:ring-green-500">
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
-                        <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
-                          {projectCategories.map((category) => (
-                            <SelectItem key={category} value={category} className="text-white hover:bg-[#06351f]">
-                              {category}
+                        <SelectContent className="bg-[#064e3b] border-[#282828] text-white rounded-md">
+                          {projectCategories.map((cat) => (
+                            <SelectItem key={cat} value={cat} className="text-white hover:bg-green-700 cursor-pointer">
+                              {cat}
                             </SelectItem>
                           ))}
                         </SelectContent>

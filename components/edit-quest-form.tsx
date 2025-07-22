@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import AvatarUpload from "@/components/avatar-upload"
+import ImageUpload from "@/components/image-upload"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -237,13 +237,13 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
         </div>
         <div className="space-y-2 flex flex-col items-start">
           <label className="text-white block mb-1 font-medium">Quest Image</label>
-          <AvatarUpload
-            onAvatarUploaded={setImageUrl}
-            currentAvatar={imageUrl}
-            userId={quest.id === 'new' ? 'temp' : quest.id}
-            size="lg"
-            className="mx-auto"
-            uploadType="quest-image"
+          <ImageUpload
+            onImageUploaded={setImageUrl}
+            onImageRemoved={() => setImageUrl("")}
+            currentImage={imageUrl}
+            questId={quest.id === 'new' ? 'temp' : quest.id}
+            className="w-full"
+            label="Upload Quest Cover Image"
           />
         </div>
         <div className="space-y-2">

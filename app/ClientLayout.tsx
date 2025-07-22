@@ -26,6 +26,8 @@ import Navigation from "@/components/navigation"
 import EmailAuth from "@/components/email-auth"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { usePathname } from "next/navigation"
+import { Toaster } from "@/components/ui/sonner"
+import OnboardingAlertBar from "@/components/onboarding-alert-bar"
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -81,6 +83,9 @@ export default function ClientLayout({
   return (
     <div className={inter.className + " bg-[#181818] min-h-screen"}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <Toaster />
+        {/* Onboarding Alert Bar: always rendered, handles its own logic */}
+        <OnboardingAlertBar />
         <SidebarProvider>
           <Sidebar variant="inset">
             <SidebarHeader>

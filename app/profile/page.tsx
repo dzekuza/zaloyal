@@ -516,10 +516,9 @@ export default function ProfilePage() {
                               )}
                             </div>
                             <Button
-                              variant="destructive"
                               onClick={handleUnlinkTwitter}
                               disabled={unlinkingTwitter}
-                              className="w-full"
+                              className="w-full bg-red-600 hover:bg-red-700 text-white"
                             >
                               {unlinkingTwitter ? 'Unlinking...' : 'Unlink X'}
                             </Button>

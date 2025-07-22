@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Star, Users, Zap, Trophy, Globe, Twitter, MessageSquare } from "lucide-react"
+import QuestCard from '@/components/QuestCard';
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
@@ -94,24 +95,11 @@ export default function SearchPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {quests.map((quest) => (
-                    <Card key={quest.id} className="bg-[#111111] border-white/20 backdrop-blur-sm overflow-hidden">
-                      <div className="relative overflow-hidden">
-                        <img
-                          src={quest.image_url || "/placeholder.svg?height=160&width=240"}
-                          alt={quest.title}
-                          className="h-40 w-full object-cover"
-                        />
-                      </div>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg text-white">{quest.title}</CardTitle>
-                        <CardDescription className="text-gray-300 text-sm line-clamp-2">{quest.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <Link href={`/quest/${quest.id}`}>
-                          <Button size="sm" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white">View Quest</Button>
-                        </Link>
-                      </CardContent>
-                    </Card>
+                    <QuestCard key={quest.id} quest={quest}>
+                      <Link href={`/quest/${quest.id}`}>
+                        <Button size="sm" className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white">View Quest</Button>
+                      </Link>
+                    </QuestCard>
                   ))}
                 </div>
               )}

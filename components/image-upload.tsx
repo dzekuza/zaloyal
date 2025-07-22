@@ -166,7 +166,7 @@ export default function ImageUpload({
         </Card>
       ) : (
         <Card
-          className={`bg-[#111111] border-[#282828] transition-all cursor-pointer ${
+          className={`bg-[#232323] border-2 border-dashed border-[#444] transition-all cursor-pointer ${
             dragOver ? "border-green-400 bg-green-500/20" : "hover:border-white/30"
           }`}
           onDrop={handleDrop}

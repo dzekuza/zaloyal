@@ -40,6 +40,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import QuestResponsesViewer from "@/components/quest-responses-viewer"
 import PageContainer from "@/components/PageContainer";
+import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
+import TaskList from '@/components/quest-detail/TaskList';
+import type { Task } from '@/components/quest-detail/types';
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
@@ -48,9 +52,6 @@ type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   projects?: {
     owner_id: string
   } | null
-}
-type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
-  user_task_submissions?: Database["public"]["Tables"]["user_task_submissions"]["Row"] | null
 }
 
 // Utility: getAbsoluteUrl
@@ -92,7 +93,6 @@ function QuestPlaceholderCover({ title, categoryIcon }: { title: string; categor
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-0 left-0 w-full h-full quest-placeholder-bg"></div>
       </div>
-      
       {/* Quest icon or fallback */}
       <div className="relative z-10 flex items-center justify-center">
         <div className="h-20 w-20 rounded-full border-2 border-white/20 bg-white/10 flex items-center justify-center">
@@ -103,11 +103,7 @@ function QuestPlaceholderCover({ title, categoryIcon }: { title: string; categor
           )}
         </div>
       </div>
-      
-      {/* Quest title overlay */}
-      <div className="absolute bottom-4 left-4 right-4">
-        <h3 className="text-white font-semibold text-xl truncate">{title}</h3>
-      </div>
+      {/* Removed quest title overlay */}
     </div>
   );
 }
@@ -134,12 +130,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   const [showResponsesViewer, setShowResponsesViewer] = useState(false)
   const [questCompleted, setQuestCompleted] = useState(false)
   const [newTask, setNewTask] = useState<any>({
-    type: "social",
+    type: "",
     title: "",
     description: "",
-    xpReward: 100,
-    socialAction: "follow",
-    socialPlatform: "twitter",
+    xp_reward: 100,
+    socialAction: "",
+    socialPlatform: "",
     socialUrl: "",
     socialUsername: "",
     socialPostId: "",
@@ -228,12 +224,35 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     checkQuestCompletion()
   }, [tasks])
 
+  useEffect(() => {
+    if (editingTask) {
+      setNewTask({
+        type: editingTask.task_type,
+        title: editingTask.title || "",
+        description: editingTask.description || "",
+        xp_reward: editingTask.xp_reward || 100,
+        // Social fields
+        socialPlatform: editingTask.social_platform || "twitter",
+        socialAction: editingTask.social_action || "follow",
+        socialUrl: editingTask.social_url || "",
+        socialUsername: editingTask.social_username || "",
+        socialPostId: editingTask.social_post_id || "",
+        // Quiz fields
+        quizHeadline: editingTask.learn_questions?.question || "",
+        quizDescription: editingTask.learn_questions?.description || editingTask.learn_content || "",
+        quizAnswers: editingTask.learn_questions?.answers || ["", "", "", ""],
+        quizCorrectAnswers: editingTask.learn_questions?.correctAnswers || [],
+        quizMultiSelect: editingTask.learn_questions?.multiSelect || false,
+      });
+    }
+  }, [editingTask]);
+
   if (!mounted) return null;
 
   const handleTaskVerification = async (task: Task) => {
     const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
     if (!userObj) {
-      alert("Please sign in first")
+      toast.error("Please sign in first")
       return
     }
     setVerifyingTask(task.id)
@@ -264,13 +283,13 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                       : t
                   )
                 )
-                alert("Task completed successfully!")
+                toast.success("Task completed successfully!")
               } else {
-                alert(result.error || "Verification failed")
+                toast.error(result.error || "Verification failed")
               }
             } else if (task.social_action === "like") {
               // TODO: Implement real Twitter Like endpoint
-              alert("Twitter Like verification is not available. Please contact support.");
+              toast.error("Twitter Like verification is not available. Please contact support.");
               setVerifyingTask(null);
               return;
             }
@@ -294,9 +313,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                     : t
                 )
               )
-              alert("Task completed successfully!")
+              toast.success("Task completed successfully!")
             } else {
-              alert(result.error || "Verification failed")
+              toast.error(result.error || "Verification failed")
             }
           } else if (task.social_platform === "discord") {
             // For Discord, we need to redirect to OAuth flow
@@ -308,7 +327,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               window.location.href = oauthUrl;
               return;
             } else {
-              alert("Discord server URL is required for verification");
+              toast.error("Discord server URL is required for verification");
               setVerifyingTask(null);
               return;
             }
@@ -334,9 +353,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                   : t
               )
             )
-            alert("Task completed successfully!")
+            toast.success("Task completed successfully!")
           } else {
-            alert(manualResult.error || "Verification failed")
+            toast.error(manualResult.error || "Verification failed")
           }
           break
         case "learn":
@@ -358,15 +377,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               )
             )
             setShowQuiz(s => ({ ...s, [task.id]: false }))
-            alert(learnResult.isCorrect ? "Quiz completed successfully!" : "Quiz completed, but some answers were incorrect.")
+            toast.success(learnResult.isCorrect ? "Quiz completed successfully!" : "Quiz completed, but some answers were incorrect.")
           } else {
-            alert(learnResult.error || "Quiz submission failed")
+            toast.error(learnResult.error || "Quiz submission failed")
           }
           break
       }
     } catch (error) {
       console.error("Verification error:", error)
-      alert("Verification failed. Please try again.")
+      toast.error("Verification failed. Please try again.")
     } finally {
       setVerifyingTask(null)
     }
@@ -375,7 +394,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   // Define handleCreateTask and handleEditTask as async functions before their usage
   const handleCreateTask = async () => {
     if (!currentUserUUID) {
-      alert("User not logged in or UUID not found.")
+      toast.error("User not logged in or UUID not found.")
       return
     }
 
@@ -389,8 +408,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         description: newTask.description,
         task_type: newTask.type,
         xp_reward: newTask.xp_reward,
-        creator_id: currentUserUUID,
-        project_id: quest.project_id || null,
       }
 
       if (newTask.type === "social") {
@@ -422,7 +439,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       } else {
         setTasks(prevTasks => [...prevTasks, data])
         setShowAddTask(false)
-        alert("Task created successfully!")
+        toast.success("Task created successfully!")
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('onboarding_task', 'true');
+        }
       }
     } catch (error) {
       setCreateTaskError("Failed to create task. Please try again.")
@@ -434,7 +454,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
   const handleEditTask = async () => {
     if (!editingTask || !currentUserUUID) {
-      alert("No task selected or user not logged in.")
+      toast.error("No task selected or user not logged in.")
       return
     }
 
@@ -470,7 +490,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         .update(updates)
         .eq("id", editingTask.id)
         .eq("quest_id", quest.id)
-        .eq("creator_id", currentUserUUID)
 
       if (error) {
         setUpdateTaskError(error.message)
@@ -485,7 +504,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         )
         setEditingTask(null)
         setShowEditTask(false)
-        alert("Task updated successfully!")
+        toast.success("Task updated successfully!")
       }
     } catch (error) {
       setUpdateTaskError("Failed to update task. Please try again.")
@@ -497,7 +516,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
   const handleDeleteTask = async (taskId: string) => {
     if (!currentUserUUID) {
-      alert("User not logged in.")
+      toast.error("User not logged in.")
       return
     }
 
@@ -511,17 +530,16 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         .delete()
         .eq("id", taskId)
         .eq("quest_id", quest.id)
-        .eq("creator_id", currentUserUUID)
 
       if (error) {
-        alert(error.message)
+        toast.error(error.message)
         console.error("Error deleting task:", error)
       } else {
         setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId))
-        alert("Task deleted successfully!")
+        toast.success("Task deleted successfully!")
       }
     } catch (error) {
-      alert("Failed to delete task. Please try again.")
+      toast.error("Failed to delete task. Please try again.")
       console.error("Error deleting task:", error)
     }
   }
@@ -529,7 +547,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   const handleQuizSubmission = async (task: Task) => {
     const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
     if (!userObj) {
-      alert("Please sign in first")
+      toast.error("Please sign in first")
       return
     }
 
@@ -537,7 +555,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     try {
       const quizData = task.learn_questions;
       if (!quizData) {
-        alert("Quiz data not found")
+        toast.error("Quiz data not found")
         return
       }
 
@@ -586,14 +604,14 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             )
           )
           setShowQuiz(s => ({ ...s, [task.id]: false }))
-          alert(isCorrect ? "Quiz completed successfully!" : "Quiz completed, but some answers were incorrect.")
+          toast.success(isCorrect ? "Quiz completed successfully!" : "Quiz completed, but some answers were incorrect.")
         } else {
-          alert(result.error || "Quiz submission failed")
+          toast.error(result.error || "Quiz submission failed")
         }
       }
     } catch (error) {
       console.error("Quiz submission error:", error)
-      alert("Quiz submission failed. Please try again.")
+      toast.error("Quiz submission failed. Please try again.")
     } finally {
       setVerifyingTask(null)
     }
@@ -905,7 +923,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         <CardContent className="bg-[#111111] p-6">
           {/* Add Task Dialog */}
           <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
-            <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New Task</DialogTitle>
               </DialogHeader>
@@ -914,15 +932,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 <div>
                   <label className="text-white block mb-1">Task Type</label>
                   <Select value={newTask.type} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, type: val }))}>
-                    <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                    <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
-                      <SelectItem value="social" className="text-white">Social</SelectItem>
-                      <SelectItem value="download" className="text-white">Upload</SelectItem>
-                      <SelectItem value="form" className="text-white">Form</SelectItem>
-                      <SelectItem value="visit" className="text-white">Visit</SelectItem>
-                      <SelectItem value="learn" className="text-white">Quiz</SelectItem>
+                    <SelectContent className="bg-[#181818] border-[#282828] text-white">
+                      <SelectItem value="social" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Social</SelectItem>
+                      <SelectItem value="download" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Upload</SelectItem>
+                      <SelectItem value="form" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Form</SelectItem>
+                      <SelectItem value="visit" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Visit</SelectItem>
+                      <SelectItem value="learn" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Quiz</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -931,15 +949,36 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                   <div className="space-y-2">
                     <label className="text-white block mb-1">Social Platform</label>
                     <Select value={newTask.socialPlatform} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialPlatform: val }))}>
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                      <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#111111] border-[#282828]">
-                        <SelectItem value="twitter" className="text-white">Twitter / X</SelectItem>
-                        <SelectItem value="telegram" className="text-white">Telegram</SelectItem>
-                        <SelectItem value="discord" className="text-white">Discord</SelectItem>
+                      <SelectContent className="bg-[#181818] border-[#282828] text-white">
+                        <SelectItem value="twitter" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Twitter / X</SelectItem>
+                        <SelectItem value="telegram" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Telegram</SelectItem>
+                        <SelectItem value="discord" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Discord</SelectItem>
                       </SelectContent>
                     </Select>
+                    {newTask.socialPlatform === 'twitter' && (
+                      <>
+                        <label className="text-white block mb-1">Action Type</label>
+                        <Select value={newTask.socialAction || ''} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
+                          <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
+                            <SelectValue placeholder="Select Action" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#181818] border-[#282828] text-white">
+                            <SelectItem value="follow" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Follow</SelectItem>
+                            <SelectItem value="like" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Like</SelectItem>
+                            <SelectItem value="retweet" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Retweet</SelectItem>
+                            <SelectItem value="post" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Post</SelectItem>
+                            <SelectItem value="reply" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Reply</SelectItem>
+                            <SelectItem value="quote" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Quote</SelectItem>
+                            <SelectItem value="bookmark" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Bookmark</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <label className="text-white block mb-1 mt-2">URL</label>
+                        <Input value={newTask.socialUrl || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/..." required />
+                      </>
+                    )}
                     {newTask.socialPlatform === 'telegram' ? (
                       <div>
                         <label className="text-white block mb-1">Channel Link</label>
@@ -950,45 +989,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                         <label className="text-white block mb-1">Discord Invite Link</label>
                         <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://discord.gg/your-server" />
                       </div>
-                    ) : newTask.socialPlatform === 'twitter' ? (
-                      <>
-                        <label className="text-white block mb-1">Action Type</label>
-                        <Select value={newTask.socialAction || ''} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
-                          <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                            <SelectValue placeholder="Select Action" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#111111] border-[#282828]">
-                            <SelectItem value="follow" className="text-white">Follow</SelectItem>
-                            <SelectItem value="like" className="text-white">Like</SelectItem>
-                            <SelectItem value="retweet" className="text-white">Retweet</SelectItem>
-                            <SelectItem value="post" className="text-white">Post</SelectItem>
-                            <SelectItem value="reply" className="text-white">Reply</SelectItem>
-                            <SelectItem value="quote" className="text-white">Quote</SelectItem>
-                            <SelectItem value="bookmark" className="text-white">Bookmark</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <label className="text-white block mb-1 mt-2">URL</label>
-                        <Input value={newTask.socialUrl || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/..." required />
-                      </>
-                    ) : (
-                      <>
-                        <label className="text-white block mb-1">Action</label>
-                        <Select value={newTask.socialAction} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
-                          <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#111111] border-[#282828]">
-                            <SelectItem value="follow" className="text-white">Follow</SelectItem>
-                            <SelectItem value="join" className="text-white">Join</SelectItem>
-                            <SelectItem value="like" className="text-white">Like</SelectItem>
-                            <SelectItem value="retweet" className="text-white">Retweet</SelectItem>
-                            <SelectItem value="subscribe" className="text-white">Subscribe</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <label className="text-white block mb-1">URL/Link</label>
-                        <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
-                      </>
-                    )}
+                    ) : null}
                   </div>
                 )}
                 {/* Quiz task fields */}
@@ -1022,12 +1023,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                           quizCorrectAnswers: val === "multi" ? [] : [0] // Reset to single answer if switching
                         }))}
                       >
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                        <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-[#111111] border-[#282828]">
-                          <SelectItem value="single" className="text-white">Single Select</SelectItem>
-                          <SelectItem value="multi" className="text-white">Multi Select</SelectItem>
+                        <SelectContent className="bg-[#181818] border-[#282828] text-white">
+                          <SelectItem value="single" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Single Select</SelectItem>
+                          <SelectItem value="multi" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Multi Select</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1087,13 +1088,180 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
           {/* Edit Task Dialog */}
           <Dialog open={showEditTask} onOpenChange={setShowEditTask}>
-            <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>Edit Task</DialogTitle>
               </DialogHeader>
               {editingTask && (
                 <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleEditTask(); }}>
                   {updateTaskError && <div className="p-2 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-sm">{updateTaskError}</div>}
+
+                  {/* Social task fields for editing */}
+                  {newTask.type === "social" && (
+                    <div className="space-y-2">
+                      <label className="text-white block mb-1">Social Platform</label>
+                      <Select value={newTask.socialPlatform} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialPlatform: val }))}>
+                        <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#181818] border-[#282828] text-white">
+                          <SelectItem value="twitter" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Twitter / X</SelectItem>
+                          <SelectItem value="telegram" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Telegram</SelectItem>
+                          <SelectItem value="discord" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Discord</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {newTask.socialPlatform === 'twitter' && (
+                        <>
+                          <label className="text-white block mb-1">Action Type</label>
+                          <Select value={newTask.socialAction || ''} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
+                            <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
+                              <SelectValue placeholder="Select Action" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#181818] border-[#282828] text-white">
+                              <SelectItem value="follow" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Follow</SelectItem>
+                              <SelectItem value="like" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Like</SelectItem>
+                              <SelectItem value="retweet" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Retweet</SelectItem>
+                              <SelectItem value="post" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Post</SelectItem>
+                              <SelectItem value="reply" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Reply</SelectItem>
+                              <SelectItem value="quote" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Quote</SelectItem>
+                              <SelectItem value="bookmark" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Bookmark</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <label className="text-white block mb-1 mt-2">URL</label>
+                          <Input value={newTask.socialUrl || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/..." required />
+                        </>
+                      )}
+                      {newTask.socialPlatform === 'telegram' ? (
+                        <div>
+                          <label className="text-white block mb-1">Channel Link</label>
+                          <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                        </div>
+                      ) : newTask.socialPlatform === 'discord' ? (
+                        <div>
+                          <label className="text-white block mb-1">Discord Invite Link</label>
+                          <Input value={newTask.socialUrl} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://discord.gg/your-server" />
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                  {/* Quiz task fields for editing */}
+                  {newTask.type === "learn" && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-white block mb-1">Quiz Headline</label>
+                        <Input 
+                          value={newTask.quizHeadline} 
+                          onChange={e => setNewTask((t: typeof newTask) => ({ ...t, quizHeadline: e.target.value }))} 
+                          className="bg-white/10 border-white/20 text-white" 
+                          placeholder="Enter quiz question or headline"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-white block mb-1">Quiz Description</label>
+                        <Textarea 
+                          value={newTask.quizDescription} 
+                          onChange={e => setNewTask((t: typeof newTask) => ({ ...t, quizDescription: e.target.value }))} 
+                          className="bg-white/10 border-white/20 text-white" 
+                          placeholder="Enter quiz description or additional context"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-white block mb-1">Answer Type</label>
+                        <Select 
+                          value={newTask.quizMultiSelect ? "multi" : "single"} 
+                          onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ 
+                            ...t, 
+                            quizMultiSelect: val === "multi",
+                            quizCorrectAnswers: val === "multi" ? [] : [0] // Reset to single answer if switching
+                          }))}
+                        >
+                          <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#181818] border-[#282828] text-white">
+                            <SelectItem value="single" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Single Select</SelectItem>
+                            <SelectItem value="multi" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Multi Select</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-white block mb-1">Answer Options (1-4)</label>
+                        <div className="space-y-2">
+                          {[0, 1, 2, 3].map((index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <Input
+                                value={newTask.quizAnswers[index] || ""}
+                                onChange={(e) => {
+                                  const newAnswers = [...newTask.quizAnswers];
+                                  newAnswers[index] = e.target.value;
+                                  setNewTask((t: typeof newTask) => ({ ...t, quizAnswers: newAnswers }));
+                                }}
+                                className="bg-white/10 border-white/20 text-white flex-1"
+                                placeholder={`Answer ${index + 1}`}
+                              />
+                              <input
+                                type={newTask.quizMultiSelect ? "checkbox" : "radio"}
+                                name="correctAnswer"
+                                id={`correct-answer-${index}`}
+                                aria-label={`Mark answer ${index + 1} as correct`}
+                                checked={newTask.quizCorrectAnswers.includes(index)}
+                                onChange={(e) => {
+                                  let newCorrectAnswers: number[];
+                                  if (newTask.quizMultiSelect) {
+                                    if (e.target.checked) {
+                                      newCorrectAnswers = [...newTask.quizCorrectAnswers, index];
+                                    } else {
+                                      newCorrectAnswers = newTask.quizCorrectAnswers.filter((i: number) => i !== index);
+                                    }
+                                  } else {
+                                    newCorrectAnswers = e.target.checked ? [index] : [];
+                                  }
+                                  setNewTask((t: typeof newTask) => ({ ...t, quizCorrectAnswers: newCorrectAnswers }));
+                                }}
+                                className="w-4 h-4 text-green-500 bg-white/10 border-white/20 rounded"
+                              />
+                              <span className="text-white text-sm">Correct</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Download task fields for editing */}
+                  {newTask.type === "download" && (
+                    <div className="space-y-2">
+                      <label className="text-white block mb-1">Download URL</label>
+                      <Input value={newTask.downloadUrl || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, downloadUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://..." />
+                      <label className="text-white block mb-1">Download Title</label>
+                      <Input value={newTask.downloadTitle || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, downloadTitle: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                      <label className="text-white block mb-1">Download Description</label>
+                      <Textarea value={newTask.downloadDescription || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, downloadDescription: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                    </div>
+                  )}
+                  {/* Form task fields for editing */}
+                  {newTask.type === "form" && (
+                    <div className="space-y-2">
+                      <label className="text-white block mb-1">Form URL</label>
+                      <Input value={newTask.formUrl || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, formUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://..." />
+                      <label className="text-white block mb-1">Form Title</label>
+                      <Input value={newTask.formTitle || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, formTitle: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                      <label className="text-white block mb-1">Form Description</label>
+                      <Textarea value={newTask.formDescription || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, formDescription: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                    </div>
+                  )}
+                  {/* Visit task fields for editing */}
+                  {newTask.type === "visit" && (
+                    <div className="space-y-2">
+                      <label className="text-white block mb-1">Visit URL</label>
+                      <Input value={newTask.visitUrl || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, visitUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://..." />
+                      <label className="text-white block mb-1">Visit Title</label>
+                      <Input value={newTask.visitTitle || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, visitTitle: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                      <label className="text-white block mb-1">Visit Description</label>
+                      <Textarea value={newTask.visitDescription || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, visitDescription: e.target.value }))} className="bg-white/10 border-white/20 text-white" />
+                      <label className="text-white block mb-1">Visit Duration (seconds)</label>
+                      <Input type="number" value={newTask.visitDurationSeconds || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, visitDurationSeconds: Number(e.target.value) }))} className="bg-white/10 border-white/20 text-white" />
+                    </div>
+                  )}
 
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => setShowEditTask(false)}>Cancel</Button>
@@ -1107,207 +1275,18 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           </Dialog>
 
           {/* Tasks List */}
-          <div className="space-y-3 md:space-y-4">
-            {tasks.map((task, index) => {
-              const isCompleted = task.user_task_submissions
-              const isVerifying = verifyingTask === task.id
-              return (
-                <div key={task.id} className="flex items-start gap-3 md:gap-4 p-3 md:p-4 bg-[#181818] rounded-lg border border-[#282828]">
-                  <div className="flex-shrink-0">
-                    <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center ${
-                      isCompleted ? 'bg-green-500' : 'bg-gray-600'
-                    }`}>
-                      {isCompleted ? (
-                        <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                      ) : (
-                        <span className="text-white font-semibold text-xs md:text-sm">{index + 1}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          {getTaskIcon(task)}
-                          <h3 className="text-white font-semibold text-sm md:text-base">{task.title}</h3>
-                          {isCompleted && (
-                            <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-                              Completed
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-gray-300 text-xs md:text-sm mb-3">{task.description}</p>
-                        
-                        {/* Task-specific content */}
-                        {task.task_type === "social" && task.social_platform === "twitter" && (
-                          <div className="space-y-1 md:space-y-2">
-                            <div className="text-xs md:text-sm text-gray-400">
-                              {getTwitterTaskHeading(task.social_action || "follow")}
-                            </div>
-                            {task.social_username && (
-                              <div className="text-xs md:text-sm text-gray-300">
-                                @{task.social_username}
-                              </div>
-                            )}
-                            {task.social_post_id && (
-                              <div className="text-xs md:text-sm text-gray-300">
-                                Post ID: {task.social_post_id}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {task.task_type === "social" && task.social_platform === "telegram" && (
-                          <div className="space-y-1 md:space-y-2">
-                            <div className="text-xs md:text-sm text-gray-400">Join Telegram Channel</div>
-                            {task.social_url && (
-                              <div className="text-xs md:text-sm text-gray-300">
-                                <a href={getAbsoluteUrl(task.social_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
-                                  {task.social_url}
-                                </a>
-                              </div>
-                            )}
-                            {!isCompleted && (
-                              <div className="mt-2">
-                                <TelegramLoginWidget
-                                  botName="YourBotName" // TODO: Replace with your bot's username
-                                  onAuth={async (telegramUser) => {
-                                    setVerifyingTask(task.id);
-                                    const res = await fetch("/api/verify/telegram-join-real", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({
-                                        userWallet: walletUser?.walletAddress,
-                                        telegramUserId: telegramUser.id,
-                                        telegramUsername: telegramUser.username,
-                                        channelId: task.social_url?.split("/").pop(),
-                                        taskId: task.id,
-                                      }),
-                                    });
-                                    const data = await res.json();
-                                    setSubmissionData((prev: any) => ({ ...prev, [task.id]: data }));
-                                    setVerifyingTask(null);
-                                    if (data.verified) {
-                                      // Optionally refresh tasks or show success
-                                    }
-                                  }}
-                                />
-                                {submissionData[task.id] && (
-                                  <div className={submissionData[task.id].verified ? "text-green-500 mt-2" : "text-red-500 mt-2"}>
-                                    {submissionData[task.id].message}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {task.task_type === "social" && task.social_platform === "discord" && (
-                          <div className="space-y-1 md:space-y-2">
-                            <div className="text-xs md:text-sm text-gray-400">Join Discord Server</div>
-                            {task.social_url && (
-                              <div className="text-xs md:text-sm text-gray-300">
-                                <a href={getAbsoluteUrl(task.social_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
-                                  {task.social_url}
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {task.task_type === "download" && task.download_url && (
-                          <div className="space-y-1 md:space-y-2">
-                            <div className="text-xs md:text-sm text-gray-400">Download File</div>
-                            <div className="text-xs md:text-sm text-gray-300">
-                              <a href={getAbsoluteUrl(task.download_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
-                                {task.download_url}
-                              </a>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {task.task_type === "visit" && task.visit_url && (
-                          <div className="space-y-1 md:space-y-2">
-                            <div className="text-xs md:text-sm text-gray-400">Visit Website</div>
-                            <div className="text-xs md:text-sm text-gray-300">
-                              <a href={getAbsoluteUrl(task.visit_url)} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
-                                {task.visit_url}
-                              </a>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {task.task_type === "learn" && (
-                          <div className="space-y-1 md:space-y-2">
-                            <div className="text-xs md:text-sm text-gray-400">Complete Quiz</div>
-                            {task.learn_content && (
-                              <div className="text-xs md:text-sm text-gray-300 font-medium">
-                                {task.learn_content}
-                              </div>
-                            )}
-                            {task.learn_questions && (
-                              <div className="text-xs md:text-sm text-gray-400">
-                                {task.learn_questions.answers?.length || 0} answer options
-                                {task.learn_questions.multiSelect ? " (Multi-select)" : " (Single-select)"}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center gap-1 md:gap-2">
-                        {isAdminOrCreator() && (
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setEditingTask(task)
-                                setShowEditTask(true)
-                              }}
-                              className="h-6 w-6 md:h-8 md:w-8 p-0"
-                            >
-                              <FileText className="w-3 h-3 md:w-4 md:h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDeleteTask(task.id)}
-                              className="h-6 w-6 md:h-8 md:w-8 p-0"
-                            >
-                              <Trash className="w-3 h-3 md:w-4 md:h-4" />
-                            </Button>
-                          </div>
-                        )}
-                        {!isCompleted && (
-                          <div className="flex gap-1 md:gap-2">
-                            {task.task_type === "learn" ? (
-                              <Button
-                                onClick={() => setShowQuiz(s => ({ ...s, [task.id]: true }))}
-                                className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
-                                size="sm"
-                              >
-                                Start Quiz
-                              </Button>
-                            ) : (
-                              <Button
-                                onClick={() => handleTaskVerification(task)}
-                                disabled={isVerifying}
-                                className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
-                                size="sm"
-                              >
-                                {isVerifying ? "Verifying..." : "Verify Task"}
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <TaskList
+            tasks={tasks}
+            verifyingTask={verifyingTask}
+            submissionData={submissionData}
+            isAdminOrCreator={isAdminOrCreator}
+            setEditingTask={setEditingTask}
+            setShowEditTask={setShowEditTask}
+            setShowQuiz={setShowQuiz}
+            handleTaskVerification={handleTaskVerification}
+            handleDeleteTask={handleDeleteTask}
+            walletUser={walletUser}
+          />
         </CardContent>
       </Card>
 
@@ -1343,7 +1322,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
       {/* Responses Viewer Dialog */}
       <Dialog open={showResponsesViewer} onOpenChange={setShowResponsesViewer}>
-        <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-white">Quest Responses</DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -1353,7 +1332,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           <div className="mt-4">
             <QuestResponsesViewer
               quest={quest}
-              tasks={tasks}
+              tasks={tasks as Database["public"]["Tables"]["tasks"]["Row"][]}
               isAdmin={isAdminOrCreator()}
             />
           </div>

@@ -16,6 +16,8 @@ import ProjectStatsBar from "@/components/ProjectStatsBar"
 import BackgroundWrapper from "@/components/BackgroundWrapper";
 import QuestFormWrapper from "@/components/quest-form-wrapper"
 import PageContainer from "@/components/PageContainer";
+import QuestCard from '@/components/QuestCard';
+import { toast } from "sonner"
 
 interface Project {
   id: string;
@@ -76,6 +78,7 @@ export default function ProjectDetailClient({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isOwner, setIsOwner] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -163,7 +166,7 @@ export default function ProjectDetailClient({
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">Quests</h2>
           {isOwner && (
-            <Dialog>
+            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
                 <Button className="bg-green-600 hover:bg-green-700">
                   <Plus className="h-4 w-4 mr-2" />
@@ -177,7 +180,10 @@ export default function ProjectDetailClient({
                     Add a new quest to your project
                   </DialogDescription>
                 </DialogHeader>
-                <QuestFormWrapper projectId={project.id} />
+                <QuestFormWrapper projectId={project.id} onSave={() => {
+                  setShowCreateDialog(false)
+                  toast.success("Quest created successfully!")
+                }} />
               </DialogContent>
             </Dialog>
           )}
@@ -187,59 +193,31 @@ export default function ProjectDetailClient({
           {quests.map((quest) => (
             <Link key={quest.id} href={`/quest/${quest.id}`} tabIndex={0} aria-label={`View quest ${quest.title}`}
               className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400 rounded-lg">
-              <Card className="bg-[#111111] border-[#282828] text-white hover:bg-[#1a1a1a] transition-colors cursor-pointer">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{quest.title}</CardTitle>
-                      <CardDescription className="text-gray-300 mt-2">
-                        {quest.description}
-                      </CardDescription>
-                    </div>
-                    <Badge 
-                      variant={isQuestCompleted(quest) ? "secondary" : "default"}
-                      className={isQuestCompleted(quest) ? "bg-gray-600 text-gray-300" : "bg-green-600 text-white"}
-                    >
-                      {isQuestCompleted(quest) ? "Completed" : "Active"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm text-gray-300 mb-4">
-                    <div className="flex items-center gap-1">
-                      <Zap className="h-4 w-4" />
-                      <span>{quest.total_xp || 0} XP</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      <span>{quest.participants || 0} participants</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1 border-[#282828] text-white hover:bg-[#1a1a1a] pointer-events-none">
-                      View Quest
-                    </Button>
-                    {isOwner && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]" onClick={e => e.preventDefault()}>
-                            Edit
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-[#111111] border-[#282828] text-white max-h-[80vh] overflow-y-auto w-full max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Edit Quest</DialogTitle>
-                            <DialogDescription className="text-gray-300">
-                              Update quest details
-                            </DialogDescription>
-                          </DialogHeader>
-                          <QuestFormWrapper quest={quest} projectId={project.id} />
-                        </DialogContent>
-                      </Dialog>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <QuestCard quest={quest}>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1 border-[#282828] text-white hover:bg-[#1a1a1a] pointer-events-none">
+                    View Quest
+                  </Button>
+                  {isOwner && (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="border-[#282828] text-white hover:bg-[#1a1a1a]" onClick={e => e.preventDefault()}>
+                          Edit
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Edit Quest</DialogTitle>
+                          <DialogDescription className="text-gray-300">
+                            Update quest details
+                          </DialogDescription>
+                        </DialogHeader>
+                        <QuestFormWrapper quest={quest} projectId={project.id} />
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </QuestCard>
             </Link>
           ))}
         </div>
