@@ -252,27 +252,53 @@ export default function ProfilePage() {
   const handleLinkX = async () => {
     setLinkingTwitter(true);
     try {
-      // Ensure user is authenticated before linking
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({ title: 'You must be logged in to link your X (Twitter) account.', variant: 'destructive' });
-        setLinkingTwitter(false);
-        return;
-      }
-      // Start the linking flow
       const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
       if (error) throw error;
-      // Redirect to the callback page to handle session refresh
       if (data?.url) {
-        window.location.href = data.url;
+        // Open popup
+        const width = 600, height = 700;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        const popup = window.open(
+          data.url,
+          'zaloyal-x-oauth',
+          `width=${width},height=${height},left=${left},top=${top},resizable,scrollbars=yes`
+        );
+        if (!popup) throw new Error('Popup blocked. Please allow popups and try again.');
+        // Listen for message from popup
+        const onMessage = async (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
+          if (event.data === 'zaloyal-x-oauth-success') {
+            // Explicitly refresh session after OAuth
+            await supabase.auth.getSession();
+            setLinkingTwitter(false);
+            window.removeEventListener('message', onMessage);
+            popup.close();
+            // Optionally, refresh user state
+            updateEmailUserWithIdentities();
+          } else if (event.data === 'zaloyal-x-oauth-fail') {
+            setLinkingTwitter(false);
+            window.removeEventListener('message', onMessage);
+            popup.close();
+            toast({ title: 'Failed to link X account.', variant: 'destructive' });
+          }
+        };
+        window.addEventListener('message', onMessage);
+        // Poll for popup close (in case user closes it manually)
+        const popupInterval = setInterval(() => {
+          if (popup.closed) {
+            setLinkingTwitter(false);
+            window.removeEventListener('message', onMessage);
+            clearInterval(popupInterval);
+          }
+        }, 500);
       } else {
-        // Fallback: go to /x-callback
-        window.location.href = "/x-callback";
+        setLinkingTwitter(false);
+        toast({ title: 'No OAuth URL returned.', variant: 'destructive' });
       }
     } catch (err: any) {
-      toast({ title: 'Failed to link X account: ' + (err.message || err), variant: 'destructive' });
-    } finally {
       setLinkingTwitter(false);
+      toast({ title: 'Failed to link X account: ' + (err.message || err), variant: 'destructive' });
     }
   };
 
