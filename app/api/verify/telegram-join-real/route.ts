@@ -12,7 +12,25 @@ export async function POST(request: NextRequest) {
       .eq("wallet_address", userWallet.toLowerCase())
       .single()
 
-    const { data: task } = await supabase.from("tasks").select("*").eq("id", taskId).single()
+    // Get task from database
+    const { data: task, error: taskError } = await supabase.from("tasks").select("*", { count: "exact" }).eq("id", taskId).single();
+    if (!task || taskError) {
+      return NextResponse.json({ error: "Task not found", taskError }, { status: 404 });
+    }
+
+    // Get project and its owner
+    const { data: project, error: projectError } = await supabase.from("projects").select("id, owner_id").eq("id", task.quest_id).single();
+    if (!project || projectError) {
+      return NextResponse.json({ error: "Project not found", projectError }, { status: 404 });
+    }
+    const { data: owner, error: ownerError } = await supabase.from("users").select("telegram_id, telegram_username, telegram_avatar_url").eq("id", project.owner_id).single();
+    if (!owner || ownerError) {
+      return NextResponse.json({ error: "Project owner not found", ownerError }, { status: 404 });
+    }
+    // Use owner's Telegram identity as project's Telegram identity
+    const projectTelegramId = owner.telegram_id;
+    const projectTelegramUsername = owner.telegram_username;
+    const projectTelegramAvatarUrl = owner.telegram_avatar_url;
 
     if (!user || !task) {
       return NextResponse.json({ error: "User or task not found" }, { status: 404 })
