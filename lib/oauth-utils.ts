@@ -1,10 +1,20 @@
 // OAuth utility functions to prevent token reuse and ensure unique requests
 
+// Helper function to generate random strings that works in serverless environments
+const generateRandomString = (length: number): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
 export const generateOAuthState = () => {
   return {
-    state: crypto.randomBytes(32).toString('hex'),
+    state: generateRandomString(32),
     timestamp: Date.now(),
-    nonce: crypto.randomBytes(16).toString('hex'),
+    nonce: generateRandomString(16),
   };
 };
 
