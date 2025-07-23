@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if we have Twitter API credentials
+    // Use only the correct env keys for X API
     const twitterApiKey = process.env.TWITTER_API_KEY;
     const twitterApiSecret = process.env.TWITTER_API_SECRET;
     if (!twitterApiKey || !twitterApiSecret) {
