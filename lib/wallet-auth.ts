@@ -1,26 +1,19 @@
 "use client"
 
-import { supabase } from "./supabase"
-import bs58 from "bs58"
-
-declare global {
-  interface Window {
-    ethereum?: any
-    solana?: any
-  }
-}
+import { supabase } from './supabase'
 
 export interface WalletUser {
   walletAddress: string
   username?: string
-  totalXP: number
-  level: number
-  rank?: number
+  totalXP?: number
+  level?: number
+  rank?: string
 }
 
 class WalletAuth {
   private currentUser: WalletUser | null = null
   private listeners: ((user: WalletUser | null) => void)[] = []
+  private isInitialized = false
 
   // Only allow wallet linking, not authentication
   async connectWallet(): Promise<string> {
@@ -47,53 +40,17 @@ class WalletAuth {
   }
 
   async disconnectWallet(): Promise<void> {
+    const provider = window.solana
+    if (provider && provider.isPhantom) {
+      await provider.disconnect()
+    }
     this.currentUser = null
-    localStorage.removeItem("wallet_user")
     this.notifyListeners()
+    localStorage.removeItem("wallet_user")
   }
 
-  async createOrGetUser(walletAddress: string): Promise<WalletUser> {
-    // First, try to get existing user
-    const { data: existingUser, error: fetchError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("wallet_address", walletAddress)
-      .single()
-
-    if (existingUser && !fetchError) {
-      return {
-        walletAddress: existingUser.wallet_address,
-        username: existingUser.username || undefined,
-        totalXP: existingUser.total_xp,
-        level: existingUser.level,
-        rank: existingUser.rank || undefined,
-      }
-    }
-
-    // Create new user if doesn't exist
-    const { data: newUser, error: insertError } = await supabase
-      .from("users")
-      .insert({
-        wallet_address: walletAddress,
-        username: `User${walletAddress.slice(-6)}`,
-        total_xp: 0,
-        level: 1,
-        completed_quests: 0,
-      })
-      .select()
-      .single()
-
-    if (insertError) {
-      throw new Error(`Failed to create user: ${insertError.message}`)
-    }
-
-    return {
-      walletAddress: newUser.wallet_address,
-      username: newUser.username || undefined,
-      totalXP: newUser.total_xp,
-      level: newUser.level,
-      rank: newUser.rank || undefined,
-    }
+  private notifyListeners() {
+    this.listeners.forEach(listener => listener(this.currentUser))
   }
 
   async getCurrentUser(): Promise<WalletUser | null> {
@@ -136,53 +93,20 @@ class WalletAuth {
 
   onAuthStateChange(callback: (user: WalletUser | null) => void): () => void {
     // Always restore from Supabase/localStorage before subscribing
-    this.getCurrentUser().then(() => {
+    if (!this.isInitialized) {
+      this.isInitialized = true
+      this.getCurrentUser().then(() => {
+        this.listeners.push(callback)
+        callback(this.currentUser)
+      })
+    } else {
       this.listeners.push(callback)
       callback(this.currentUser)
-    })
+    }
     return () => {
       this.listeners = this.listeners.filter((listener) => listener !== callback)
     }
   }
-
-  private notifyListeners(): void {
-    this.listeners.forEach((listener) => listener(this.currentUser))
-  }
-
-  async updateProfile(updates: Partial<Pick<WalletUser, "username">>): Promise<void> {
-    if (!this.currentUser) {
-      throw new Error("No user connected")
-    }
-
-    const { error } = await supabase.from("users").update(updates).eq("wallet_address", this.currentUser.walletAddress)
-
-    if (error) {
-      throw new Error(`Failed to update profile: ${error.message}`)
-    }
-
-    // Update local user
-    this.currentUser = { ...this.currentUser, ...updates }
-    localStorage.setItem("wallet_user", JSON.stringify(this.currentUser))
-    this.notifyListeners()
-  }
 }
 
 export const walletAuth = new WalletAuth()
-
-export async function linkWalletToProfile() {
-  const provider = window.solana;
-  if (!provider || !provider.isPhantom) {
-    throw new Error("Phantom Wallet is not installed");
-  }
-  await provider.connect();
-  const walletAddress = provider.publicKey.toString();
-  // Save wallet address to user profile
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  const { error } = await supabase
-    .from("users")
-    .update({ wallet_address: walletAddress })
-    .eq("id", user.id);
-  if (error) throw error;
-  return walletAddress;
-}

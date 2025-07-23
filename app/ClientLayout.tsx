@@ -41,6 +41,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link";
+import { useAuth } from "@/components/auth-context";
+import LoadingSpinner from "@/components/loading-spinner";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -81,46 +83,10 @@ export default function ClientLayout({
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [authError, setAuthError] = useState("")
   const pathname = usePathname();
-  const [user, setUser] = useState<WalletUser | null>(null)
-  const [emailUser, setEmailUser] = useState<{ email: string; profile: any } | null>(null)
   const [copied, setCopied] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    // Check for wallet user
-    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
-      setUser(user)
-    })
-
-    // Check for email user
-    const checkEmailAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (user && user.email) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-        setEmailUser({ email: user.email, profile })
-      }
-    }
-
-    checkEmailAuth()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        checkEmailAuth()
-      } else if (event === "SIGNED_OUT") {
-        setEmailUser(null)
-      }
-    })
-
-    return () => {
-      unsubscribeWallet()
-      subscription.unsubscribe()
-    }
-  }, [])
+  const { user, emailUser, isLoading } = useAuth();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -141,11 +107,9 @@ export default function ClientLayout({
   const handleSignOut = async () => {
     if (user) {
       await walletAuth.disconnectWallet()
-      setUser(null)
     }
     if (emailUser) {
       await supabase.auth.signOut()
-      setEmailUser(null)
     }
     window.location.reload()
   }
@@ -180,6 +144,24 @@ export default function ClientLayout({
 
   const handleEmailAuthError = (errorMessage: string) => {
     setAuthError(errorMessage)
+  }
+
+  // Show loading state while auth is being checked
+  if (isLoading) {
+    return (
+      <html lang="en" suppressHydrationWarning>
+        <head suppressHydrationWarning>
+          <title>belink.now Web3 Quest Platform</title>
+          <meta name="description" content="Web3 Quest Platform for Community Engagement" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </head>
+        <body suppressHydrationWarning>
+          <div className="min-h-screen bg-[#181818] flex items-center justify-center">
+            <LoadingSpinner size="lg" text="Loading..." />
+          </div>
+        </body>
+      </html>
+    )
   }
 
   return (

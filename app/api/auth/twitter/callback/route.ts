@@ -155,7 +155,9 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?success=twitter_linked`);
+      // Redirect to profile with success message and force a page reload to update auth state
+      const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/profile?success=twitter_linked&reload=true`;
+      return NextResponse.redirect(redirectUrl);
 
     } catch (error) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=oauth_error`);

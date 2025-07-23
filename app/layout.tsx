@@ -1,6 +1,7 @@
 import type React from "react"
 import "./globals.css"
 import ClientLayout from "./ClientLayout"
+import { AuthProvider } from "@/components/auth-context"
 
 export default function RootLayout({
   children,
@@ -15,7 +16,9 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body suppressHydrationWarning>
-        <ClientLayout>{children}</ClientLayout>
+        <AuthProvider>
+          <ClientLayout>{children}</ClientLayout>
+        </AuthProvider>
       </body>
     </html>
   )

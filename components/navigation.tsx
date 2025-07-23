@@ -19,63 +19,27 @@ import Image from "next/image";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import OnboardingAlertBar from "@/components/onboarding-alert-bar";
+import { useAuth } from "@/components/auth-context";
+import LoadingSpinner from "@/components/loading-spinner";
 
 interface NavigationProps {
   onAuthClick: () => void
 }
 
 export default function Navigation({ onAuthClick }: NavigationProps) {
-  const [user, setUser] = useState<WalletUser | null>(null)
-  const [emailUser, setEmailUser] = useState<{ email: string; profile: any } | null>(null)
   const [copied, setCopied] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false);
   const router = useRouter()
   const pathname = usePathname();
   const { toast } = useToast();
-
-  useEffect(() => {
-    // Check for wallet user
-    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
-      setUser(user)
-    })
-
-    // Check for email user
-    const checkEmailAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (user && user.email) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-        setEmailUser({ email: user.email, profile })
-      }
-    }
-
-    checkEmailAuth()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        checkEmailAuth()
-      } else if (event === "SIGNED_OUT") {
-        setEmailUser(null)
-      }
-    })
-
-    return () => {
-      unsubscribeWallet()
-      subscription.unsubscribe()
-    }
-  }, [])
+  const { user, emailUser, isLoading } = useAuth();
 
   const handleSignOut = async () => {
     if (user) {
       await walletAuth.disconnectWallet()
-      setUser(null)
     }
     if (emailUser) {
       await supabase.auth.signOut()
-      setEmailUser(null)
     }
     window.location.reload()
   }
@@ -99,6 +63,22 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
     } catch (error) {
       console.error('Failed to copy address:', error)
     }
+  }
+
+  // Show loading state while auth is being checked
+  if (isLoading) {
+    return (
+      <nav className="bg-[#111111] border-b border-[#282828] px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="animate-pulse bg-gray-600 h-8 w-32 rounded"></div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <LoadingSpinner size="sm" text="" />
+          </div>
+        </div>
+      </nav>
+    )
   }
 
   // Only render sign-in/profile button after loading is false

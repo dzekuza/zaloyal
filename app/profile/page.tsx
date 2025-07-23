@@ -72,16 +72,25 @@ export default function ProfilePage() {
   useEffect(() => {
     const successParam = searchParams.get('success');
     const errorParam = searchParams.get('error');
+    const reloadParam = searchParams.get('reload');
     
     if (successParam === 'twitter_linked') {
       toast({
         title: "Success!",
         description: "X account linked successfully!",
       });
-      // Refresh user data
-      updateEmailUserWithIdentities();
-      // Clear URL parameters
-      router.replace('/profile');
+      
+      // If reload parameter is present, force a page reload to update auth state
+      if (reloadParam === 'true') {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        // Refresh user data
+        updateEmailUserWithIdentities();
+        // Clear URL parameters
+        router.replace('/profile');
+      }
     } else if (errorParam) {
       let errorMessage = 'An error occurred while linking your X account.';
       
