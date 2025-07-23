@@ -193,8 +193,8 @@ export async function GET(request: NextRequest) {
 
       console.log('Twitter profile updated successfully');
 
-      // Redirect to profile with success message and force a page reload to update auth state
-      const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/profile?success=twitter_linked&reload=true`;
+      // Redirect to profile with success message (no reload parameter)
+      const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/profile?success=twitter_linked`;
       return NextResponse.redirect(redirectUrl);
 
     } catch (error) {

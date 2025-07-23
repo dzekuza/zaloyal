@@ -213,16 +213,16 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
                 </Button>
               )}
             </SidebarFooter>
+            <SidebarRail />
           </Sidebar>
 
           {/* Mobile Navigation */}
           <MobileBottomNav />
 
           {/* Main Content */}
-          <SidebarInset className="flex-1 overflow-auto">
-            <div className="flex-1">
-              {children}
-            </div>
+          <SidebarInset className="bg-[#181818]">
+            {/* Navigation removed, logic merged into sidebar */}
+            <main className="flex-1 pb-20 md:pb-0 bg-[#181818]">{children}</main>
           </SidebarInset>
         </div>
 

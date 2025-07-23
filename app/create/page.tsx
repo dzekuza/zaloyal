@@ -32,6 +32,8 @@ import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import type { Database } from "@/lib/supabase"
 import ImageUpload from "@/components/image-upload"
 import AuthRequired from "@/components/auth-required"
+import BackgroundWrapper from "@/components/BackgroundWrapper"
+import PageContainer from "@/components/PageContainer"
 
 interface TaskForm {
   id?: string
@@ -264,13 +266,13 @@ export default function CreateQuest() {
   // Authentication check
   if (!walletUser && !emailUser) {
     return (
-      <div className="min-h-screen bg-[#181818]">
+      <BackgroundWrapper>
         <AuthRequired 
           title="Sign In Required"
           message="Please sign in with your email or wallet to create quests and projects."
           onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
         />
-      </div>
+      </BackgroundWrapper>
     )
   }
 
@@ -670,51 +672,55 @@ export default function CreateQuest() {
 
   if (!walletUser && !emailUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
-        <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">Sign In Required</h2>
-            <p className="text-gray-300 mb-6">You need to sign in to create quests</p>
-            <Link href="/">
-              <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                Go Back
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      </div>
+      <BackgroundWrapper>
+        <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
+          <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-white mb-4">Sign In Required</h2>
+              <p className="text-gray-300 mb-6">You need to sign in to create quests</p>
+              <Link href="/">
+                <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                  Go Back
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
+      </BackgroundWrapper>
     )
   }
 
   if (userProjects.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
-        <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8 max-w-md">
-          <div className="text-center">
-            <Building2 className="w-16 h-16 mx-auto text-blue-400 mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
-            <p className="text-gray-300 mb-6">You need to have an approved project to create quests</p>
-            <div className="space-y-2">
-              <Link href="/register-project">
-                <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                  Register Project
-                </Button>
-              </Link>
-              <Link href="/">
-                <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
-                  Go Back
-                </Button>
-              </Link>
+      <BackgroundWrapper>
+        <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
+          <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
+            <div className="text-center">
+              <Building2 className="w-16 h-16 mx-auto text-blue-400 mb-4" />
+              <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
+              <p className="text-gray-300 mb-6">You need to have an approved project to create quests</p>
+              <div className="space-y-2">
+                <Link href="/register-project">
+                  <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                    Register Project
+                  </Button>
+                </Link>
+                <Link href="/">
+                  <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
+                    Go Back
+                  </Button>
+                </Link>
+              </div>
             </div>
-          </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      </BackgroundWrapper>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#181818]">
-      <div className="container mx-auto px-4 py-8">
+    <BackgroundWrapper>
+      <PageContainer>
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors">
@@ -1084,7 +1090,7 @@ export default function CreateQuest() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
-    </div>
+      </PageContainer>
+    </BackgroundWrapper>
   )
 }

@@ -1,19 +1,18 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-import { clearOAuthCache, addCacheBustingHeaders } from '@/lib/oauth-utils';
+
+export interface TwitterIdentity {
+  id: string;
+  user_name: string;
+  avatar_url?: string;
+  profile_url?: string;
+}
 
 interface TwitterLinkState {
   isLinking: boolean;
   isUnlinking: boolean;
   error: string | null;
-}
-
-interface TwitterIdentity {
-  id: string;
-  user_name: string;
-  avatar_url?: string;
-  profile_url?: string;
 }
 
 export const useTwitterLink = () => {
@@ -25,49 +24,59 @@ export const useTwitterLink = () => {
   
   const { toast } = useToast();
 
-  const linkTwitter = useCallback(async () => {
+  const linkTwitter = useCallback(async (username?: string) => {
     setState(prev => ({ ...prev, isLinking: true, error: null }));
     
     try {
-      // Clear any existing OAuth cache
-      clearOAuthCache();
-      
-      // Ensure user is authenticated
+      // Check if user is authenticated
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         throw new Error('You must be logged in to link your X (Twitter) account.');
       }
 
-      // Add cache-busting parameter to ensure unique requests
-      const timestamp = Date.now();
-      const cacheBuster = Math.random().toString(36).substring(2, 15);
+      // If no username provided, prompt the user
+      if (!username) {
+        const inputUsername = prompt('Please enter your X (Twitter) username:');
+        if (!inputUsername) {
+          setState(prev => ({ ...prev, isLinking: false }));
+          return { success: false };
+        }
+        username = inputUsername;
+      }
 
-      // Call our API to initiate OAuth flow with cache-busting
-      const response = await fetch(`/api/auth/twitter/authorize?t=${timestamp}&cb=${cacheBuster}`, {
-        method: 'GET',
-        headers: addCacheBustingHeaders({
+      // Clean the username
+      const cleanUsername = username.replace(/^@/, '');
+
+      // Call our API to link the X account
+      const response = await fetch('/api/auth/twitter/link', {
+        method: 'POST',
+        headers: {
           'Content-Type': 'application/json',
-        }),
+        },
+        body: JSON.stringify({ username: cleanUsername }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to initiate X authentication');
+        throw new Error(errorData.error || 'Failed to link X account');
       }
 
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to initiate X authentication');
+        throw new Error(result.error || 'Failed to link X account');
       }
 
-      // Redirect to X for authentication
-      if (result.authUrl) {
-        window.location.href = result.authUrl;
-        return { success: true, redirecting: true };
-      }
-
-      throw new Error('No authentication URL received');
+      // Update the user's identities in the UI
+      await supabase.auth.getSession();
+      
+      setState(prev => ({ ...prev, isLinking: false, error: null }));
+      toast({
+        title: "Success!",
+        description: `X account @${result.user.username} linked successfully!`,
+      });
+      
+      return { success: true, identity: result.identity };
 
     } catch (error) {
       console.error('Twitter link error:', error);

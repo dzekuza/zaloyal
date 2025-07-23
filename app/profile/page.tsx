@@ -20,6 +20,8 @@ import AuthRequired from "@/components/auth-required"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useTwitterLink } from "@/hooks/use-twitter-link";
+import BackgroundWrapper from "@/components/BackgroundWrapper";
+import PageContainer from "@/components/PageContainer";
 
 // react-icons currently returns `ReactNode`, which is incompatible with React 19's
 // stricter JSX.Element return type expectations. Cast the icon components to
@@ -72,7 +74,6 @@ export default function ProfilePage() {
   useEffect(() => {
     const successParam = searchParams.get('success');
     const errorParam = searchParams.get('error');
-    const reloadParam = searchParams.get('reload');
     
     if (successParam === 'twitter_linked') {
       toast({
@@ -80,17 +81,9 @@ export default function ProfilePage() {
         description: "X account linked successfully!",
       });
       
-      // If reload parameter is present, force a page reload to update auth state
-      if (reloadParam === 'true') {
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } else {
-        // Refresh user data
-        updateEmailUserWithIdentities();
-        // Clear URL parameters
-        router.replace('/profile');
-      }
+      // Refresh user data and clear URL parameters
+      updateEmailUserWithIdentities();
+      router.replace('/profile');
     } else if (errorParam) {
       let errorMessage = 'An error occurred while linking your X account.';
       
@@ -159,7 +152,9 @@ export default function ProfilePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: identities } = await supabase.auth.getUserIdentities();
-      setEmailUser((prev: any) => ({ ...prev, ...user, identities: identities?.identities || [] }));
+      // Also fetch updated profile data to get the latest X info
+      const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single();
+      setEmailUser((prev: any) => ({ ...prev, ...user, profile, identities: identities?.identities || [] }));
     }
   };
 
@@ -306,7 +301,7 @@ export default function ProfilePage() {
   // Handle Twitter linking with the new hook
   const handleLinkX = async () => {
     const result = await linkTwitter();
-    if (result.success && result.redirecting) {
+    if (result.success) {
       // The user will be redirected to X for authentication
       // The callback will handle the success/error messages
       return;
@@ -315,13 +310,6 @@ export default function ProfilePage() {
     if (result.success) {
       // Refresh user data after successful linking
       await updateEmailUserWithIdentities();
-      // Refetch profile data
-      if (emailUser?.email) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", emailUser.email).single();
-        if (profile) {
-          setEmailUser((prev: any) => ({ ...prev, profile }));
-        }
-      }
     }
   };
 
@@ -331,13 +319,6 @@ export default function ProfilePage() {
     if (result.success) {
       // Refresh user data after successful unlinking
       await updateEmailUserWithIdentities();
-      // Refetch profile data
-      if (emailUser?.email) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", emailUser.email).single();
-        if (profile) {
-          setEmailUser((prev: any) => ({ ...prev, profile }));
-        }
-      }
     }
   };
 
@@ -409,25 +390,31 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-[#181818] text-white text-xl">Loading...</div>
+    return (
+      <BackgroundWrapper>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-white text-xl">Loading...</div>
+        </div>
+      </BackgroundWrapper>
+    )
   }
 
   // If not signed in, show sign-in prompt
   if (!walletUser && !emailUser) {
     return (
-      <div className="min-h-screen bg-[#181818]">
+      <BackgroundWrapper>
         <AuthRequired 
           title="Sign In Required"
           message="Please sign in with your email or wallet to access your profile and connect social accounts."
           onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
         />
-      </div>
+      </BackgroundWrapper>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#181818] py-8 px-4">
-      <div className="container mx-auto max-w-4xl">
+    <BackgroundWrapper>
+      <PageContainer>
         <Card className="bg-[#111111] border-[#282828]">
           <CardHeader>
             <CardTitle className="text-white text-2xl">Profile Settings</CardTitle>
@@ -637,11 +624,7 @@ export default function ProfilePage() {
                           <div className="text-gray-300 text-sm">Connect your X account</div>
                         </div>
                       </div>
-                      {(() => {
-                        const [twitterIdentity] = (emailUser?.identities || [])
-                          .filter((i: any) => i.provider === 'twitter');
-                        return twitterIdentity ? <Badge variant="secondary" className="bg-green-600 text-white">Connected</Badge> : null;
-                      })()}
+                      {xInfo && <Badge variant="secondary" className="bg-green-600 text-white">Connected</Badge>}
                     </div>
                     
                     {twitterError && (
@@ -650,71 +633,62 @@ export default function ProfilePage() {
                       </div>
                     )}
                     
-                    {(() => {
-                      // Find Twitter identity from Supabase identities
-                      const [twitterIdentity] = (emailUser?.identities || [])
-                        .filter((i: any) => i.provider === 'twitter');
-                      if (twitterIdentity) {
-                        return (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                              {twitterIdentity.identity_data?.avatar_url && (
-                                <img src={twitterIdentity.identity_data.avatar_url} alt="X Avatar" className="w-5 h-5 rounded-full" />
-                              )}
-                              <span className="text-white">{twitterIdentity.identity_data?.user_name || 'X User'}</span>
-                              {twitterIdentity.identity_data?.user_name && (
-                                <Button variant="ghost" size="sm" asChild className="text-blue-400 hover:text-blue-300">
-                                  <a href={`https://x.com/${twitterIdentity.identity_data.user_name}`} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="w-4 h-4" />
-                                  </a>
-                                </Button>
-                              )}
-                            </div>
-                            <Button
-                              onClick={handleUnlinkTwitter}
-                              disabled={unlinkingTwitter}
-                              className="w-full bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              {unlinkingTwitter ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                  Unlinking...
-                                </>
-                              ) : (
-                                'Unlink X'
-                              )}
+                    {xInfo ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          {xInfo.avatar && (
+                            <img src={xInfo.avatar} alt="X Avatar" className="w-5 h-5 rounded-full" />
+                          )}
+                          <span className="text-white">{xInfo.username || 'X User'}</span>
+                          {xInfo.profileUrl && (
+                            <Button variant="ghost" size="sm" asChild className="text-blue-400 hover:text-blue-300">
+                              <a href={xInfo.profileUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
                             </Button>
-                          </div>
-                        );
-                      } else {
-                        return (
-                          <Button
-                            onClick={handleLinkX}
-                            className="w-full bg-green-600 hover:bg-green-700 text-white"
-                            disabled={linkingTwitter}
-                          >
-                            {linkingTwitter ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                Linking...
-                              </>
-                            ) : (
-                              <>
-                                <XIcon className="w-5 h-5 mr-2" />
-                                Connect X
-                              </>
-                            )}
-                          </Button>
-                        );
-                      }
-                    })()}
+                          )}
+                        </div>
+                        <Button
+                          onClick={handleUnlinkTwitter}
+                          disabled={unlinkingTwitter}
+                          className="w-full bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          {unlinkingTwitter ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Unlinking...
+                            </>
+                          ) : (
+                            'Unlink X'
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={handleLinkX}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        disabled={linkingTwitter}
+                      >
+                        {linkingTwitter ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Linking...
+                          </>
+                        ) : (
+                          <>
+                            <XIcon className="w-5 h-5 mr-2" />
+                            Connect X
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </PageContainer>
+    </BackgroundWrapper>
   )
 } 

@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import ProjectCard from "@/components/ProjectCard";
 import BackgroundWrapper from "@/components/BackgroundWrapper";
-import PageContainer from "@/components/PageContainer";
 
 interface Project {
   id: string;
@@ -131,7 +130,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
     <BackgroundWrapper>
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-[#181818]">
-        <PageContainer className="relative text-center space-y-6 py-12 md:py-16">
+        <div className="w-full px-4 py-12 md:py-16 text-center space-y-6">
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white">
             Web3 Projects
           </h1>
@@ -152,14 +151,14 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
               {totalXPToCollect.toLocaleString()} XP to Collect
             </span>
           </div>
-        </PageContainer>
+        </div>
       </header>
 
       {/* Gap between header and search/filter */}
       <div className="mb-8" />
 
       {/* Search and Filter Section */}
-      <PageContainer>
+      <div className="w-full px-4">
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
@@ -217,7 +216,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
             <p className="text-gray-500">Try different search terms or filters</p>
           </div>
         )}
-      </PageContainer>
+      </div>
     </BackgroundWrapper>
   );
 } 

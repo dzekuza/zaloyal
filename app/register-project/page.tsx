@@ -30,6 +30,7 @@ import WalletConnect from "@/components/wallet-connect"
 import { useRouter } from "next/navigation"
 import BackgroundWrapper from "@/components/BackgroundWrapper";
 import AuthRequired from "@/components/auth-required";
+import PageContainer from "@/components/PageContainer";
 import { toast } from 'sonner';
 
 interface ProjectForm {
@@ -326,16 +327,18 @@ export default function RegisterProject() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#181818] flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
+      <BackgroundWrapper>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-white text-xl">Loading...</div>
+        </div>
+      </BackgroundWrapper>
     )
   }
 
   if (!loading && !walletUser) {
     return (
-      <div className="min-h-screen bg-[#181818] flex items-center justify-center">
-        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md">
+      <BackgroundWrapper>
+        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md mx-auto">
           <div className="text-center">
             <Building2 className="w-16 h-16 mx-auto text-green-400 mb-4" />
             <h2 className="text-2xl font-bold text-white mb-4">Wallet Required</h2>
@@ -347,14 +350,14 @@ export default function RegisterProject() {
             </Link>
           </div>
         </Card>
-      </div>
+      </BackgroundWrapper>
     )
   }
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#181818] flex items-center justify-center">
-        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md">
+      <BackgroundWrapper>
+        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md mx-auto">
           <div className="text-center">
             <CheckCircle className="w-16 h-16 mx-auto text-green-400 mb-4" />
             <h2 className="text-2xl font-bold text-white mb-4">Application Submitted!</h2>
@@ -382,7 +385,7 @@ export default function RegisterProject() {
             </div>
           </div>
         </Card>
-      </div>
+      </BackgroundWrapper>
     )
   }
 
@@ -390,7 +393,7 @@ export default function RegisterProject() {
 
   return (
     <BackgroundWrapper>
-      <div className="container mx-auto px-4 py-8 pb-20">
+      <PageContainer className="pb-20">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/" className="text-gray-400 hover:text-white transition-colors">
@@ -735,7 +738,7 @@ export default function RegisterProject() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </PageContainer>
     </BackgroundWrapper>
   )
 }

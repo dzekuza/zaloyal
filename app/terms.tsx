@@ -1,8 +1,10 @@
 import React from "react";
 
+import PageContainer from "@/components/PageContainer";
+
 export default function TermsOfService() {
   return (
-    <div className="max-w-3xl mx-auto py-12 px-4">
+    <PageContainer>
       <h1 className="text-3xl font-bold mb-6">Terms of Service</h1>
       <p className="mb-4">Last updated: July 2024</p>
       <h2 className="text-xl font-semibold mt-8 mb-2">1. Acceptance of Terms</h2>
@@ -31,6 +33,6 @@ export default function TermsOfService() {
       <p className="mb-4">We may update these Terms from time to time. Continued use of the Platform after changes constitutes acceptance of the new Terms.</p>
       <h2 className="text-xl font-semibold mt-8 mb-2">10. Contact</h2>
       <p>If you have any questions about these Terms, please contact us at support@zaloyal.vercel.app.</p>
-    </div>
+    </PageContainer>
   );
 } 

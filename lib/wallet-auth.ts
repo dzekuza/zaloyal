@@ -17,7 +17,7 @@ class WalletAuth {
 
   // Only allow wallet linking, not authentication
   async connectWallet(): Promise<string> {
-    const provider = window.solana
+    const provider = (window as any).solana
     if (!provider || !provider.isPhantom) {
       throw new Error("Phantom Wallet is not installed")
     }
@@ -40,7 +40,7 @@ class WalletAuth {
   }
 
   async disconnectWallet(): Promise<void> {
-    const provider = window.solana
+    const provider = (window as any).solana
     if (provider && provider.isPhantom) {
       await provider.disconnect()
     }

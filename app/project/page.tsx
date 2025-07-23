@@ -11,6 +11,7 @@ import EditProjectForm from "@/components/edit-project-form"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import PageContainer from "@/components/PageContainer";
 import AuthRequired from '@/components/auth-required';
+import BackgroundWrapper from "@/components/BackgroundWrapper";
 
 interface Project {
   id: string;
@@ -101,35 +102,39 @@ export default function MyProjectsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
-        <p className="text-white text-xl">Loading your projects...</p>
-      </div>
+      <BackgroundWrapper>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-white text-xl">Loading your projects...</p>
+        </div>
+      </BackgroundWrapper>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
-        <p className="text-white text-xl">{error}</p>
-      </div>
+      <BackgroundWrapper>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-white text-xl">{error}</p>
+        </div>
+      </BackgroundWrapper>
     )
   }
 
   if (!currentUserId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+      <BackgroundWrapper>
         <AuthRequired
           title="Sign In Required"
           message="Please sign in with your email or wallet to view and manage your projects."
           onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
         />
-      </div>
+      </BackgroundWrapper>
     );
   }
 
   if (!myProjects.length) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+      <BackgroundWrapper>
         <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
           <div className="text-center">
             <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
@@ -142,7 +147,7 @@ export default function MyProjectsPage() {
             </Link>
           </div>
         </Card>
-      </div>
+      </BackgroundWrapper>
     )
   }
 
@@ -159,57 +164,59 @@ export default function MyProjectsPage() {
   };
 
   return (
-    <PageContainer>
-      <h1 className="text-4xl font-bold text-white mb-8">My Projects</h1>
-      {myProjects.length === 0 ? (
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
-          <div className="text-center">
-            <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
-            <p className="text-gray-300 mb-6">You haven't registered any projects yet.</p>
-            <Link href="/register-project">
-              <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                Register Project
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          {myProjects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              currentUserId={currentUserId}
-              onEdit={() => setEditingProject(project)}
-              onDelete={() => handleDelete(project.id)}
-              xpToCollect={project.xpToCollect}
-            >
-              <Link href={`/project/${project.id}`}>
-                <Button
-                  size="sm"
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
-                >
-                  View My Project
+    <BackgroundWrapper>
+      <PageContainer>
+        <h1 className="text-4xl font-bold text-white mb-8">My Projects</h1>
+        {myProjects.length === 0 ? (
+          <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
+            <div className="text-center">
+              <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
+              <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
+              <p className="text-gray-300 mb-6">You haven't registered any projects yet.</p>
+              <Link href="/register-project">
+                <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                  Register Project
                 </Button>
               </Link>
-            </ProjectCard>
-          ))}
-        </div>
-      )}
-      {/* Edit Project Dialog */}
-      <Dialog open={!!editingProject} onOpenChange={open => setEditingProject(open ? editingProject : null)}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
-            <DialogDescription>
-              Update your project details and save your changes below.
-            </DialogDescription>
-          </DialogHeader>
-          {editingProject && <EditProjectForm project={editingProject} onSave={() => setEditingProject(null)} />}
-        </DialogContent>
-      </Dialog>
-    </PageContainer>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {myProjects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                currentUserId={currentUserId}
+                onEdit={() => setEditingProject(project)}
+                onDelete={() => handleDelete(project.id)}
+                xpToCollect={project.xpToCollect}
+              >
+                <Link href={`/project/${project.id}`}>
+                  <Button
+                    size="sm"
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
+                  >
+                    View My Project
+                  </Button>
+                </Link>
+              </ProjectCard>
+            ))}
+          </div>
+        )}
+        {/* Edit Project Dialog */}
+        <Dialog open={!!editingProject} onOpenChange={open => setEditingProject(open ? editingProject : null)}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto w-full max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Project</DialogTitle>
+              <DialogDescription>
+                Update your project details and save your changes below.
+              </DialogDescription>
+            </DialogHeader>
+            {editingProject && <EditProjectForm project={editingProject} onSave={() => setEditingProject(null)} />}
+          </DialogContent>
+        </Dialog>
+      </PageContainer>
+    </BackgroundWrapper>
   )
 }
 

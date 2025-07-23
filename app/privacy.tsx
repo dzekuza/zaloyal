@@ -1,8 +1,10 @@
 import React from "react";
 
+import PageContainer from "@/components/PageContainer";
+
 export default function PrivacyPolicy() {
   return (
-    <div className="max-w-3xl mx-auto py-12 px-4">
+    <PageContainer>
       <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
       <p className="mb-4">Last updated: July 2024</p>
       <h2 className="text-xl font-semibold mt-8 mb-2">1. Information We Collect</h2>
@@ -21,6 +23,6 @@ export default function PrivacyPolicy() {
       <p className="mb-4">We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page.</p>
       <h2 className="text-xl font-semibold mt-8 mb-2">8. Contact</h2>
       <p>If you have any questions about this Privacy Policy, please contact us at support@zaloyal.vercel.app.</p>
-    </div>
+    </PageContainer>
   );
 } 

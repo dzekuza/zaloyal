@@ -9,6 +9,7 @@ import Link from "next/link";
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth";
 import { supabase } from "@/lib/supabase";
 import BackgroundWrapper from "@/components/BackgroundWrapper";
+import PageContainer from "@/components/PageContainer";
 
 function getPeriodRange(period: string) {
   const now = new Date();
@@ -161,7 +162,7 @@ export default function Leaderboard() {
 
   return (
     <BackgroundWrapper>
-      <div className="container mx-auto px-4 py-8">
+      <PageContainer>
         {/* Header */}
         {/* Removed h1, subtitle, and Create Project button */}
 
@@ -356,7 +357,7 @@ export default function Leaderboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     </BackgroundWrapper>
   );
 }

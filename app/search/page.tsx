@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Star, Users, Zap, Trophy, Globe, Twitter, MessageSquare } from "lucide-react"
 import QuestCard from '@/components/QuestCard';
+import BackgroundWrapper from "@/components/BackgroundWrapper";
+import PageContainer from "@/components/PageContainer";
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
@@ -35,8 +37,8 @@ export default function SearchPage() {
   }, [query])
 
   return (
-    <div className="min-h-screen bg-[#181818] py-8">
-      <div className="container mx-auto px-4">
+    <BackgroundWrapper>
+      <PageContainer>
         <h1 className="text-3xl font-bold text-white mb-6">Search Results for "{query}"</h1>
         {loading ? (
           <div className="text-white text-lg">Loading...</div>
@@ -106,8 +108,8 @@ export default function SearchPage() {
             </section>
           </>
         )}
-      </div>
-    </div>
+      </PageContainer>
+    </BackgroundWrapper>
   )
 }
 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Wallet, Copy, LogOut, Edit, Save, X } from "lucide-react"
-import { linkWalletToProfile, walletAuth } from "@/lib/wallet-auth"
+import { walletAuth } from "@/lib/wallet-auth"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 
@@ -33,7 +33,7 @@ export default function WalletConnect({ onLinked }: { onLinked?: () => void } = 
     setIsLinking(true)
     setError(null)
     try {
-      const address = await linkWalletToProfile()
+      const address = await walletAuth.connectWallet()
       setWalletAddress(address)
       if (onLinked) onLinked()
     } catch (e: any) {

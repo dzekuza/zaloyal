@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import ImageUpload from "@/components/image-upload"
 import { ArrowLeft } from "lucide-react"
+import PageContainer from "@/components/PageContainer"
 
 export default function EditProjectPage() {
   const { id } = useParams<{ id: string }>()
@@ -79,7 +80,7 @@ export default function EditProjectPage() {
   if (!project) return <div className="p-8 text-center">Project not found.</div>
 
   return (
-    <div className="max-w-xl mx-auto p-4">
+    <PageContainer>
       <Button asChild variant="ghost" className="mb-4">
         <Link href={`/project/${id}`}> <ArrowLeft className="mr-2 h-4 w-4" /> Back to Project </Link>
       </Button>
@@ -146,6 +147,6 @@ export default function EditProjectPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   )
 } 

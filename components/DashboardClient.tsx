@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Zap, CheckCircle, Star, Clock } from "lucide-react";
 import QuestCard from '@/components/QuestCard';
+import PageContainer from "@/components/PageContainer";
 
 export default function DashboardClient({ profile, activeQuests, completedQuests, badges, achievements }: any) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -32,10 +33,10 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
   };
 
   return (
-    <div className="min-h-screen bg-[#181818]">
-      <div className="container mx-auto px-4 py-8">
-        {/* Dashboard Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+    <div className="min-h-screen bg-[#181818] w-full">
+      <PageContainer>
+      {/* Dashboard Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex gap-2 whitespace-nowrap overflow-x-auto bg-transparent shadow-none p-0 border-0 justify-start w-auto">
             <TabsTrigger value="overview" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none">
               Overview
@@ -208,7 +209,7 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+      </PageContainer>
     </div>
   );
 } 
