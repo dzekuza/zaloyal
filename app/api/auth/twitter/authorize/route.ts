@@ -6,8 +6,8 @@ import crypto from 'crypto';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => Promise.resolve(cookieStore) });
+    // Pass the cookies function directly
+    const supabase = createRouteHandlerClient({ cookies });
     
     // Get the current user session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
