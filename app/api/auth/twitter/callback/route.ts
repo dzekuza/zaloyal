@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import OAuth from 'oauth-1.0a';
 import crypto from 'crypto';
+import { validateOAuthState } from '@/lib/oauth-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,13 +21,33 @@ export async function GET(request: NextRequest) {
     const oauthToken = searchParams.get('oauth_token');
     const oauthVerifier = searchParams.get('oauth_verifier');
     const denied = searchParams.get('denied');
+    const state = searchParams.get('state');
+    const timestamp = searchParams.get('timestamp');
+
+    console.log('Twitter callback received:', {
+      oauthToken: oauthToken ? 'present' : 'missing',
+      oauthVerifier: oauthVerifier ? 'present' : 'missing',
+      denied: denied || 'none',
+      state: state || 'none',
+      timestamp: timestamp || 'none'
+    });
 
     if (denied) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=access_denied`);
     }
 
     if (!oauthToken || !oauthVerifier) {
+      console.error('Missing OAuth parameters:', { oauthToken, oauthVerifier });
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=invalid_oauth_response`);
+    }
+
+    // Validate state parameter if present
+    if (state && timestamp) {
+      const validation = validateOAuthState(state, timestamp);
+      if (!validation.valid) {
+        console.error('OAuth state validation failed:', validation);
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=request_expired`);
+      }
     }
 
     // Check if we have Twitter API credentials
@@ -64,6 +85,8 @@ export async function GET(request: NextRequest) {
     const accessTokenHeaders = oauth.toHeader(oauth.authorize(accessTokenData));
 
     try {
+      console.log('Exchanging OAuth token for access token...');
+      
       const response = await fetch(accessTokenData.url, {
         method: accessTokenData.method,
         headers: {
@@ -74,6 +97,8 @@ export async function GET(request: NextRequest) {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Access token exchange failed:', response.status, errorText);
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=access_token_failed`);
       }
 
@@ -85,8 +110,11 @@ export async function GET(request: NextRequest) {
       const screenName = params.get('screen_name');
 
       if (!accessToken || !accessTokenSecret || !userId || !screenName) {
+        console.error('Invalid access token response:', responseText);
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=invalid_access_token`);
       }
+
+      console.log('Access token obtained successfully for user:', screenName);
 
       // --- v2 API: Get user info ---
       const profileData = {
@@ -107,6 +135,8 @@ export async function GET(request: NextRequest) {
       });
 
       if (!profileResponse.ok) {
+        const errorText = await profileResponse.text();
+        console.error('Profile fetch failed:', profileResponse.status, errorText);
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_fetch_failed`);
       }
 
@@ -120,6 +150,8 @@ export async function GET(request: NextRequest) {
         profileImageUrl = profile.profile_image_url.replace('_normal', '_400x400');
       }
 
+      console.log('Profile fetched successfully:', profile?.username);
+
       // Update user profile with Twitter data
       try {
         // Try RPC function first
@@ -131,6 +163,7 @@ export async function GET(request: NextRequest) {
         });
 
         if (rpcError) {
+          console.warn('RPC function failed, using direct update:', rpcError);
           // Fallback to direct table update
           const { error: updateError } = await supabase.from('users').update({
             x_id: userId,
@@ -139,10 +172,12 @@ export async function GET(request: NextRequest) {
           }).eq('id', user.id);
 
           if (updateError) {
+            console.error('Profile update failed:', updateError);
             return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_update_failed`);
           }
         }
       } catch (err) {
+        console.warn('Database function not available, using direct update');
         // Fallback to direct table update
         const { error: updateError } = await supabase.from('users').update({
           x_id: userId,
@@ -151,19 +186,24 @@ export async function GET(request: NextRequest) {
         }).eq('id', user.id);
 
         if (updateError) {
+          console.error('Profile update failed:', updateError);
           return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_update_failed`);
         }
       }
+
+      console.log('Twitter profile updated successfully');
 
       // Redirect to profile with success message and force a page reload to update auth state
       const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/profile?success=twitter_linked&reload=true`;
       return NextResponse.redirect(redirectUrl);
 
     } catch (error) {
+      console.error('OAuth exchange error:', error);
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=oauth_error`);
     }
 
   } catch (error) {
+    console.error('Twitter callback error:', error);
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=callback_error`);
   }
 } 

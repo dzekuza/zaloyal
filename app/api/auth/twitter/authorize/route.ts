@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import OAuth from 'oauth-1.0a';
 import crypto from 'crypto';
+import { generateOAuthState } from '@/lib/oauth-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,6 +45,12 @@ export async function GET(request: NextRequest) {
       callbackUrl = `${appUrl.replace(/\/$/, '')}/api/auth/twitter/callback`;
     }
 
+    // Generate unique state parameters to prevent token reuse
+    const oauthState = generateOAuthState();
+    
+    // Add state and timestamp to callback URL to ensure uniqueness
+    const callbackUrlWithState = `${callbackUrl}?state=${oauthState.state}&timestamp=${oauthState.timestamp}`;
+
     // Create OAuth 1.0a instance
     const oauth = new OAuth({
       consumer: {
@@ -59,18 +66,24 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Generate request token
+    // Generate request token with unique parameters
     const request_data = {
       url: 'https://api.twitter.com/oauth/request_token',
       method: 'POST',
       data: {
-        oauth_callback: callbackUrl,
+        oauth_callback: callbackUrlWithState,
+        // Add additional parameters to ensure uniqueness
+        oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+        oauth_nonce: oauthState.nonce,
       },
     };
 
     const headers = oauth.toHeader(oauth.authorize(request_data));
 
     try {
+      console.log('Initiating Twitter OAuth with callback URL:', callbackUrlWithState);
+      console.log('OAuth state:', oauthState);
+      
       const response = await fetch(request_data.url, {
         method: request_data.method,
         headers: {
@@ -85,7 +98,7 @@ export async function GET(request: NextRequest) {
         console.error('Twitter OAuth request token error:', response.status, response.statusText);
         console.error('Error response:', errorText);
         console.error('Request URL:', request_data.url);
-        console.error('Callback URL:', request_data.data.oauth_callback);
+        console.error('Callback URL:', callbackUrlWithState);
         return NextResponse.json(
           {
             error: 'Failed to initiate X authentication. Please try again.',
@@ -112,8 +125,10 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Create authorization URL
-      const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`;
+      // Create authorization URL with state parameter
+      const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}&state=${oauthState.state}`;
+
+      console.log('Twitter OAuth initiated successfully. Auth URL:', authUrl);
 
       return NextResponse.json({
         success: true,
@@ -121,6 +136,7 @@ export async function GET(request: NextRequest) {
         authUrl: authUrl,
         oauthToken: oauthToken,
         oauthTokenSecret: oauthTokenSecret,
+        state: oauthState.state,
       });
     } catch (error) {
       console.error('Twitter OAuth error:', error);

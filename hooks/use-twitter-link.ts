@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
+import { clearOAuthCache, addCacheBustingHeaders } from '@/lib/oauth-utils';
 
 interface TwitterLinkState {
   isLinking: boolean;
@@ -28,18 +29,25 @@ export const useTwitterLink = () => {
     setState(prev => ({ ...prev, isLinking: true, error: null }));
     
     try {
+      // Clear any existing OAuth cache
+      clearOAuthCache();
+      
       // Ensure user is authenticated
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         throw new Error('You must be logged in to link your X (Twitter) account.');
       }
 
-      // Call our API to initiate OAuth flow
-      const response = await fetch('/api/auth/twitter/authorize', {
+      // Add cache-busting parameter to ensure unique requests
+      const timestamp = Date.now();
+      const cacheBuster = Math.random().toString(36).substring(2, 15);
+
+      // Call our API to initiate OAuth flow with cache-busting
+      const response = await fetch(`/api/auth/twitter/authorize?t=${timestamp}&cb=${cacheBuster}`, {
         method: 'GET',
-        headers: {
+        headers: addCacheBustingHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
       });
 
       if (!response.ok) {

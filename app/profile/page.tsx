@@ -125,6 +125,9 @@ export default function ProfilePage() {
         case 'callback_error':
           errorMessage = 'Callback error occurred. Please try again.';
           break;
+        case 'request_expired':
+          errorMessage = 'The authentication request has expired. Please try linking your X account again.';
+          break;
       }
       
       toast({
