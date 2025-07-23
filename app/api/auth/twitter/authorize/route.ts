@@ -30,6 +30,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Build the callback URL robustly
+    let callbackUrl = process.env.NEXT_PUBLIC_TWITTER_REDIRECT_URI;
+    if (!callbackUrl) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+      if (!appUrl) {
+        console.error('Twitter authorize error: NEXT_PUBLIC_APP_URL is not set');
+        return NextResponse.json(
+          { error: 'NEXT_PUBLIC_APP_URL is not set in environment variables.' },
+          { status: 500 }
+        );
+      }
+      callbackUrl = `${appUrl.replace(/\/$/, '')}/api/auth/twitter/callback`;
+    }
+
     // Create OAuth 1.0a instance
     const oauth = new OAuth({
       consumer: {
@@ -50,9 +64,7 @@ export async function GET(request: NextRequest) {
       url: 'https://api.twitter.com/oauth/request_token',
       method: 'POST',
       data: {
-        oauth_callback: process.env.NODE_ENV === 'development' 
-          ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/twitter/callback`
-          : (process.env.NEXT_PUBLIC_TWITTER_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/twitter/callback`),
+        oauth_callback: callbackUrl,
       },
     };
 
