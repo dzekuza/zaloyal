@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
     
     // Get the current user session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
     if (userError || !user) {
+      console.error('Twitter authorize error: User not authenticated', userError);
       return NextResponse.json(
-        { error: 'User not authenticated' },
+        { error: 'User not authenticated', details: userError?.message },
         { status: 401 }
       );
     }
@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
     // Check if we have Twitter API credentials
     const twitterApiKey = process.env.TWITTER_API_KEY;
     const twitterApiSecret = process.env.TWITTER_API_SECRET;
-    
     if (!twitterApiKey || !twitterApiSecret) {
+      console.error('Twitter authorize error: Missing Twitter API credentials');
       return NextResponse.json(
         { error: 'Twitter API not configured. Please set TWITTER_API_KEY and TWITTER_API_SECRET environment variables.' },
         { status: 500 }
@@ -74,9 +74,8 @@ export async function GET(request: NextRequest) {
         console.error('Error response:', errorText);
         console.error('Request URL:', request_data.url);
         console.error('Callback URL:', request_data.data.oauth_callback);
-        
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to initiate X authentication. Please try again.',
             details: {
               status: response.status,
@@ -101,9 +100,6 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Store the oauth_token_secret temporarily (you might want to use a session or temporary storage)
-      // For now, we'll pass it back to the client to store temporarily
-      
       // Create authorization URL
       const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`;
 
@@ -114,19 +110,17 @@ export async function GET(request: NextRequest) {
         oauthToken: oauthToken,
         oauthTokenSecret: oauthTokenSecret,
       });
-
     } catch (error) {
       console.error('Twitter OAuth error:', error);
       return NextResponse.json(
-        { error: 'Failed to connect to X. Please try again.' },
+        { error: 'Failed to connect to X. Please try again.', details: error instanceof Error ? error.stack : error },
         { status: 500 }
       );
     }
-
   } catch (error) {
-    console.error('Twitter authorize error:', error);
+    console.error('Twitter authorize error (outer catch):', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.stack : error },
       { status: 500 }
     );
   }
