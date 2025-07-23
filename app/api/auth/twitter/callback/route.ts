@@ -6,12 +6,11 @@ import crypto from 'crypto';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => Promise.resolve(cookieStore) });
+    // Pass the cookies function directly
+    const supabase = createRouteHandlerClient({ cookies });
     
     // Get the current user session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
     if (userError || !user) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=not_authenticated`);
     }
@@ -33,7 +32,6 @@ export async function GET(request: NextRequest) {
     // Check if we have Twitter API credentials
     const twitterApiKey = process.env.TWITTER_API_KEY;
     const twitterApiSecret = process.env.TWITTER_API_SECRET;
-    
     if (!twitterApiKey || !twitterApiSecret) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=api_not_configured`);
     }
@@ -76,7 +74,6 @@ export async function GET(request: NextRequest) {
       });
 
       if (!response.ok) {
-        console.error('Twitter OAuth access token error:', response.status, response.statusText);
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=access_token_failed`);
       }
 
@@ -88,7 +85,6 @@ export async function GET(request: NextRequest) {
       const screenName = params.get('screen_name');
 
       if (!accessToken || !accessTokenSecret || !userId || !screenName) {
-        console.error('Invalid access token response:', responseText);
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=invalid_access_token`);
       }
 
@@ -111,7 +107,6 @@ export async function GET(request: NextRequest) {
       });
 
       if (!profileResponse.ok) {
-        console.error('Twitter profile fetch error:', profileResponse.status, profileResponse.statusText);
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_fetch_failed`);
       }
 
@@ -135,7 +130,6 @@ export async function GET(request: NextRequest) {
         });
 
         if (rpcError) {
-          console.warn('RPC function not available, using direct update');
           // Fallback to direct table update
           const { error: updateError } = await supabase.from('users').update({
             x_id: userId,
@@ -144,14 +138,10 @@ export async function GET(request: NextRequest) {
           }).eq('id', user.id);
 
           if (updateError) {
-            console.error('Profile update error:', updateError);
             return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_update_failed`);
           }
-        } else {
-          console.log('Successfully updated user profile via RPC function');
         }
       } catch (err) {
-        console.warn('Database function not available, using direct update');
         // Fallback to direct table update
         const { error: updateError } = await supabase.from('users').update({
           x_id: userId,
@@ -160,22 +150,17 @@ export async function GET(request: NextRequest) {
         }).eq('id', user.id);
 
         if (updateError) {
-          console.error('Profile update error:', updateError);
           return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_update_failed`);
         }
       }
 
-      console.log('X account linked successfully for user:', user.id);
-
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?success=twitter_linked`);
 
     } catch (error) {
-      console.error('Twitter OAuth error:', error);
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=oauth_error`);
     }
 
   } catch (error) {
-    console.error('Twitter callback error:', error);
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=callback_error`);
   }
 } 
