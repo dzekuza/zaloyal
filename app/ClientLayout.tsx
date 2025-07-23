@@ -43,6 +43,7 @@ import {
 import Link from "next/link";
 import { useAuth } from "@/components/auth-context";
 import LoadingSpinner from "@/components/loading-spinner";
+import { AuthProvider } from "@/components/auth-context";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -75,11 +76,7 @@ const items = [
   },
 ]
 
-export default function ClientLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [authError, setAuthError] = useState("")
   const pathname = usePathname();
@@ -149,54 +146,46 @@ export default function ClientLayout({
   // Show loading state while auth is being checked
   if (isLoading) {
     return (
-      <html lang="en" suppressHydrationWarning>
-        <head suppressHydrationWarning>
-          <title>belink.now Web3 Quest Platform</title>
-          <meta name="description" content="Web3 Quest Platform for Community Engagement" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-        </head>
-        <body suppressHydrationWarning>
-          <div className="min-h-screen bg-[#181818] flex items-center justify-center">
-            <LoadingSpinner size="lg" text="Loading..." />
-          </div>
-        </body>
-      </html>
+      <div className="min-h-screen bg-[#181818] flex items-center justify-center">
+        <LoadingSpinner size="lg" text="Loading..." />
+      </div>
     )
   }
 
   return (
-    <div className={inter.className + " bg-[#181818] min-h-screen"}>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-        <Toaster />
-        {/* Onboarding Alert Bar: always rendered, handles its own logic */}
-        <OnboardingAlertBar />
-        <SidebarProvider>
-          <Sidebar variant="inset">
-            <SidebarHeader>
-              <div className="flex items-center justify-start py-6 pl-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/belinklogo.svg" alt="Belink Logo" className="h-8 w-auto" />
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <SidebarProvider>
+        <div className={`${inter.className} flex h-screen bg-[#181818]`}>
+          {/* Sidebar */}
+          <Sidebar className="hidden lg:flex">
+            <SidebarHeader className="border-b border-[#282828]">
+              <div className="flex items-center gap-2 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">B</span>
+                  </div>
+                  <span className="text-white font-semibold">BeLink</span>
+                </div>
               </div>
             </SidebarHeader>
             <SidebarContent>
               <SidebarGroup>
-                <SidebarGroupLabel>Platform</SidebarGroupLabel>
+                <SidebarGroupLabel className="text-gray-400 text-xs font-medium px-4 py-2">
+                  Navigation
+                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {items.map((item) => (
                       <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={
-                            item.url === "/project"
-                              ? pathname.startsWith("/project")
-                              : pathname === item.url
-                          }
-                          className="data-[active=true]:text-green-500 data-[active=true]:bg-transparent"
-                        >
-                          <Link href={item.url} className="flex items-center gap-2">
-                            <item.icon />
-                            <span>{item.title}</span>
+                        <SidebarMenuButton asChild isActive={pathname === item.url}>
+                          <Link href={item.url} className="flex items-center gap-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-[#111111] rounded-lg transition-colors">
+                            <item.icon className="w-5 h-5" />
+                            {item.title}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -205,75 +194,69 @@ export default function ClientLayout({
                 </SidebarGroupContent>
               </SidebarGroup>
             </SidebarContent>
-            <SidebarFooter>
-              <div className="flex flex-col gap-2 p-2">
-                <button
-                  type="button"
-                  className="flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-gray-300 hover:text-green-500 focus:outline-none mt-2"
-                  onClick={() => setShowOnboarding(true)}
+            <SidebarFooter className="border-t border-[#282828] p-4">
+              {user || emailUser ? (
+                <ProfileDropdown
+                  displayName={displayName}
+                  user={user}
+                  emailUser={emailUser}
+                  handleSignOut={handleSignOut}
+                  copied={copied}
+                  onCopyAddress={handleCopyAddress}
+                />
+              ) : (
+                <Button
+                  onClick={() => setShowAuthDialog(true)}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
                 >
-                  <Info className="w-4 h-4" /> Setup Guide
-                </button>
-                {(user || emailUser) ? (
-                  <ProfileDropdown
-                    displayName={displayName}
-                    user={user}
-                    emailUser={emailUser}
-                    handleSignOut={handleSignOut}
-                    copied={copied}
-                    onCopyAddress={handleCopyAddress}
-                  />
-                ) : (
-                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowAuthDialog(true)}>
-                    Log In
-                  </Button>
-                )}
-              </div>
-              <div className="p-4 text-center">
-                <p className="text-xs text-gray-400">Web3Quest Platform</p>
-                <div className="flex justify-center gap-4 mt-2">
-                  <a href="/terms" className="text-xs text-gray-400 hover:text-white underline">Terms of Service</a>
-                  <a href="/privacy" className="text-xs text-gray-400 hover:text-white underline">Privacy Policy</a>
-                </div>
-              </div>
+                  Sign In
+                </Button>
+              )}
             </SidebarFooter>
-            <SidebarRail />
           </Sidebar>
-          <SidebarInset className="bg-[#181818]">
-            {/* Navigation removed, logic merged into sidebar */}
-            <main className="flex-1 pb-20 md:pb-0 bg-[#181818]">{children}</main>
+
+          {/* Mobile Navigation */}
+          <MobileBottomNav />
+
+          {/* Main Content */}
+          <SidebarInset className="flex-1 overflow-auto">
+            <div className="flex-1">
+              {children}
+            </div>
           </SidebarInset>
-        </SidebarProvider>
+        </div>
 
         {/* Auth Dialog */}
         <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>
-                <span className="sr-only">Sign In or Register</span>
-              </DialogTitle>
+              <DialogTitle>Sign In</DialogTitle>
+              <DialogDescription>
+                Choose your preferred authentication method
+              </DialogDescription>
             </DialogHeader>
-            <EmailAuth onSuccess={handleEmailAuthSuccess} onError={handleEmailAuthError} />
-            {authError && (
-              <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                {authError}
-              </div>
-            )}
+            <EmailAuth
+              onSuccess={handleEmailAuthSuccess}
+              onError={handleEmailAuthError}
+            />
           </DialogContent>
         </Dialog>
-        {/* Onboarding Modal */}
-        <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Setup Guide</DialogTitle>
-            </DialogHeader>
-            <div className="text-gray-300 text-center py-4">Follow the steps in the onboarding bar at the bottom right to get started.</div>
-            <Button className="mx-auto mt-2" onClick={() => setShowOnboarding(false)}>Got it</Button>
-          </DialogContent>
-        </Dialog>
-      </ThemeProvider>
-      <MobileBottomNav />
-    </div>
+
+        {/* Onboarding Alert */}
+        <OnboardingAlertBar />
+
+        {/* Toast Notifications */}
+        <Toaster />
+      </SidebarProvider>
+    </ThemeProvider>
+  )
+}
+
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <ClientLayoutContent>{children}</ClientLayoutContent>
+    </AuthProvider>
   )
 }
 
