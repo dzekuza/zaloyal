@@ -88,9 +88,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=invalid_access_token`);
       }
 
-      // Get user profile information using the access token
+      // --- v2 API: Get user info ---
       const profileData = {
-        url: 'https://api.twitter.com/1.1/account/verify_credentials.json',
+        url: 'https://api.twitter.com/2/users/me?user.fields=profile_image_url,username,name',
         method: 'GET',
       };
 
@@ -110,13 +110,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_fetch_failed`);
       }
 
-      const profile = await profileResponse.json();
+      const profileJson = await profileResponse.json();
+      const profile = profileJson.data;
 
       // Get profile image URL
       let profileImageUrl = null;
-      if (profile.profile_image_url_https) {
-        // Convert to higher resolution
-        profileImageUrl = profile.profile_image_url_https.replace('_normal', '_400x400');
+      if (profile && profile.profile_image_url) {
+        // Use the highest resolution available
+        profileImageUrl = profile.profile_image_url.replace('_normal', '_400x400');
       }
 
       // Update user profile with Twitter data
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
         const { error: rpcError } = await supabase.rpc('update_user_twitter_profile', {
           user_id: user.id,
           twitter_id: userId,
-          twitter_username: screenName,
+          twitter_username: profile?.username || screenName,
           twitter_avatar_url: profileImageUrl || null
         });
 
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
           // Fallback to direct table update
           const { error: updateError } = await supabase.from('users').update({
             x_id: userId,
-            x_username: screenName,
+            x_username: profile?.username || screenName,
             x_avatar_url: profileImageUrl,
           }).eq('id', user.id);
 
@@ -145,7 +146,7 @@ export async function GET(request: NextRequest) {
         // Fallback to direct table update
         const { error: updateError } = await supabase.from('users').update({
           x_id: userId,
-          x_username: screenName,
+          x_username: profile?.username || screenName,
           x_avatar_url: profileImageUrl,
         }).eq('id', user.id);
 
