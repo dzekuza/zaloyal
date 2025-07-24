@@ -20,8 +20,6 @@ import AuthRequired from "@/components/auth-required"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useTwitterLink } from "@/hooks/use-twitter-link";
-import BackgroundWrapper from "@/components/BackgroundWrapper";
-import PageContainer from "@/components/PageContainer";
 
 // react-icons currently returns `ReactNode`, which is incompatible with React 19's
 // stricter JSX.Element return type expectations. Cast the icon components to
@@ -391,30 +389,25 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-white text-xl">Loading...</div>
-        </div>
-      </BackgroundWrapper>
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
     )
   }
 
   // If not signed in, show sign-in prompt
   if (!walletUser && !emailUser) {
     return (
-      <BackgroundWrapper>
-        <AuthRequired 
-          title="Sign In Required"
-          message="Please sign in with your email or wallet to access your profile and connect social accounts."
-          onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-        />
-      </BackgroundWrapper>
+      <AuthRequired 
+        title="Sign In Required"
+        message="Please sign in with your email or wallet to access your profile and connect social accounts."
+        onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+      />
     )
   }
 
   return (
-    <BackgroundWrapper>
-      <PageContainer>
+    <>
         <Card className="bg-[#111111] border-[#282828]">
           <CardHeader>
             <CardTitle className="text-white text-2xl">Profile Settings</CardTitle>
@@ -688,7 +681,6 @@ export default function ProfilePage() {
             </Tabs>
           </CardContent>
         </Card>
-      </PageContainer>
-    </BackgroundWrapper>
+    </>
   )
 } 

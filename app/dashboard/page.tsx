@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import DashboardClient from "@/components/DashboardClient";
-import BackgroundWrapper from "@/components/BackgroundWrapper";
 import AuthRequired from "@/components/auth-required";
 
 export default function DashboardPage() {
@@ -51,11 +50,9 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-white text-xl">Loading your dashboard...</p>
-        </div>
-      </BackgroundWrapper>
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+        <p className="text-white text-xl">Loading your dashboard...</p>
+      </div>
     );
   }
   if (!profile) {
@@ -70,14 +67,12 @@ export default function DashboardPage() {
     );
   }
   return (
-    <BackgroundWrapper>
-      <DashboardClient
-        profile={profile}
-        activeQuests={activeQuests}
-        completedQuests={completedQuests}
-        badges={badges}
-        achievements={achievements}
-      />
-    </BackgroundWrapper>
+    <DashboardClient
+      profile={profile}
+      activeQuests={activeQuests}
+      completedQuests={completedQuests}
+      badges={badges}
+      achievements={achievements}
+    />
   );
 }

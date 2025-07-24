@@ -17,7 +17,6 @@ export default function MobileBottomNav() {
       className="md:hidden fixed bottom-0 left-0 w-full z-50 flex flex-row justify-between items-center bg-[#181818] border-t-2 border-[#282828] px-2 py-1"
       role="navigation"
       aria-label="Mobile Bottom Navigation"
-      style={{ backgroundColor: '#181818' }}
     >
       {navItems.map(({ href, label, icon: Icon }) => {
         const isActive = pathname === href || (href !== "/" && pathname.startsWith(href))

@@ -8,8 +8,6 @@ import { Trophy, Medal, Award, Crown } from "lucide-react";
 import Link from "next/link";
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth";
 import { supabase } from "@/lib/supabase";
-import BackgroundWrapper from "@/components/BackgroundWrapper";
-import PageContainer from "@/components/PageContainer";
 
 function getPeriodRange(period: string) {
   const now = new Date();
@@ -152,17 +150,14 @@ export default function Leaderboard() {
 
   if (loading) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-white text-xl">Loading leaderboard...</div>
-        </div>
-      </BackgroundWrapper>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-white text-xl">Loading leaderboard...</div>
+      </div>
     );
   }
 
   return (
-    <BackgroundWrapper>
-      <PageContainer>
+    <>
         {/* Header */}
         {/* Removed h1, subtitle, and Create Project button */}
 
@@ -357,7 +352,6 @@ export default function Leaderboard() {
             </div>
           </CardContent>
         </Card>
-      </PageContainer>
-    </BackgroundWrapper>
+    </>
   );
 }

@@ -32,7 +32,8 @@ import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import type { Database } from "@/lib/supabase"
 import ImageUpload from "@/components/image-upload"
 import AuthRequired from "@/components/auth-required"
-import BackgroundWrapper from "@/components/BackgroundWrapper"
+import { extractTweetIdFromUrl, extractUsernameFromUrl } from "@/lib/twitter-utils"
+
 import PageContainer from "@/components/PageContainer"
 
 interface TaskForm {
@@ -164,7 +165,7 @@ export default function CreateQuest() {
       unsubscribeWallet()
       subscription.unsubscribe()
     }
-  }, [])
+  }, []);
 
   // Fetch projects for wallet or email user
   const fetchUserProjects = async (walletUser: WalletUser | null, emailProfile: any | null) => {
@@ -252,7 +253,7 @@ export default function CreateQuest() {
     } catch (error) {
       console.error("Error fetching user projects:", error)
     }
-  }
+  };
 
   // Fetch quest categories from Supabase on mount
   useEffect(() => {
@@ -261,18 +262,16 @@ export default function CreateQuest() {
       if (!error && data) setQuestCategories(data)
     }
     fetchCategories()
-  }, [])
+  }, []);
   
   // Authentication check
   if (!walletUser && !emailUser) {
     return (
-      <BackgroundWrapper>
-        <AuthRequired 
-          title="Sign In Required"
-          message="Please sign in with your email or wallet to create quests and projects."
-          onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-        />
-      </BackgroundWrapper>
+      <AuthRequired 
+        title="Sign In Required"
+        message="Please sign in with your email or wallet to create quests and projects."
+        onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+      />
     )
   }
 
@@ -290,17 +289,38 @@ export default function CreateQuest() {
       })
     }
     setShowTaskDialog(true)
-  }
+  };
 
   const saveTask = () => {
-    // No validation needed since we removed title and description fields
+    // Auto-extract tweet ID and username from URLs for Twitter tasks
+    let taskToSave = { ...currentTask };
+    
+    if (currentTask.type === "social" && currentTask.socialPlatform === "twitter") {
+      if (currentTask.socialUrl) {
+        // Extract tweet ID for like/retweet actions
+        if ((currentTask.socialAction === "like" || currentTask.socialAction === "retweet") && !currentTask.socialPostId) {
+          const tweetId = extractTweetIdFromUrl(currentTask.socialUrl);
+          if (tweetId) {
+            taskToSave.socialPostId = tweetId;
+          }
+        }
+        
+        // Extract username for follow actions
+        if (currentTask.socialAction === "follow" && !currentTask.socialUsername) {
+          const username = extractUsernameFromUrl(currentTask.socialUrl);
+          if (username) {
+            taskToSave.socialUsername = username;
+          }
+        }
+      }
+    }
 
     const newTasks = [...questForm.tasks]
 
     if (editingTaskIndex !== null) {
-      newTasks[editingTaskIndex] = currentTask
+      newTasks[editingTaskIndex] = taskToSave
     } else {
-      newTasks.push({ ...currentTask, id: Date.now().toString() })
+      newTasks.push({ ...taskToSave, id: Date.now().toString() })
     }
 
     setQuestForm((prev) => ({
@@ -310,20 +330,20 @@ export default function CreateQuest() {
 
     setShowTaskDialog(false)
     setEditingTaskIndex(null)
-  }
+  };
 
   const removeTask = (taskIndex: number) => {
     setQuestForm((prev) => ({
       ...prev,
       tasks: prev.tasks.filter((_, index) => index !== taskIndex),
     }))
-  }
+  };
 
   const getTaskIcon = (type: string) => {
     const taskType = taskTypes.find((t) => t.value === type)
     const IconComponent = taskType?.icon || Trophy
     return <IconComponent className="w-4 h-4" />
-  }
+  };
 
   const handlePublish = async () => {
     const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
@@ -447,7 +467,7 @@ export default function CreateQuest() {
       console.error("Error publishing quest:", error)
       alert("Failed to publish quest. Please try again.")
     }
-  }
+  };
 
   const renderTaskSpecificFields = () => {
     // Find the selected project object
@@ -519,9 +539,18 @@ export default function CreateQuest() {
                 <Input
                   value={currentTask.socialUrl || ""}
                   onChange={(e) => setCurrentTask((prev) => ({ ...prev, socialUrl: e.target.value }))}
-                  placeholder="https://twitter.com/username or https://t.me/groupname"
+                  placeholder={
+                    currentTask.socialAction === "like" || currentTask.socialAction === "retweet"
+                      ? "https://twitter.com/username/status/1234567890"
+                      : "https://twitter.com/username or https://t.me/groupname"
+                  }
                   className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                 />
+                {(currentTask.socialAction === "like" || currentTask.socialAction === "retweet") && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Paste the full tweet URL - the tweet ID will be extracted automatically
+                  </p>
+                )}
               </div>
             )}
             {currentTask.socialAction === "follow" && (
@@ -537,17 +566,20 @@ export default function CreateQuest() {
             )}
             {(currentTask.socialAction === "like" || currentTask.socialAction === "retweet") && (
               <div>
-                <Label className="text-white">Post ID</Label>
+                <Label className="text-white">Post ID (Optional)</Label>
                 <Input
                   value={currentTask.socialPostId || ""}
                   onChange={(e) => setCurrentTask((prev) => ({ ...prev, socialPostId: e.target.value }))}
-                  placeholder="Post ID or URL"
+                  placeholder="Will be extracted from URL above"
                   className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  Leave empty to extract from the URL above, or enter manually
+                </p>
               </div>
             )}
           </div>
-        )
+        );
 
       case "download":
         return (
@@ -580,7 +612,7 @@ export default function CreateQuest() {
               />
             </div>
           </div>
-        )
+        );
 
       case "form":
         return (
@@ -595,7 +627,7 @@ export default function CreateQuest() {
               />
             </div>
           </div>
-        )
+        );
 
       case "visit":
         return (
@@ -610,7 +642,7 @@ export default function CreateQuest() {
               />
             </div>
           </div>
-        )
+        );
 
       case "learn":
         return (
@@ -663,64 +695,59 @@ export default function CreateQuest() {
               />
             </div>
           </div>
-        )
+        );
 
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   if (!walletUser && !emailUser) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
-          <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-white mb-4">Sign In Required</h2>
-              <p className="text-gray-300 mb-6">You need to sign in to create quests</p>
-              <Link href="/">
-                <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                  Go Back
-                </Button>
-              </Link>
-            </div>
-          </Card>
-        </div>
-      </BackgroundWrapper>
-    )
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
+        <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-white mb-4">Sign In Required</h2>
+            <p className="text-gray-300 mb-6">You need to sign in to create quests</p>
+            <Link href="/">
+              <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                Go Back
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   if (userProjects.length === 0) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
-          <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
-            <div className="text-center">
-              <Building2 className="w-16 h-16 mx-auto text-blue-400 mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
-              <p className="text-gray-300 mb-6">You need to have an approved project to create quests</p>
-              <div className="space-y-2">
-                <Link href="/register-project">
-                  <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                    Register Project
-                  </Button>
-                </Link>
-                <Link href="/">
-                  <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
-                    Go Back
-                  </Button>
-                </Link>
-              </div>
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
+        <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
+          <div className="text-center">
+            <Building2 className="w-16 h-16 mx-auto text-blue-400 mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
+            <p className="text-gray-300 mb-6">You need to have an approved project to create quests</p>
+            <div className="space-y-2">
+              <Link href="/register-project">
+                <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                  Register Project
+                </Button>
+              </Link>
+              <Link href="/">
+                <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
+                  Go Back
+                </Button>
+              </Link>
             </div>
-          </Card>
-        </div>
-      </BackgroundWrapper>
-    )
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <BackgroundWrapper>
-      <PageContainer>
+    <PageContainer>
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors">
@@ -1091,6 +1118,5 @@ export default function CreateQuest() {
           </DialogContent>
         </Dialog>
       </PageContainer>
-    </BackgroundWrapper>
   )
 }

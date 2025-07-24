@@ -193,6 +193,27 @@ export async function GET(request: NextRequest) {
 
       console.log('Twitter profile updated successfully');
 
+      // Store OAuth tokens in Supabase Auth identities
+      try {
+        // Create a custom identity for the user with OAuth tokens
+        const { error: identityError } = await supabase.auth.updateUser({
+          data: {
+            twitter_oauth_token: accessToken,
+            twitter_oauth_token_secret: accessTokenSecret,
+            twitter_user_id: userId,
+            twitter_username: profile?.username || screenName,
+          }
+        });
+
+        if (identityError) {
+          console.warn('Failed to store OAuth tokens in user data:', identityError);
+        } else {
+          console.log('OAuth tokens stored successfully');
+        }
+      } catch (err) {
+        console.warn('Could not store OAuth tokens:', err);
+      }
+
       // Redirect to profile with success message (no reload parameter)
       const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/profile?success=twitter_linked`;
       return NextResponse.redirect(redirectUrl);

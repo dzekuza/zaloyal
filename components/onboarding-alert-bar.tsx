@@ -73,7 +73,6 @@ export default function OnboardingAlertBar() {
     return (
       <button
         className="fixed bottom-0 right-0 mb-6 mr-6 z-50 w-14 h-14 rounded-full bg-[#111111] border border-[#282828] shadow-lg flex items-center justify-center hover:bg-[#181818] transition-colors"
-        style={{ boxShadow: '0 2px 16px 0 rgba(0,0,0,0.4)' }}
         onClick={() => setMinimized(false)}
         aria-label="Show onboarding tutorial"
       >

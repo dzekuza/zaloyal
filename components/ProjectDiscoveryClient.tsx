@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import ProjectCard from "@/components/ProjectCard";
-import BackgroundWrapper from "@/components/BackgroundWrapper";
 
 interface Project {
   id: string;
@@ -127,29 +126,31 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
   );
 
   return (
-    <BackgroundWrapper>
+    <div>
       {/* Hero Section */}
-      <header className="relative overflow-hidden bg-[#181818]">
-        <div className="w-full px-4 py-12 md:py-16 text-center space-y-6">
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white">
-            Web3 Projects
-          </h1>
-          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-            Discover amazing Web3 projects and complete their quests to earn rewards
-          </p>
-          <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
-            <span className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              {projects.length} Verified Projects
-            </span>
-            <span className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              {totalQuests} Active Quests
-            </span>
-            <span className="flex items-center gap-2">
-              <Trophy className="w-4 h-4" />
-              {totalXPToCollect.toLocaleString()} XP to Collect
-            </span>
+      <header className="relative overflow-hidden">
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-7xl px-4 py-12 md:py-16 text-center space-y-6">
+            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white">
+              Web3 Projects
+            </h1>
+            <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
+              Discover amazing Web3 projects and complete their quests to earn rewards
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
+              <span className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                {projects.length} Verified Projects
+              </span>
+              <span className="flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                {totalQuests} Active Quests
+              </span>
+              <span className="flex items-center gap-2">
+                <Trophy className="w-4 h-4" />
+                {totalXPToCollect.toLocaleString()} XP to Collect
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -158,7 +159,8 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
       <div className="mb-8" />
 
       {/* Search and Filter Section */}
-      <div className="w-full px-4">
+      <div className="w-full flex justify-center">
+        <div className="w-full max-w-7xl px-4">
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
@@ -217,6 +219,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
           </div>
         )}
       </div>
-    </BackgroundWrapper>
+      </div>
+    </div>
   );
-} 
+}

@@ -43,6 +43,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import TaskList from '@/components/quest-detail/TaskList';
 import type { Task } from '@/components/quest-detail/types';
+import { extractTweetIdFromUrl } from "@/lib/twitter-utils"
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
@@ -261,43 +262,119 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       let payload: any = { ...baseData }
       if (task.task_type === 'social') {
         if (task.social_platform === 'twitter') {
+          // Use the new Twitter verification route for all Twitter actions
           if (task.social_action === 'follow') {
-            type = 'twitter-follow'
-            let userTwitterId = null;
-            if (emailUser?.identities) {
-              const twitterIdentity = emailUser.identities.find((i: any) => i.provider === 'twitter');
-              userTwitterId = twitterIdentity?.id || twitterIdentity?.identity_data?.user_id;
-            }
-            if (!userTwitterId && userObj.x_id) userTwitterId = userObj.x_id;
-            let targetAccountId = task.social_username || '';
-            if (!targetAccountId) {
+            // Check if required data is available
+            if (!task.social_username) {
               toast.error('Twitter username to follow is missing. Please contact the quest creator.');
               setVerifyingTask(null);
               return;
             }
-            payload = { ...baseData, userTwitterId, targetAccountId };
-            // Debug logging
-            console.log('[Twitter Follow Debug] userObj:', userObj);
-            console.log('[Twitter Follow Debug] task:', task);
-            console.log('[Twitter Follow Debug] payload:', payload);
+            
+            // Use the new route
+            const response = await fetch('/api/verify/twitter-follow-real', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                taskId: task.id,
+                ...(walletUser ? { userWallet: walletUser.walletAddress } : {}),
+                ...(emailUser ? { userEmail: emailUser.email } : {})
+              }),
+            });
+            
+            const result = await response.json();
+            if (result.verified) {
+              setTasks(prevTasks =>
+                prevTasks.map(t =>
+                  t.id === task.id
+                    ? { ...t, user_task_submissions: { ...result.submission } }
+                    : t
+                )
+              );
+              toast.success(result.message || 'Task verified successfully!');
+            } else {
+              toast.error(result.message || 'Verification failed');
+            }
+            setVerifyingTask(null);
+            return;
           } else if (task.social_action === 'like') {
-            type = 'twitter-like'
-            let userTwitterId = null;
-            if (emailUser?.identities) {
-              const twitterIdentity = emailUser.identities.find((i: any) => i.provider === 'twitter');
-              userTwitterId = twitterIdentity?.id || twitterIdentity?.identity_data?.user_id;
+            // Check if tweet ID is available (either in social_post_id or extractable from social_url)
+            let tweetId = task.social_post_id;
+            if (!tweetId && task.social_url) {
+              tweetId = extractTweetIdFromUrl(task.social_url);
             }
-            if (!userTwitterId && userObj.x_id) userTwitterId = userObj.x_id;
-            payload = { ...baseData, userTwitterId, tweetId: task.social_post_id };
+            
+            if (!tweetId) {
+              toast.error('Tweet ID is missing. Please contact the quest creator to add the tweet URL.');
+              setVerifyingTask(null);
+              return;
+            }
+            
+            // Use the new route
+            const response = await fetch('/api/verify/twitter-follow-real', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                taskId: task.id,
+                ...(walletUser ? { userWallet: walletUser.walletAddress } : {}),
+                ...(emailUser ? { userEmail: emailUser.email } : {})
+              }),
+            });
+            
+            const result = await response.json();
+            if (result.verified) {
+              setTasks(prevTasks =>
+                prevTasks.map(t =>
+                  t.id === task.id
+                    ? { ...t, user_task_submissions: { ...result.submission } }
+                    : t
+                )
+              );
+              toast.success(result.message || 'Task verified successfully!');
+            } else {
+              toast.error(result.message || 'Verification failed');
+            }
+            setVerifyingTask(null);
+            return;
           } else if (task.social_action === 'retweet') {
-            type = 'twitter-retweet'
-            let userTwitterId = null;
-            if (emailUser?.identities) {
-              const twitterIdentity = emailUser.identities.find((i: any) => i.provider === 'twitter');
-              userTwitterId = twitterIdentity?.id || twitterIdentity?.identity_data?.user_id;
+            // Check if tweet ID is available (either in social_post_id or extractable from social_url)
+            let tweetId = task.social_post_id;
+            if (!tweetId && task.social_url) {
+              tweetId = extractTweetIdFromUrl(task.social_url);
             }
-            if (!userTwitterId && userObj.x_id) userTwitterId = userObj.x_id;
-            payload = { ...baseData, userTwitterId, tweetId: task.social_post_id };
+            
+            if (!tweetId) {
+              toast.error('Tweet ID is missing. Please contact the quest creator to add the tweet URL.');
+              setVerifyingTask(null);
+              return;
+            }
+            
+            // Use the new route
+            const response = await fetch('/api/verify/twitter-follow-real', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                taskId: task.id,
+                ...(walletUser ? { userWallet: walletUser.walletAddress } : {}),
+                ...(emailUser ? { userEmail: emailUser.email } : {})
+              }),
+            });
+            
+            const result = await response.json();
+            if (result.verified) {
+              setTasks(prevTasks =>
+                prevTasks.map(t =>
+                  t.id === task.id
+                    ? { ...t, user_task_submissions: { ...result.submission } }
+                    : t
+                )
+              );
+              toast.success(result.message || 'Task verified successfully!');
+            } else {
+              toast.error(result.message || 'Verification failed');
+            }
+            setVerifyingTask(null);
+            return;
           }
         } else if (task.social_platform === 'discord' && task.social_action === 'join') {
           type = 'discord-join'

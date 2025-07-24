@@ -9,9 +9,8 @@ import { Users } from "lucide-react"
 import ProjectCard from "@/components/ProjectCard"
 import EditProjectForm from "@/components/edit-project-form"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import PageContainer from "@/components/PageContainer";
+
 import AuthRequired from '@/components/auth-required';
-import BackgroundWrapper from "@/components/BackgroundWrapper";
 
 interface Project {
   id: string;
@@ -102,52 +101,44 @@ export default function MyProjectsPage() {
 
   if (loading) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-white text-xl">Loading your projects...</p>
-        </div>
-      </BackgroundWrapper>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-white text-xl">Loading your projects...</p>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-white text-xl">{error}</p>
-        </div>
-      </BackgroundWrapper>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-white text-xl">{error}</p>
+      </div>
     )
   }
 
   if (!currentUserId) {
     return (
-      <BackgroundWrapper>
-        <AuthRequired
-          title="Sign In Required"
-          message="Please sign in with your email or wallet to view and manage your projects."
-          onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-        />
-      </BackgroundWrapper>
+      <AuthRequired
+        title="Sign In Required"
+        message="Please sign in with your email or wallet to view and manage your projects."
+        onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+      />
     );
   }
 
   if (!myProjects.length) {
     return (
-      <BackgroundWrapper>
-        <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
-          <div className="text-center">
-            <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
-            <p className="text-gray-300 mb-6">You haven't registered any projects yet.</p>
-            <Link href="/register-project">
-              <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                Register Project
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      </BackgroundWrapper>
+      <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
+        <div className="text-center">
+          <Users className="w-16 h-16 mx-auto text-blue-400 mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-4">No Projects Found</h2>
+          <p className="text-gray-300 mb-6">You haven't registered any projects yet.</p>
+          <Link href="/register-project">
+            <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+              Register Project
+            </Button>
+          </Link>
+        </div>
+      </Card>
     )
   }
 
@@ -164,8 +155,7 @@ export default function MyProjectsPage() {
   };
 
   return (
-    <BackgroundWrapper>
-      <PageContainer>
+    <>
         <h1 className="text-4xl font-bold text-white mb-8">My Projects</h1>
         {myProjects.length === 0 ? (
           <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm p-8 max-w-md mx-auto">
@@ -215,8 +205,7 @@ export default function MyProjectsPage() {
             {editingProject && <EditProjectForm project={editingProject} onSave={() => setEditingProject(null)} />}
           </DialogContent>
         </Dialog>
-      </PageContainer>
-    </BackgroundWrapper>
+    </>
   )
 }
 

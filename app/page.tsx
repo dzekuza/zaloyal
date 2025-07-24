@@ -106,17 +106,17 @@ export default async function ProjectDiscovery() {
         <header className="relative overflow-hidden">
           {/* ... header content here if any ... */}
         </header>
-        {/* Main content with padding */}
-        <PageContainer className="px-4 py-8">
-          <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
-        </PageContainer>
+        {/* Main content */}
+        <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
       </>
     )
   } catch (error) {
     console.error("Error fetching projects:", error);
-    return <PageContainer>
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900"><p className="text-white text-xl">Error loading projects.</p></div>
-    </PageContainer>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+        <p className="text-white text-xl">Error loading projects.</p>
+      </div>
+    )
   }
 }
 

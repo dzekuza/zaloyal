@@ -24,7 +24,7 @@ export const useTwitterLink = () => {
   
   const { toast } = useToast();
 
-  const linkTwitter = useCallback(async (username?: string) => {
+  const linkTwitter = useCallback(async () => {
     setState(prev => ({ ...prev, isLinking: true, error: null }));
     
     try {
@@ -34,52 +34,33 @@ export const useTwitterLink = () => {
         throw new Error('You must be logged in to link your X (Twitter) account.');
       }
 
-      // If no username provided, prompt the user
-      if (!username) {
-        const inputUsername = prompt('Please enter your X (Twitter) username:');
-        if (!inputUsername) {
-          setState(prev => ({ ...prev, isLinking: false }));
-          return { success: false };
-        }
-        username = inputUsername;
-      }
-
-      // Clean the username
-      const cleanUsername = username.replace(/^@/, '');
-
-      // Call our API to link the X account
-      const response = await fetch('/api/auth/twitter/link', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Use Supabase's built-in Twitter OAuth provider with redirect
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'twitter',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+          queryParams: {
+            // Request additional scopes for Twitter API access
+            scope: 'tweet.read users.read follows.read like.read offline.access',
+          },
         },
-        body: JSON.stringify({ username: cleanUsername }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to link X account');
+      if (error) {
+        console.error('Twitter OAuth error:', error);
+        throw new Error(error.message || 'Failed to initiate X OAuth');
       }
 
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to link X account');
+      if (data?.url) {
+        // Redirect to Twitter OAuth
+        window.location.href = data.url;
+        return { success: true };
+      } else {
+        throw new Error('No OAuth URL received from Supabase');
       }
-
-      // Update the user's identities in the UI
-      await supabase.auth.getSession();
-      
-      setState(prev => ({ ...prev, isLinking: false, error: null }));
-      toast({
-        title: "Success!",
-        description: `X account @${result.user.username} linked successfully!`,
-      });
-      
-      return { success: true, identity: result.identity };
 
     } catch (error) {
-      console.error('Twitter link error:', error);
+      console.error('Twitter OAuth error:', error);
       setState(prev => ({ 
         ...prev, 
         isLinking: false, 
@@ -169,7 +150,20 @@ export const useTwitterLink = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
-      // Get user profile to check for linked X account
+      // Check for Twitter identity in Supabase Auth
+      const { data: { identities } } = await supabase.auth.getUserIdentities();
+      const twitterIdentity = identities?.find(identity => identity.provider === 'twitter');
+      
+      if (twitterIdentity) {
+        return {
+          id: twitterIdentity.identity_id,
+          user_name: twitterIdentity.identity_data?.user_name || twitterIdentity.identity_data?.screen_name,
+          avatar_url: twitterIdentity.identity_data?.avatar_url,
+          profile_url: twitterIdentity.identity_data?.user_name ? `https://x.com/${twitterIdentity.identity_data.user_name}` : undefined,
+        };
+      }
+
+      // Fallback: Check user profile for linked X account
       const { data: profile, error } = await supabase
         .from('users')
         .select('x_id, x_username, x_avatar_url')

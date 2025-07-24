@@ -31,11 +31,11 @@ export async function POST(request: NextRequest) {
     const cleanUsername = username.replace(/^@/, '');
 
     // Get Twitter API credentials
-    const twitterBearerToken = process.env.TWITTER_BEARER_TOKEN;
+    const twitterBearerToken = process.env.TWITTER_BEARER;
     
     if (!twitterBearerToken) {
       return NextResponse.json(
-        { error: 'Twitter API not configured' },
+        { error: 'Twitter API not configured. Please set TWITTER_BEARER environment variable.' },
         { status: 500 }
       );
     }
@@ -96,34 +96,16 @@ export async function POST(request: NextRequest) {
     };
 
     // Update user profile with Twitter data
-    try {
-      // Try RPC function first
-      const { error: rpcError } = await supabase.rpc('update_user_twitter_profile', {
-        user_id: user.id,
-        twitter_id: twitterUser.id,
-        twitter_username: twitterUser.username,
-        twitter_avatar_url: profileImageUrl || null
-      });
+    // Try RPC function first
+    const { error: rpcError } = await supabase.rpc('update_user_twitter_profile', {
+      user_id: user.id,
+      twitter_id: twitterUser.id,
+      twitter_username: twitterUser.username,
+      twitter_avatar_url: profileImageUrl || null
+    });
 
-      if (rpcError) {
-        console.warn('RPC function not available, using direct update');
-        // Fallback to direct table update
-        const { error: updateError } = await supabase.from('users').update({
-          x_id: twitterUser.id,
-          x_username: twitterUser.username,
-          x_avatar_url: profileImageUrl,
-        }).eq('id', user.id);
-
-        if (updateError) {
-          console.error('Profile update error:', updateError);
-          return NextResponse.json(
-            { error: 'Failed to update user profile' },
-            { status: 500 }
-          );
-        }
-      }
-    } catch (err) {
-      console.warn('Database function not available, using direct update');
+    if (rpcError) {
+      console.warn('RPC function not available, using direct update');
       // Fallback to direct table update
       const { error: updateError } = await supabase.from('users').update({
         x_id: twitterUser.id,
