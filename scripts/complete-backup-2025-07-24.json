@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-07-24T00:39:37.574Z",
+  "migrationFiles": [
+    "01-create-tables.sql",
+    "02-create-policies-fixed.sql",
+    "03-create-storage-bucket.sql",
+    "04-seed-data.sql",
+    "05-create-functions.sql",
+    "06-fix-storage-bucket.sql",
+    "07-update-existing-data.sql",
+    "08-fix-rls-policies.sql",
+    "09-add-projects-and-auth.sql",
+    "10-lowercase-wallet-addresses.sql",
+    "11-add-twitter-to-users.sql",
+    "11-add-missing-task-fields.sql",
+    "12-create-telegram-verifications.sql",
+    "12-fix-project-ownership.sql",
+    "13-add-response-management-columns.sql",
+    "14-create-task-verifications.sql",
+    "15-twitter-identity-functions.sql",
+    "16-add-x-columns-to-users.sql",
+    "17-add-twitter-url-to-projects.sql"
+  ],
+  "summary": {
+    "tableCount": 13,
+    "policyCount": 57,
+    "functionCount": 8,
+    "migrationFileCount": 19
+  },
+  "description": "Complete database backup created from existing migration files"
+}

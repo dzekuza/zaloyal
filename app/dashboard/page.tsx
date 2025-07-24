@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import DashboardClient from "@/components/DashboardClient";
 import AuthRequired from "@/components/auth-required";
+import PageContainer from "@/components/PageContainer";
 
 export default function DashboardPage() {
   // Fix useState types
@@ -67,12 +68,14 @@ export default function DashboardPage() {
     );
   }
   return (
-    <DashboardClient
-      profile={profile}
-      activeQuests={activeQuests}
-      completedQuests={completedQuests}
-      badges={badges}
-      achievements={achievements}
-    />
+    <PageContainer>
+      <DashboardClient
+        profile={profile}
+        activeQuests={activeQuests}
+        completedQuests={completedQuests}
+        badges={badges}
+        achievements={achievements}
+      />
+    </PageContainer>
   );
 }

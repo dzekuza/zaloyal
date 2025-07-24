@@ -1,0 +1,16 @@
+Database Data Summary - 2025-07-24T00:40:11.399Z
+================================================
+
+Total Tables: 10
+Total Rows: 10
+
+users: 4 rows
+projects: 2 rows
+quests: 1 rows
+tasks: 3 rows
+user_task_submissions: 0 rows
+user_quest_progress: 0 rows
+user_badges: 0 rows
+telegram_verifications: 0 rows
+discord_verifications: ERROR - relation "public.discord_verifications" does not exist
+twitter_verifications: ERROR - relation "public.twitter_verifications" does not exist

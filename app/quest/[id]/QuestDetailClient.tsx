@@ -44,6 +44,7 @@ import { toast } from "sonner"
 import TaskList from '@/components/quest-detail/TaskList';
 import type { Task } from '@/components/quest-detail/types';
 import { extractTweetIdFromUrl } from "@/lib/twitter-utils"
+import PageContainer from "@/components/PageContainer";
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
@@ -800,7 +801,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   console.log('Full quest object:', JSON.stringify(quest, null, 2))
 
   return (
-    <div className="min-h-screen bg-[#181818] w-full px-4 py-8">
+    <PageContainer>
       {/* Back Button */}
       <Link href={quest.project_id ? `/project/${quest.project_id}` : "/"} className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors">
         <ArrowLeft className="w-4 h-4" />
@@ -1383,6 +1384,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 } 
