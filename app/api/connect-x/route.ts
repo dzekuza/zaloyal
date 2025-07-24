@@ -53,12 +53,8 @@ export async function GET(request: NextRequest) {
     authUrl.searchParams.set('code_challenge', codeChallenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
 
-    return NextResponse.json({ 
-      authUrl: authUrl.toString(),
-      state,
-      codeVerifier 
-    });
-
+    // Redirect the user to X for authentication
+    return NextResponse.redirect(authUrl.toString());
   } catch (error) {
     console.error('OAuth initialization error:', error);
     return NextResponse.json({ error: 'Failed to initialize OAuth flow' }, { status: 500 });

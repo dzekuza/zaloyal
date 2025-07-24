@@ -294,19 +294,17 @@ export default function CreateQuest() {
   const saveTask = () => {
     // Auto-extract tweet ID and username from URLs for Twitter tasks
     let taskToSave = { ...currentTask };
-    
     if (currentTask.type === "social" && currentTask.socialPlatform === "twitter") {
       if (currentTask.socialUrl) {
         // Extract tweet ID for like/retweet actions
-        if ((currentTask.socialAction === "like" || currentTask.socialAction === "retweet") && !currentTask.socialPostId) {
+        if ((currentTask.socialAction === "like" || currentTask.socialAction === "retweet")) {
           const tweetId = extractTweetIdFromUrl(currentTask.socialUrl);
           if (tweetId) {
             taskToSave.socialPostId = tweetId;
           }
         }
-        
         // Extract username for follow actions
-        if (currentTask.socialAction === "follow" && !currentTask.socialUsername) {
+        if (currentTask.socialAction === "follow") {
           const username = extractUsernameFromUrl(currentTask.socialUrl);
           if (username) {
             taskToSave.socialUsername = username;
@@ -314,20 +312,16 @@ export default function CreateQuest() {
         }
       }
     }
-
     const newTasks = [...questForm.tasks]
-
     if (editingTaskIndex !== null) {
       newTasks[editingTaskIndex] = taskToSave
     } else {
       newTasks.push({ ...taskToSave, id: Date.now().toString() })
     }
-
     setQuestForm((prev) => ({
       ...prev,
       tasks: newTasks,
     }))
-
     setShowTaskDialog(false)
     setEditingTaskIndex(null)
   };
