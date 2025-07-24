@@ -152,10 +152,15 @@ export async function POST(request: NextRequest) {
         onConflict: 'user_id,platform'
       });
 
-    if (insertError) {
-      console.error('Error storing social account:', insertError);
-      return NextResponse.json({ error: 'Failed to store account information' }, { status: 500 });
-    }
+    // Always upsert users table with new X data
+    await supabase
+      .from('users')
+      .upsert({
+        id: user.id,
+        x_id: xUser.id,
+        x_username: xUser.username,
+        x_avatar_url: xUser.profile_image_url || null,
+      }, { onConflict: 'id' });
 
     // Clean up OAuth state
     await supabase.rpc('clear_oauth_state', {
