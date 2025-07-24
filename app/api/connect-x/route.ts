@@ -8,6 +8,9 @@ export async function GET(request: NextRequest) {
   const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET;
   const X_REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL + '/api/connect-x/callback';
 
+  // Debug log
+  console.log('[X OAuth] GET handler X_REDIRECT_URI:', X_REDIRECT_URI);
+
   // Check if credentials are available
   if (!X_CLIENT_ID || !X_CLIENT_SECRET) {
     return NextResponse.json({ 
@@ -65,6 +68,9 @@ export async function POST(request: NextRequest) {
   const X_CLIENT_ID = process.env.X_CLIENT_ID;
   const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET;
   const X_REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL + '/api/connect-x/callback';
+
+  // Debug log
+  console.log('[X OAuth] POST handler X_REDIRECT_URI:', X_REDIRECT_URI);
 
   // Check if credentials are available
   if (!X_CLIENT_ID || !X_CLIENT_SECRET) {
