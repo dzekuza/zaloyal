@@ -21,11 +21,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from "@/components/ui/use-toast";
 import { useTwitterLink } from "@/hooks/use-twitter-link";
 
-// react-icons currently returns `ReactNode`, which is incompatible with React 19's
-// stricter JSX.Element return type expectations. Cast the icon components to
-// a compatible functional component signature.
-const DiscordIcon: React.FC<React.SVGProps<SVGSVGElement>> = SiDiscord as unknown as React.FC<React.SVGProps<SVGSVGElement>>
-const XIcon: React.FC<React.SVGProps<SVGSVGElement>> = SiX as unknown as React.FC<React.SVGProps<SVGSVGElement>>
+// React icons with proper typing for React 19
+const DiscordIcon = SiDiscord as any
+const XIcon = SiX as any
 
 export default function ProfilePage() {
   const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
@@ -637,9 +635,9 @@ export default function ProfilePage() {
                   {/* Discord */}
                   <div className="p-4 bg-[#181818] rounded-lg border border-[#282828]">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <DiscordIcon className="w-6 h-6 text-white" />
-                        <div>
+                                              <div className="flex items-center gap-3">
+                          <DiscordIcon className="w-6 h-6 text-white" />
+                          <div>
                           <div className="text-white font-medium">Discord</div>
                           <div className="text-gray-300 text-sm">Connect your Discord account</div>
                         </div>
@@ -675,9 +673,9 @@ export default function ProfilePage() {
                   {/* X (Twitter) */}
                   <div className="p-4 bg-[#181818] rounded-lg border border-[#282828]">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <XIcon className="w-6 h-6 text-white" />
-                        <div>
+                                              <div className="flex items-center gap-3">
+                          <XIcon className="w-6 h-6 text-white" />
+                          <div>
                           <div className="text-white font-medium">X (Twitter)</div>
                           <div className="text-gray-300 text-sm">Connect your X account</div>
                         </div>
