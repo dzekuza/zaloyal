@@ -64,6 +64,67 @@ export default function ProfilePage() {
     getTwitterIdentity 
   } = useTwitterLink();
 
+  // Handle OAuth callback
+  const handleOAuthCallback = async (code: string) => {
+    try {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      
+      if (error) {
+        console.error('OAuth callback error:', error);
+        toast({
+          title: "Error",
+          description: "Failed to complete X account linking. Please try again.",
+          variant: "destructive",
+        });
+        router.replace('/profile');
+        return;
+      }
+
+      if (data.user) {
+        // Successfully authenticated
+        console.log('OAuth callback successful for user:', data.user.id);
+        
+        // Update user profile with Twitter data if available
+        if (data.user.identities) {
+          const twitterIdentity = (data.user.identities as any[]).find(
+            (identity: any) => identity.provider === 'twitter'
+          );
+          
+          if (twitterIdentity) {
+            try {
+              await supabase.from('users').update({
+                x_id: twitterIdentity.identity_data?.id_str || twitterIdentity.identity_data?.id,
+                x_username: twitterIdentity.identity_data?.screen_name || twitterIdentity.identity_data?.user_name,
+                x_avatar_url: twitterIdentity.identity_data?.profile_image_url_https,
+              }).eq('id', data.user.id);
+              
+              console.log('Updated user profile with Twitter data');
+            } catch (updateError) {
+              console.error('Failed to update user profile:', updateError);
+            }
+          }
+        }
+        
+        toast({
+          title: "Success!",
+          description: "X account linked successfully!",
+        });
+        
+        // Refresh user data and clear URL parameters
+        updateEmailUserWithIdentities();
+        router.replace('/profile');
+      }
+    } catch (error) {
+      console.error('OAuth callback error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete X account linking. Please try again.",
+        variant: "destructive",
+      });
+      router.replace('/profile');
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSupabaseUser(data?.user))
   }, [])
@@ -72,8 +133,12 @@ export default function ProfilePage() {
   useEffect(() => {
     const successParam = searchParams.get('success');
     const errorParam = searchParams.get('error');
+    const code = searchParams.get('code');
     
-    if (successParam === 'twitter_linked') {
+    // Handle OAuth callback with code
+    if (code) {
+      handleOAuthCallback(code);
+    } else if (successParam === 'twitter_linked') {
       toast({
         title: "Success!",
         description: "X account linked successfully!",

@@ -38,7 +38,7 @@ export const useTwitterLink = () => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'twitter',
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
+          redirectTo: `${window.location.origin}/profile`,
           queryParams: {
             // Request additional scopes for Twitter API access
             scope: 'tweet.read users.read follows.read like.read offline.access',
@@ -151,8 +151,9 @@ export const useTwitterLink = () => {
       if (!user) return null;
 
       // Check for Twitter identity in Supabase Auth
-      const { data: { identities } } = await supabase.auth.getUserIdentities();
-      const twitterIdentity = identities?.find(identity => identity.provider === 'twitter');
+      const { data: identitiesData } = await supabase.auth.getUserIdentities();
+      const identities = identitiesData?.identities || [];
+      const twitterIdentity = identities.find((identity: any) => identity.provider === 'twitter');
       
       if (twitterIdentity) {
         return {
