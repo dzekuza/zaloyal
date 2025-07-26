@@ -38,7 +38,7 @@ interface Quest {
   task_count?: number;
   participants?: number;
   time_limit_days?: number;
-  image_url?: string | null;
+  // Removed image_url as it doesn't exist in the database
 }
 
 // Cache the database queries
@@ -56,7 +56,7 @@ const getProject = cache(async (projectId: string) => {
 const getQuests = cache(async (projectId: string) => {
   const { data: quests, error } = await supabase
     .from("quests")
-    .select('id, project_id, title, description, total_xp, status, created_at, time_limit_days, image_url')
+    .select('id, project_id, title, description, total_xp, status, created_at, time_limit_days')
     .eq("project_id", projectId)
   
   if (error) throw error

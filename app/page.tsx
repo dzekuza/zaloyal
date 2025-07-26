@@ -25,44 +25,64 @@ interface Project {
   xpToCollect?: number;
 }
 
-// Cache the database queries
+// Cache the database queries with cache busting
 const getProjects = cache(async () => {
+  console.log("🔍 Fetching projects from database...");
   const { data: projects, error } = await supabase
     .from("projects")
     .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured, total_participants')
     .eq("status", "approved")
     .order("created_at", { ascending: false })
   
-  if (error) throw error
-  return projects
+  if (error) {
+    console.error("❌ Error fetching projects:", error);
+    throw error;
+  }
+  
+  console.log(`✅ Found ${projects?.length || 0} approved projects`);
+  return projects;
 })
 
 const getQuests = cache(async (projectIds: string[]) => {
-  if (projectIds.length === 0) return {}
+  if (projectIds.length === 0) {
+    console.log("📋 No project IDs provided for quests query");
+    return {};
+  }
   
+  console.log(`🔍 Fetching quests for ${projectIds.length} projects...`);
   const { data: quests, error } = await supabase
     .from("quests")
     .select("id, project_id, total_xp")
     .in("project_id", projectIds)
     .eq("status", "active")
   
-  if (error) throw error
+  if (error) {
+    console.error("❌ Error fetching quests:", error);
+    throw error;
+  }
   
-  return (quests || []).reduce((acc, q) => {
+  console.log(`✅ Found ${quests?.length || 0} active quests`);
+  
+  const result = (quests || []).reduce((acc, q) => {
     acc[q.project_id] = acc[q.project_id] || []
     acc[q.project_id].push(q)
     return acc
-  }, {} as Record<string, { total_xp: number }[]>)
+  }, {})
+  
+  return result;
 })
 
 // Server component
 export default async function ProjectDiscovery() {
   try {
+    console.log("🚀 Starting ProjectDiscovery component...");
+    
     // Fetch projects with basic info
     const projects = await getProjects()
 
     // Fetch quests for all projects in one query
     const projectIds = (projects || []).map(p => p.id)
+    console.log(`📋 Project IDs for quests query:`, projectIds);
     const questsByProject = await getQuests(projectIds)
 
     // Process the data to calculate stats
@@ -70,7 +90,7 @@ export default async function ProjectDiscovery() {
       const quests = questsByProject[project.id] || []
       const xpToCollect = quests.reduce((sum: number, q: { total_xp: number }) => sum + (q.total_xp || 0), 0)
 
-      return {
+      const processedProject = {
         id: project.id,
         owner_id: project.owner_id,
         name: project.name,
@@ -83,9 +103,12 @@ export default async function ProjectDiscovery() {
         xpToCollect,
         quest_count: quests.length,
       }
+      
+      console.log(`📊 Processed project: ${processedProject.name} (${quests.length} quests, ${xpToCollect} XP)`);
+      return processedProject;
     })
 
-    console.log("projectsWithStats:", processedProjects)
+    console.log("📋 Final processed projects:", processedProjects);
 
     const categories = [
       "DeFi",
@@ -111,7 +134,7 @@ export default async function ProjectDiscovery() {
       </>
     )
   } catch (error) {
-    console.error("Error fetching projects:", error);
+    console.error("❌ Error in ProjectDiscovery:", error);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
         <p className="text-white text-xl">Error loading projects.</p>

@@ -3,7 +3,7 @@ export type Task = {
   quest_id?: string;
   title: string;
   description?: string | null;
-  task_type: string;
+  type: string; // Changed from task_type to type
   social_platform?: string | null;
   social_action?: string | null;
   social_url?: string | null;

@@ -10,18 +10,46 @@ export default async function QuestDetail({
   searchParams?: Promise<any>
 }) {
   const { id: questId } = await params
+  
   // Fetch quest and related data
-  const { data: quest } = await supabase
+  const { data: quest, error: questError } = await supabase
     .from("quests")
-    .select(`*, quest_categories(*), users(*), projects(owner_id)`)
+    .select(`*, projects(owner_id)`)
     .eq("id", questId)
     .single()
+  
+  // Handle quest not found
+  if (questError || !quest) {
+    console.error("Quest not found or error:", questError)
+    return (
+      <BackgroundWrapper>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-white mb-4">Quest Not Found</h1>
+            <p className="text-gray-300 mb-6">The quest you're looking for doesn't exist or has been removed.</p>
+            <a 
+              href="/" 
+              className="inline-block bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              Go Back Home
+            </a>
+          </div>
+        </div>
+      </BackgroundWrapper>
+    )
+  }
+  
   // Fetch tasks for the quest
-  const { data: tasks } = await supabase
+  const { data: tasks, error: tasksError } = await supabase
     .from("tasks")
     .select("*")
     .eq("quest_id", questId)
     .order("order_index")
+  
+  if (tasksError) {
+    console.error("Error fetching tasks:", tasksError)
+  }
+  
   // Do NOT fetch user on the server; let the client handle user/session
   return (
     <BackgroundWrapper>

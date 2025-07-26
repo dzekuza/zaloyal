@@ -19,7 +19,7 @@ interface EditQuestFormProps {
 export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
   const [title, setTitle] = useState(quest.title || "")
   const [description, setDescription] = useState(quest.description || "")
-  const [imageUrl, setImageUrl] = useState(quest.image_url || "")
+  // Removed imageUrl state as it's not supported in the database
   const [totalXp, setTotalXp] = useState(quest.total_xp || 0)
   const [status, setStatus] = useState(quest.status || "active")
   const [saving, setSaving] = useState(false)
@@ -58,11 +58,20 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
     setSuccess("")
     
     try {
+      // Debug: Log the quest object
+      console.log("Debug: Quest object:", quest)
+      console.log("Debug: Quest project_id:", quest.project_id)
+      
+      // Debug: Check authentication state
+      console.log("Debug: Wallet user:", walletUser)
+      console.log("Debug: Email user:", emailUser)
+      
       // Get current user ID with better error handling
       let userId = null
       let userError = null
       
       if (walletUser) {
+        console.log("Debug: Using wallet authentication")
         // Try wallet lookup first
         const { data: userData, error: walletError } = await supabase
           .from("users")
@@ -72,7 +81,9 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
         
         if (userData && !walletError) {
           userId = userData.id
+          console.log("Debug: Found user by wallet:", userId)
         } else {
+          console.log("Debug: Wallet user not found, trying to create")
           // If wallet user not found, try to create them
           try {
             const response = await fetch("/api/users/upsert", {
@@ -87,8 +98,10 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
             if (response.ok) {
               const { user } = await response.json()
               userId = user.id
+              console.log("Debug: Created user by wallet:", userId)
             } else {
               const errorData = await response.json()
+              console.log("Debug: Failed to create wallet user:", errorData)
               // If creation fails, try email lookup as fallback
               if (emailUser?.email) {
                 const { data: emailUserData, error: emailError } = await supabase
@@ -99,6 +112,7 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
                 
                 if (emailUserData && !emailError) {
                   userId = emailUserData.id
+                  console.log("Debug: Found user by email fallback:", userId)
                 } else {
                   userError = `User not found and could not be created. Wallet: ${walletError?.message}, Create: ${errorData.error}, Email: ${emailError?.message}`
                 }
@@ -111,10 +125,13 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
           }
         }
       } else if (emailUser?.profile) {
+        console.log("Debug: Using email authentication")
         // Email user - use profile ID directly
         userId = emailUser.profile.id
+        console.log("Debug: Found user by email profile:", userId)
       } else {
         userError = "No authenticated user found"
+        console.log("Debug: No authenticated user found")
       }
 
       if (!userId) {
@@ -126,18 +143,59 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
         throw new Error(userError || "User not found. Please sign in again.")
       }
 
+      console.log("Debug: User ID:", userId)
+
+      // Check if user owns the project for this quest
+      if (quest.id !== 'new') {
+        console.log("Debug: Checking project ownership for existing quest")
+        const { data: projectData, error: projectError } = await supabase
+          .from("projects")
+          .select("owner_id")
+          .eq("id", quest.project_id)
+          .single()
+        
+        console.log("Debug: Project data:", projectData)
+        console.log("Debug: Project error:", projectError)
+        
+        if (projectError || !projectData) {
+          throw new Error("Project not found or access denied")
+        }
+        
+        if (projectData.owner_id !== userId) {
+          throw new Error("You don't have permission to edit this quest")
+        }
+      }
+
       if (quest.id === 'new') {
+        // Create new quest - need to ensure user owns the project
+        if (!quest.project_id) {
+          throw new Error("Project ID is required to create a quest")
+        }
+        
+        // Verify user owns the project
+        const { data: projectData, error: projectError } = await supabase
+          .from("projects")
+          .select("owner_id")
+          .eq("id", quest.project_id)
+          .single()
+        
+        if (projectError || !projectData) {
+          throw new Error("Project not found or access denied")
+        }
+        
+        if (projectData.owner_id !== userId) {
+          throw new Error("You don't have permission to create quests for this project")
+        }
+
         // Create new quest
         const { data: newQuest, error: insertError } = await supabase
           .from("quests")
           .insert({
             title: title.trim(),
             description: description.trim(),
-            image_url: imageUrl,
+            project_id: quest.project_id,
             total_xp: totalXp,
             status,
-            creator_id: userId,
-            project_id: quest.project_id,
           })
           .select()
           .single()
@@ -152,7 +210,6 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
           .update({
             title: title.trim(),
             description: description.trim(),
-            image_url: imageUrl,
             total_xp: totalXp,
             status,
           })
@@ -166,7 +223,38 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
       if (onSave) onSave()
     } catch (e: any) {
       console.error("Quest save error:", e)
-      setError(e.message || "Failed to save quest")
+      console.error("Quest save error details:", {
+        message: e.message,
+        code: e.code,
+        details: e.details,
+        hint: e.hint,
+        status: e.status,
+        statusText: e.statusText
+      })
+      
+      // Better error message handling
+      let errorMessage = "Failed to save quest"
+      
+      if (e.message) {
+        errorMessage = e.message
+      } else if (e.details) {
+        errorMessage = e.details
+      } else if (e.hint) {
+        errorMessage = e.hint
+      } else if (e.statusText) {
+        errorMessage = e.statusText
+      }
+      
+      // Handle specific RLS errors
+      if (errorMessage.includes("row-level security policy")) {
+        errorMessage = "You don't have permission to perform this action. Please make sure you're logged in and own this project."
+      } else if (errorMessage.includes("not found")) {
+        errorMessage = "Project or quest not found. Please refresh the page and try again."
+      } else if (errorMessage.includes("authentication")) {
+        errorMessage = "Authentication required. Please log in and try again."
+      }
+      
+      setError(errorMessage)
     } finally {
       setSaving(false)
     }
@@ -235,17 +323,7 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
             placeholder="Describe the quest"
           />
         </div>
-        <div className="space-y-2 flex flex-col items-start">
-          <label className="text-white block mb-1 font-medium">Quest Image</label>
-          <ImageUpload
-            onImageUploaded={setImageUrl}
-            onImageRemoved={() => setImageUrl("")}
-            currentImage={imageUrl}
-            questId={quest.id === 'new' ? 'temp' : quest.id}
-            className="w-full"
-            label="Upload Quest Cover Image"
-          />
-        </div>
+        {/* Removed quest image upload section as it's not supported in the database */}
         <div className="space-y-2">
           <label className="text-white block mb-1 font-medium">Total XP</label>
           <Input 

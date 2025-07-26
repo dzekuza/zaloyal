@@ -80,8 +80,6 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  /* Add standard property for compatibility */
-  line-clamp: 2;
 }
 
 /* Custom scrollbar for dialog modals */

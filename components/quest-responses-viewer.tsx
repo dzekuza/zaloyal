@@ -33,6 +33,7 @@ import {
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/lib/supabase"
 import { Textarea } from "@/components/ui/textarea"
+import type { Task } from '@/components/quest-detail/types';
 
 type UserTaskSubmission = Database["public"]["Tables"]["user_task_submissions"]["Row"] & {
   users: Database["public"]["Tables"]["users"]["Row"] | null
@@ -40,15 +41,11 @@ type UserTaskSubmission = Database["public"]["Tables"]["user_task_submissions"][
 }
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
-  quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
-  users: Database["public"]["Tables"]["users"]["Row"] | null
   project_id?: string | null
   projects?: {
     owner_id: string
   } | null
 }
-
-type Task = Database["public"]["Tables"]["tasks"]["Row"]
 
 interface QuestResponsesViewerProps {
   quest: Quest

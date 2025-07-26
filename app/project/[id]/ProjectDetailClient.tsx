@@ -55,7 +55,7 @@ interface Quest {
   task_count?: number;
   participants?: number;
   time_limit_days?: number;
-  image_url?: string | null;
+  // Removed image_url as it doesn't exist in the database
 }
 
 function isQuestCompleted(quest: Quest) {

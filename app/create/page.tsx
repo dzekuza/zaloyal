@@ -79,8 +79,8 @@ interface TaskForm {
 interface QuestForm {
   title: string
   description: string
-  categoryId: string
-  imageUrl: string
+  // Removed categoryId as it's not supported in the database
+  // Removed imageUrl as it doesn't exist in the database
   featured: boolean
   timeLimit: string
   tasks: TaskForm[]
@@ -93,8 +93,8 @@ export default function CreateQuest() {
   const [questForm, setQuestForm] = useState<QuestForm>({
     title: "",
     description: "",
-    categoryId: "",
-    imageUrl: "",
+    // Removed categoryId as it's not supported in the database
+    // Removed imageUrl as it doesn't exist in the database
     featured: false,
     timeLimit: "",
     tasks: [],
@@ -325,6 +325,24 @@ export default function CreateQuest() {
       return { isValid: true, error: null };
     };
 
+    // Auto-set social URL for follow tasks if not already set
+    let taskToSave = { ...currentTask };
+    if (currentTask.type === "social" && currentTask.socialPlatform === "twitter" && currentTask.socialAction === "follow") {
+      // Check if project has linked Twitter account
+      const hasProjectSocial = (platform: string) => {
+        if (!selectedProject) return false;
+        if (platform === 'twitter') return !!selectedProject.twitter_url;
+        return false;
+      };
+
+      if (!currentTask.socialUrl && hasProjectSocial('twitter')) {
+        const username = getProjectOwnerSocialUsername('twitter');
+        if (username) {
+          taskToSave.socialUrl = `https://twitter.com/${username}`;
+        }
+      }
+    }
+
     // Validate tweet URL for like/retweet tasks
     if (currentTask.type === "social" && currentTask.socialPlatform === "twitter" && 
         (currentTask.socialAction === "like" || currentTask.socialAction === "retweet")) {
@@ -336,7 +354,6 @@ export default function CreateQuest() {
     }
 
     // Auto-extract tweet ID and username from URLs for Twitter tasks
-    let taskToSave = { ...currentTask };
     if (currentTask.type === "social" && currentTask.socialPlatform === "twitter") {
       if (currentTask.socialUrl) {
         // Extract tweet ID for like/retweet actions
@@ -447,9 +464,8 @@ export default function CreateQuest() {
           title: questForm.title,
           description: questForm.description,
           project_id: selectedProjectId,
-          creator_id: userId,
-          category_id: questForm.categoryId || null,
-          image_url: questForm.imageUrl || null,
+          // Removed creator_id and category_id as they don't exist in the database
+          // Removed image_url as it doesn't exist in the database
           total_xp: totalXP,
           status: "active",
           featured: questForm.featured,
@@ -494,8 +510,8 @@ export default function CreateQuest() {
       setQuestForm({
         title: "",
         description: "",
-        categoryId: "",
-        imageUrl: "",
+        // Removed categoryId as it's not supported in the database
+        // Removed imageUrl as it doesn't exist in the database
         featured: false,
         timeLimit: "",
         tasks: [],
@@ -640,6 +656,14 @@ export default function CreateQuest() {
                     const url = e.target.value;
                     setCurrentTask((prev) => ({ ...prev, socialUrl: url }));
                     
+                    // Auto-extract tweet ID for like/retweet tasks
+                    if (currentTask.socialPlatform === 'twitter' && (currentTask.socialAction === 'like' || currentTask.socialAction === 'retweet')) {
+                      const tweetId = extractTweetIdFromUrl(url);
+                      if (tweetId) {
+                        setCurrentTask((prev) => ({ ...prev, socialPostId: tweetId }));
+                      }
+                    }
+                    
                     // Validate tweet URL for like/retweet tasks
                     if (currentTask.socialPlatform === 'twitter' && (currentTask.socialAction === 'like' || currentTask.socialAction === 'retweet')) {
                       const validation = validateTweetUrl(url);
@@ -660,6 +684,31 @@ export default function CreateQuest() {
                   <p className="text-xs text-gray-400 mt-1">
                     Paste the full tweet URL - must be from project owner's linked account
                   </p>
+                )}
+                
+                {/* Show extracted tweet ID for like/retweet tasks */}
+                {(currentTask.socialAction === "like" || currentTask.socialAction === "retweet") && currentTask.socialPostId && (
+                  <div className="p-2 bg-green-500/20 border border-green-500/30 rounded-lg mt-2">
+                    <p className="text-green-400 text-xs">
+                      ✅ Tweet ID extracted: {currentTask.socialPostId}
+                    </p>
+                  </div>
+                )}
+
+                {/* Manual tweet ID input for like/retweet tasks */}
+                {(currentTask.socialAction === "like" || currentTask.socialAction === "retweet") && (
+                  <div>
+                    <Label className="text-white">Tweet ID (Optional)</Label>
+                    <Input
+                      value={currentTask.socialPostId || ""}
+                      onChange={(e) => setCurrentTask((prev) => ({ ...prev, socialPostId: e.target.value }))}
+                      placeholder="Will be extracted from URL above"
+                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Leave empty to extract from the URL above, or enter manually
+                    </p>
+                  </div>
                 )}
               </div>
             )}
@@ -822,6 +871,16 @@ export default function CreateQuest() {
     }
   };
 
+  // Auto-set social URL when platform and action change
+  useEffect(() => {
+    if (currentTask.type === 'social' && currentTask.socialPlatform === 'twitter' && currentTask.socialAction === 'follow') {
+      const selectedProject = userProjects.find((p) => p.id === selectedProjectId);
+      if (selectedProject && selectedProject.x_username && !currentTask.socialUrl) {
+        setCurrentTask(prev => ({ ...prev, socialUrl: `https://twitter.com/${selectedProject.x_username}` }));
+      }
+    }
+  }, [currentTask.socialPlatform, currentTask.socialAction, selectedProjectId, userProjects]);
+
   if (!walletUser && !emailUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
@@ -924,50 +983,17 @@ export default function CreateQuest() {
                     Description
                   </Label>
                   <Textarea
-                    id="description"
-                    value={questForm.description || ""}
+                    value={questForm.description}
                     onChange={(e) => setQuestForm((prev) => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe your quest..."
-                    rows={4}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                    placeholder="Describe what participants need to do..."
+                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 min-h-[100px]"
                   />
                 </div>
 
-                <div>
-                  <Label className="text-white">Quest Image</Label>
-                  <ImageUpload
-                    onImageUploaded={(url) => setQuestForm((prev) => ({ ...prev, imageUrl: url }))}
-                    onImageRemoved={() => setQuestForm((prev) => ({ ...prev, imageUrl: "" }))}
-                    currentImage={questForm.imageUrl}
-                    uploadType="quest"
-                    entityId={selectedProjectId || undefined}
-                    className="mt-2"
-                    height="h-48"
-                  />
-                </div>
+                {/* Removed quest image upload section as it's not supported in the database */}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="category" className="text-white">
-                      Category
-                    </Label>
-                    <Select
-                      value={questForm.categoryId}
-                      onValueChange={(value) => setQuestForm((prev) => ({ ...prev, categoryId: value }))}
-                    >
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
-                        {questCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.id} className="text-white hover:bg-[#06351f]">
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
+                  {/* Removed category selection as it's not supported in the database */}
                   <div>
                     <Label htmlFor="timeLimit" className="text-white">
                       Time Limit (days)
@@ -1080,15 +1106,8 @@ export default function CreateQuest() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="aspect-video bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center overflow-hidden">
-                  {questForm.imageUrl ? (
-                    <img
-                      src={questForm.imageUrl || "/placeholder.svg"}
-                      alt="Quest preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <ImageIcon className="w-12 h-12 text-gray-400" />
-                  )}
+                  {/* Removed quest image preview */}
+                  <ImageIcon className="w-12 h-12 text-gray-400" />
                 </div>
 
                 <div>
@@ -1099,11 +1118,7 @@ export default function CreateQuest() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {questForm.categoryId && (
-                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
-                      {questCategories.find((c) => c.id === questForm.categoryId)?.name}
-                    </Badge>
-                  )}
+                  {/* Removed category badge as it's not supported in the database */}
                   {questForm.featured && (
                     <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0">
                       Featured

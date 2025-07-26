@@ -8,7 +8,9 @@
     "lint": "next lint",
     "start": "next start",
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:fast": "NODE_OPTIONS=\"--max-old-space-size=4096\" next dev --turbo",
+    "dev:optimized": "NODE_OPTIONS=\"--max-old-space-size=4096 --optimize-for-size\" next dev --turbo"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -111,7 +113,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/dzekuza/zaloyal/issues"
   },

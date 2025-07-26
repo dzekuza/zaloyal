@@ -40,7 +40,7 @@ export default function EditProjectPage() {
         setProject(data)
         setName(data.name || "")
         setDescription(data.description || "")
-        setImageUrl(data.image_url || "")
+        setImageUrl(data.logo_url || "") // Changed from image_url to logo_url
       }
       setLoading(false)
     }
@@ -65,7 +65,7 @@ export default function EditProjectPage() {
     setError(null)
     const { error } = await supabase
       .from("projects")
-      .update({ name, description, image_url: imageUrl })
+      .update({ name, description, logo_url: imageUrl }) // Changed from image_url to logo_url
       .eq("id", id)
     setSaving(false)
     if (error) {

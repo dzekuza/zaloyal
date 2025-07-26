@@ -47,12 +47,13 @@ import { extractTweetIdFromUrl } from "@/lib/twitter-utils"
 import PageContainer from "@/components/PageContainer";
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
-  quest_categories: Database["public"]["Tables"]["quest_categories"]["Row"] | null
-  users: Database["public"]["Tables"]["users"]["Row"] | null
   project_id?: string | null
   projects?: {
     owner_id: string
   } | null
+  // Add missing properties that might be used in the component
+  creator_id?: string | null
+  participant_count?: number | null
 }
 
 // Utility: getAbsoluteUrl
@@ -110,26 +111,26 @@ function QuestPlaceholderCover({ title, categoryIcon }: { title: string; categor
 }
 
 export default function QuestDetailClient({ quest, tasks: initialTasks }: { quest: Quest, tasks: Task[] }) {
-  // --- Begin full client logic and UI ---
-  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
-  const [emailUser, setEmailUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [verifyingTask, setVerifyingTask] = useState<string | null>(null)
-  const [submissionData, setSubmissionData] = useState<{ [key: string]: any }>({})
   const [mounted, setMounted] = useState(false)
-  const [showQuiz, setShowQuiz] = useState<{ [taskId: string]: boolean }>({})
-  const [quizAnswers, setQuizAnswers] = useState<{ [taskId: string]: number[] }>({})
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [showAddTask, setShowAddTask] = useState(false)
-  const [creatingTask, setCreatingTask] = useState(false)
-  const [createTaskError, setCreateTaskError] = useState("")
-  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [showEditTask, setShowEditTask] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [creatingTask, setCreatingTask] = useState(false)
   const [updatingTask, setUpdatingTask] = useState(false)
-  const [updateTaskError, setUpdateTaskError] = useState("")
+  const [createTaskError, setCreateTaskError] = useState("")
+  const [verifyingTask, setVerifyingTask] = useState<string | null>(null)
+  const [showQuiz, setShowQuiz] = useState<Record<string, boolean>>({})
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number[]>>({})
+  const [submissionData, setSubmissionData] = useState<Record<string, any>>({})
   const [currentUserUUID, setCurrentUserUUID] = useState<string | null>(null)
-  const [showResponsesViewer, setShowResponsesViewer] = useState(false)
+  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
+  const [emailUser, setEmailUser] = useState<any>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [questCompleted, setQuestCompleted] = useState(false)
+  const [updateTaskError, setUpdateTaskError] = useState("")
+  const [showResponsesViewer, setShowResponsesViewer] = useState(false)
   const [newTask, setNewTask] = useState<any>({
     type: "",
     title: "",
@@ -148,6 +149,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     quizMultiSelect: false,
     // ... other fields as needed
   })
+
+  // Add new state for project data
+  const [projectData, setProjectData] = useState<any>(null)
+  const [projectOwner, setProjectOwner] = useState<any>(null)
+  const [projectSocialAccounts, setProjectSocialAccounts] = useState<any[]>([])
+
+  // Add new state for current user's social accounts
+  const [socialAccounts, setSocialAccounts] = useState<any[]>([])
+  const [loadingSocialAccounts, setLoadingSocialAccounts] = useState(true)
 
   useEffect(() => {
     setMounted(true)
@@ -184,6 +194,13 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     }
   }, [])
 
+  // Fetch current user's social accounts when user UUID is available
+  useEffect(() => {
+    if (currentUserUUID) {
+      fetchCurrentUserSocialAccounts()
+    }
+  }, [currentUserUUID])
+
   // Fetch current user UUID when wallet user changes
   useEffect(() => {
     const fetchUserUUID = async () => {
@@ -216,6 +233,20 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     fetchUserUUID()
   }, [walletUser])
 
+  // Auto-populate social URL when social accounts are loaded and task type is social
+  useEffect(() => {
+    if (newTask.type === 'social' && socialAccounts.length > 0 && newTask.socialPlatform) {
+      const username = getUserSocialUsername(newTask.socialPlatform);
+      if (username && newTask.socialAction === 'follow') {
+        setNewTask((t: typeof newTask) => ({ 
+          ...t, 
+          socialUrl: generateSocialUrl(newTask.socialPlatform, 'follow', username),
+          socialUsername: username
+        }));
+      }
+    }
+  }, [socialAccounts, newTask.type, newTask.socialPlatform, newTask.socialAction])
+
   // Check if quest is completed (all tasks have submissions)
   useEffect(() => {
     const checkQuestCompletion = () => {
@@ -247,6 +278,121 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       });
     }
   }, [editingTask]);
+
+  // Add function to fetch project data and social accounts
+  const fetchProjectData = async () => {
+    if (!quest.project_id) return
+
+    try {
+      // Fetch project data including owner information
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          users!projects_owner_id_fkey (
+            id,
+            x_username,
+            x_id,
+            x_avatar_url,
+            discord_username,
+            discord_id,
+            telegram_username,
+            telegram_id
+          )
+        `)
+        .eq('id', quest.project_id)
+        .single()
+
+      if (projectError) {
+        console.error('Error fetching project data:', projectError)
+        return
+      }
+
+      setProjectData(project)
+      setProjectOwner(project.users)
+
+      // Fetch project owner's social accounts
+      if (project.users?.id) {
+        const { data: socialAccounts, error: socialError } = await supabase
+          .from('social_accounts')
+          .select('*')
+          .eq('user_id', project.users.id)
+
+        if (!socialError && socialAccounts) {
+          setProjectSocialAccounts(socialAccounts)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching project data:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (mounted) {
+      fetchProjectData()
+    }
+  }, [mounted, quest.project_id])
+
+  // Fetch current user's social accounts when user UUID is available
+  useEffect(() => {
+    if (currentUserUUID) {
+      fetchCurrentUserSocialAccounts()
+    }
+  }, [currentUserUUID])
+
+  // Add function to fetch current user's social accounts
+  const fetchCurrentUserSocialAccounts = async () => {
+    if (!currentUserUUID) return
+    
+    setLoadingSocialAccounts(true)
+    try {
+      const { data: accounts, error } = await supabase
+        .from('social_accounts')
+        .select('*')
+        .eq('user_id', currentUserUUID)
+      
+      if (!error && accounts) {
+        setSocialAccounts(accounts)
+      }
+    } catch (error) {
+      console.error('Error fetching social accounts:', error)
+    } finally {
+      setLoadingSocialAccounts(false)
+    }
+  }
+
+  // Add function to get user's social account username
+  const getUserSocialUsername = (platform: string) => {
+    const account = socialAccounts.find(acc => acc.platform === platform)
+    return account?.username || null
+  }
+
+  // Add function to auto-generate social URL
+  const generateSocialUrl = (platform: string, action: string, username?: string) => {
+    const targetUsername = username || getUserSocialUsername(platform)
+    if (!targetUsername) return ''
+    
+    switch (platform) {
+      case 'twitter':
+      case 'x':
+        switch (action) {
+          case 'follow':
+            return `https://twitter.com/${targetUsername}`
+          case 'like':
+          case 'retweet':
+            // For like/retweet, we need the post ID which should be provided separately
+            return ''
+          default:
+            return `https://twitter.com/${targetUsername}`
+        }
+      case 'discord':
+        return `https://discord.com/users/${targetUsername}`
+      case 'telegram':
+        return `https://t.me/${targetUsername}`
+      default:
+        return ''
+    }
+  }
 
   if (!mounted) return null;
 
@@ -440,11 +586,21 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     setCreateTaskError("")
 
     try {
+      // Auto-set social URL for follow tasks if not already set
+      if (newTask.type === 'social' && newTask.socialPlatform === 'twitter' && newTask.socialAction === 'follow') {
+        if (!newTask.socialUrl && hasProjectSocialAccount('twitter')) {
+          const username = getProjectOwnerSocialUsername('twitter')
+          if (username) {
+            newTask.socialUrl = `https://twitter.com/${username}`
+          }
+        }
+      }
+
       const taskData: Record<string, any> = {
         quest_id: quest.id,
         title: newTask.title,
         description: newTask.description,
-        task_type: newTask.type,
+        type: newTask.type, // Changed from task_type to type
         xp_reward: newTask.xp_reward,
       }
 
@@ -504,7 +660,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       if (editingTask.title !== newTask.title) updates.title = newTask.title
       if (editingTask.description !== newTask.description) updates.description = newTask.description
       if (editingTask.xp_reward !== newTask.xp_reward) updates.xp_reward = newTask.xp_reward
-      if (editingTask.task_type !== newTask.type) updates.task_type = newTask.type
+      if (editingTask.type !== newTask.type) updates.type = newTask.type // Changed from task_type to type
 
       if (newTask.type === "social") {
         updates.social_platform = newTask.socialPlatform
@@ -656,7 +812,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   }
 
   const getTaskIcon = (task: Task) => {
-    switch (task.task_type) {
+    switch (task.type) { // Changed from task_type to type
       case "social":
         switch (task.social_platform) {
           case "twitter":
@@ -682,15 +838,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   }
 
   const isAdminOrCreator = () => {
-    if (!currentUserUUID) {
-      console.log('No current user UUID found')
+    if (!currentUserUUID || !quest) {
+      console.log('No current user UUID or quest found')
       return false
     }
     
     // Check if user is the project owner (this is the main check)
     const isProjectOwner = quest.project_id && quest.projects?.owner_id ? currentUserUUID === quest.projects.owner_id : false
     
-    // Also check if user is the quest creator as fallback
+    // Also check if user is the quest creator as fallback (if creator_id exists)
     const isQuestCreator = quest.creator_id ? currentUserUUID === quest.creator_id : false
     
     console.log('Admin check:', { 
@@ -710,7 +866,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   }
 
   const renderQuizModal = (task: Task) => {
-    if (task.task_type !== "learn" || !showQuiz[task.id]) return null;
+    if (task.type !== "learn" || !showQuiz[task.id]) return null; // Changed from task_type to type
     
     const quizData = task.learn_questions;
     if (!quizData) return null;
@@ -800,6 +956,82 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   console.log('User data:', { walletUser, emailUser })
   console.log('Full quest object:', JSON.stringify(quest, null, 2))
 
+  // Helper functions for social task logic
+  const hasProjectSocialAccount = (platform: string) => {
+    if (!projectSocialAccounts.length) return false
+    // Check for both 'twitter' and 'x' platforms since they're the same
+    if (platform === 'x' || platform === 'twitter') {
+      return projectSocialAccounts.some(account => account.platform === 'twitter' || account.platform === 'x')
+    }
+    return projectSocialAccounts.some(account => account.platform === platform)
+  }
+
+  const getProjectOwnerSocialUsername = (platform: string) => {
+    if (!projectOwner) return null
+    if (platform === 'twitter' || platform === 'x') return projectOwner.x_username
+    if (platform === 'discord') return projectOwner.discord_username
+    if (platform === 'telegram') return projectOwner.telegram_username
+    return null
+  }
+
+  const shouldShowUrlField = () => {
+    // For follow tasks: use linked account, no URL needed
+    if (newTask.socialPlatform === 'twitter' && newTask.socialAction === 'follow' && hasProjectSocialAccount('twitter')) {
+      return false
+    }
+    if (newTask.socialPlatform === 'discord' && newTask.socialAction === 'join' && hasProjectSocialAccount('discord')) {
+      return false
+    }
+    if (newTask.socialPlatform === 'telegram' && newTask.socialAction === 'join' && hasProjectSocialAccount('telegram')) {
+      return false
+    }
+    // For like/retweet tasks: always require URL (must be from linked account)
+    if (newTask.socialAction === 'like' || newTask.socialAction === 'retweet') {
+      return true
+    }
+    // Default: show for other cases
+    return true
+  }
+
+  // Function to automatically set social URL for follow tasks
+  const autoSetSocialUrl = () => {
+    if (newTask.socialPlatform === 'twitter' && newTask.socialAction === 'follow' && hasProjectSocialAccount('twitter')) {
+      const username = getProjectOwnerSocialUsername('twitter')
+      if (username) {
+        setNewTask((prev: any) => ({ ...prev, socialUrl: `https://twitter.com/${username}` }))
+      }
+    }
+  }
+
+  // Auto-set URL when platform and action change
+  useEffect(() => {
+    if (newTask.type === 'social' && newTask.socialPlatform && newTask.socialAction) {
+      autoSetSocialUrl()
+    }
+  }, [newTask.socialPlatform, newTask.socialAction])
+
+  // Add function to extract tweet ID from Twitter URL
+  const extractTweetIdFromUrl = (url: string): string | null => {
+    if (!url) return null;
+    
+    // Handle different Twitter URL formats
+    const patterns = [
+      /twitter\.com\/\w+\/status\/(\d+)/,
+      /x\.com\/\w+\/status\/(\d+)/,
+      /twitter\.com\/i\/status\/(\d+)/,
+      /x\.com\/i\/status\/(\d+)/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        return match[1];
+      }
+    }
+    
+    return null;
+  }
+
   return (
     <PageContainer>
       {/* Back Button */}
@@ -813,28 +1045,20 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         <div className="lg:col-span-2">
           <Card className="bg-[#111111] rounded-lg backdrop-blur-sm overflow-hidden mb-2">
             <div className="relative">
-              {quest.image_url ? (
-                <img
-                  src={quest.image_url}
-                  alt={quest.title}
-                  className="w-full h-64 object-cover"
-                  style={{ width: 'auto' }}
-                />
-              ) : (
-                <QuestPlaceholderCover 
-                  title={quest.title} 
-                  categoryIcon={quest.quest_categories?.icon || undefined}
-                />
-              )}
+              {/* Removed quest image as it's not supported in the database */}
+              <QuestPlaceholderCover 
+                title={quest.title} 
+                categoryIcon={undefined}
+              />
               <div className="absolute top-4 left-4 flex gap-2">
                 <Badge
                   className="text-white border-0 quest-badge-gradient"
                   style={{
-                    '--quest-color': quest.quest_categories?.color || '#10b981',
-                    '--quest-color-secondary': quest.quest_categories?.color || '#059669'
+                    '--quest-color': '#10b981',
+                    '--quest-color-secondary': '#059669'
                   } as React.CSSProperties}
                 >
-                  {quest.quest_categories?.icon} {quest.quest_categories?.name}
+                  🎯 Quest
                 </Badge>
               </div>
               <div className="absolute top-4 right-4">
@@ -849,7 +1073,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               <CardDescription className="text-gray-300 text-base">{quest.description}</CardDescription>
             </CardHeader>
             <CardContent className="bg-[#111111] pt-6">
-              <QuestStatsBar totalXP={quest.total_xp} participants={quest.participant_count} taskCount={tasks.length} />
+              <QuestStatsBar totalXP={quest.total_xp} participants={quest.participant_count || 0} taskCount={tasks.length} />
             </CardContent>
           </Card>
         </div>
@@ -868,7 +1092,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-300">Participants</span>
-                  <span className="font-bold text-white">{quest.participant_count}</span>
+                  <span className="font-bold text-white">{quest.participant_count || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-300">Tasks</span>
@@ -888,10 +1112,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             <CardContent className="pb-4 px-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center text-white font-bold text-xl">
-                  {quest.users?.username?.charAt(0).toUpperCase() || "A"}
+                  {"A"}
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-semibold text-white">{quest.users?.username || "Anonymous"}</span>
+                  <span className="font-semibold text-white">Anonymous</span>
                   <span className="text-xs text-green-400">Verified Creator</span>
                 </div>
               </div>
@@ -911,7 +1135,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Participants</span>
-                <span className="text-white">{quest.participant_count}</span>
+                <span className="text-white">{quest.participant_count || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Tasks</span>
@@ -931,11 +1155,11 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                   <span className="text-white font-semibold">
-                    {quest.users?.username?.charAt(0).toUpperCase() || "A"}
+                    {"A"}
                   </span>
                 </div>
                 <div>
-                  <p className="text-white font-semibold">{quest.users?.username || "Anonymous"}</p>
+                  <p className="text-white font-semibold">Anonymous</p>
                   <p className="text-gray-400 text-sm">Verified Creator</p>
                 </div>
               </div>
@@ -990,10 +1214,47 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                 {newTask.type === "social" && (
                   <div className="space-y-2">
                     <label className="text-white block mb-1">Social Platform</label>
-                    <Select value={newTask.socialPlatform} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialPlatform: val }))}>
-                      <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select 
+                      value={newTask.socialPlatform} 
+                      onValueChange={(value: string) => {
+                        setNewTask((t: typeof newTask) => ({ 
+                          ...t, 
+                          socialPlatform: value,
+                          socialUrl: '', // Reset URL when platform changes
+                          socialPostId: '' // Reset post ID when platform changes
+                        }));
+                        
+                        // Auto-populate URL if user has linked account for this platform
+                        if (value === 'twitter' || value === 'x') {
+                          const username = getUserSocialUsername('twitter') || getUserSocialUsername('x');
+                          if (username) {
+                            setNewTask((t: typeof newTask) => ({ 
+                              ...t, 
+                              socialUrl: `https://twitter.com/${username}`,
+                              socialUsername: username
+                            }));
+                          }
+                        } else if (value === 'discord') {
+                          const username = getUserSocialUsername('discord');
+                          if (username) {
+                            setNewTask((t: typeof newTask) => ({ 
+                              ...t, 
+                              socialUrl: `https://discord.com/users/${username}`,
+                              socialUsername: username
+                            }));
+                          }
+                        } else if (value === 'telegram') {
+                          const username = getUserSocialUsername('telegram');
+                          if (username) {
+                            setNewTask((t: typeof newTask) => ({ 
+                              ...t, 
+                              socialUrl: `https://t.me/${username}`,
+                              socialUsername: username
+                            }));
+                          }
+                        }
+                      }}
+                    >
                       <SelectContent className="bg-[#181818] border-[#282828] text-white">
                         <SelectItem value="twitter" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Twitter / X</SelectItem>
                         <SelectItem value="telegram" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Telegram</SelectItem>
@@ -1003,10 +1264,37 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                     {newTask.socialPlatform === 'twitter' && (
                       <>
                         <label className="text-white block mb-1">Action Type</label>
-                        <Select value={newTask.socialAction || ''} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
-                          <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
-                            <SelectValue placeholder="Select Action" />
-                          </SelectTrigger>
+                        <Select 
+                          value={newTask.socialAction} 
+                          onValueChange={(value: string) => {
+                            setNewTask((t: typeof newTask) => ({ 
+                              ...t, 
+                              socialAction: value,
+                              socialPostId: '' // Reset post ID when action changes
+                            }));
+                            
+                            // Update URL based on action type
+                            if (newTask.socialPlatform === 'twitter' || newTask.socialPlatform === 'x') {
+                              const username = getUserSocialUsername('twitter') || getUserSocialUsername('x');
+                              if (username) {
+                                if (value === 'follow') {
+                                  setNewTask((t: typeof newTask) => ({ 
+                                    ...t, 
+                                    socialUrl: `https://twitter.com/${username}`,
+                                    socialUsername: username
+                                  }));
+                                } else {
+                                  // For like, retweet, etc., clear the URL as it needs to be a specific post
+                                  setNewTask((t: typeof newTask) => ({ 
+                                    ...t, 
+                                    socialUrl: '',
+                                    socialUsername: username
+                                  }));
+                                }
+                              }
+                            }
+                          }}
+                        >
                           <SelectContent className="bg-[#181818] border-[#282828] text-white">
                             <SelectItem value="follow" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Follow</SelectItem>
                             <SelectItem value="like" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Like</SelectItem>
@@ -1017,8 +1305,80 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                             <SelectItem value="bookmark" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Bookmark</SelectItem>
                           </SelectContent>
                         </Select>
-                        <label className="text-white block mb-1 mt-2">URL</label>
-                        <Input value={newTask.socialUrl || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/..." required />
+
+                        {/* Smart verification messaging */}
+                        {newTask.socialPlatform === 'twitter' && newTask.socialAction === 'follow' && hasProjectSocialAccount('x') && (
+                          <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
+                            <p className="text-green-400 text-sm">
+                              ✅ Will use project owner's linked Twitter account (@{getProjectOwnerSocialUsername('twitter')}) for verification
+                            </p>
+                          </div>
+                        )}
+
+                        {newTask.socialPlatform === 'twitter' && (newTask.socialAction === 'like' || newTask.socialAction === 'retweet') && (
+                          <div className="p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                            <p className="text-blue-400 text-sm">
+                              ℹ️ Tweet must be from project owner's linked account (@{getProjectOwnerSocialUsername('twitter') || 'Not linked'})
+                            </p>
+                          </div>
+                        )}
+
+                        {shouldShowUrlField() && (
+                          <>
+                            <label className="text-white block mb-1 mt-2">
+                              {newTask.socialAction === 'follow' ? 'Target Account' : 'URL'}
+                            </label>
+                            <Input 
+                              value={newTask.socialUrl || ''} 
+                              onChange={e => {
+                                const url = e.target.value;
+                                setNewTask((t: typeof newTask) => ({ ...t, socialUrl: url }));
+                                
+                                // Auto-extract tweet ID for like/retweet tasks
+                                if (newTask.socialPlatform === 'twitter' && (newTask.socialAction === 'like' || newTask.socialAction === 'retweet')) {
+                                  const tweetId = extractTweetIdFromUrl(url);
+                                  if (tweetId) {
+                                    setNewTask((t: typeof newTask) => ({ ...t, socialPostId: tweetId }));
+                                  }
+                                }
+                              }} 
+                              className="bg-white/10 border-white/20 text-white" 
+                              placeholder={
+                                newTask.socialAction === 'follow' 
+                                  ? "Auto-populated from linked account" 
+                                  : "https://twitter.com/..."
+                              }
+                              readOnly={newTask.socialAction === 'follow'}
+                              required 
+                            />
+                            
+                            {/* Show info for follow actions */}
+                            {newTask.socialPlatform === 'twitter' && newTask.socialAction === 'follow' && hasProjectSocialAccount('twitter') && (
+                              <div className="p-2 bg-green-500/20 border border-green-500/30 rounded-lg mt-2">
+                                <p className="text-green-400 text-xs">
+                                  ✅ Auto-populated from your linked {newTask.socialPlatform} account
+                                </p>
+                              </div>
+                            )}
+                            
+                            {/* Show extracted tweet ID for like/retweet tasks */}
+                            {(newTask.socialAction === "like" || newTask.socialAction === "retweet") && newTask.socialPostId && (
+                              <div className="p-2 bg-green-500/20 border border-green-500/30 rounded-lg mt-2">
+                                <p className="text-green-400 text-xs">
+                                  ✅ Tweet ID extracted: {newTask.socialPostId}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {newTask.socialAction === "follow" && !hasProjectSocialAccount('twitter') && (
+                          <div className="p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
+                            <p className="text-yellow-400 text-sm">
+                              ⚠️ Project owner must link their Twitter account for automatic verification
+                            </p>
+                          </div>
+                        )}
                       </>
                     )}
                     {newTask.socialPlatform === 'telegram' ? (
@@ -1145,10 +1505,47 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                   {newTask.type === "social" && (
                     <div className="space-y-2">
                       <label className="text-white block mb-1">Social Platform</label>
-                      <Select value={newTask.socialPlatform} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialPlatform: val }))}>
-                        <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
-                          <SelectValue />
-                        </SelectTrigger>
+                      <Select 
+                        value={newTask.socialPlatform} 
+                        onValueChange={(value: string) => {
+                          setNewTask((t: typeof newTask) => ({ 
+                            ...t, 
+                            socialPlatform: value,
+                            socialUrl: '', // Reset URL when platform changes
+                            socialPostId: '' // Reset post ID when platform changes
+                          }));
+                          
+                          // Auto-populate URL if user has linked account for this platform
+                          if (value === 'twitter' || value === 'x') {
+                            const username = getUserSocialUsername('twitter') || getUserSocialUsername('x');
+                            if (username) {
+                              setNewTask((t: typeof newTask) => ({ 
+                                ...t, 
+                                socialUrl: `https://twitter.com/${username}`,
+                                socialUsername: username
+                              }));
+                            }
+                          } else if (value === 'discord') {
+                            const username = getUserSocialUsername('discord');
+                            if (username) {
+                              setNewTask((t: typeof newTask) => ({ 
+                                ...t, 
+                                socialUrl: `https://discord.com/users/${username}`,
+                                socialUsername: username
+                              }));
+                            }
+                          } else if (value === 'telegram') {
+                            const username = getUserSocialUsername('telegram');
+                            if (username) {
+                              setNewTask((t: typeof newTask) => ({ 
+                                ...t, 
+                                socialUrl: `https://t.me/${username}`,
+                                socialUsername: username
+                              }));
+                            }
+                          }
+                        }}
+                      >
                         <SelectContent className="bg-[#181818] border-[#282828] text-white">
                           <SelectItem value="twitter" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Twitter / X</SelectItem>
                           <SelectItem value="telegram" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Telegram</SelectItem>
@@ -1158,10 +1555,37 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                       {newTask.socialPlatform === 'twitter' && (
                         <>
                           <label className="text-white block mb-1">Action Type</label>
-                          <Select value={newTask.socialAction || ''} onValueChange={(val: string) => setNewTask((t: typeof newTask) => ({ ...t, socialAction: val }))}>
-                            <SelectTrigger className="bg-[#181818] border-[#282828] text-white focus:ring-2 focus:ring-green-500">
-                              <SelectValue placeholder="Select Action" />
-                            </SelectTrigger>
+                          <Select 
+                            value={newTask.socialAction} 
+                            onValueChange={(value: string) => {
+                              setNewTask((t: typeof newTask) => ({ 
+                                ...t, 
+                                socialAction: value,
+                                socialPostId: '' // Reset post ID when action changes
+                              }));
+                              
+                              // Update URL based on action type
+                              if (newTask.socialPlatform === 'twitter' || newTask.socialPlatform === 'x') {
+                                const username = getUserSocialUsername('twitter') || getUserSocialUsername('x');
+                                if (username) {
+                                  if (value === 'follow') {
+                                    setNewTask((t: typeof newTask) => ({ 
+                                      ...t, 
+                                      socialUrl: `https://twitter.com/${username}`,
+                                      socialUsername: username
+                                    }));
+                                  } else {
+                                    // For like, retweet, etc., clear the URL as it needs to be a specific post
+                                    setNewTask((t: typeof newTask) => ({ 
+                                      ...t, 
+                                      socialUrl: '',
+                                      socialUsername: username
+                                    }));
+                                  }
+                                }
+                              }
+                            }}
+                          >
                             <SelectContent className="bg-[#181818] border-[#282828] text-white">
                               <SelectItem value="follow" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Follow</SelectItem>
                               <SelectItem value="like" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Like</SelectItem>
@@ -1172,8 +1596,50 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                               <SelectItem value="bookmark" className="text-white data-[state=checked]:bg-green-700 data-[state=checked]:text-green-300 focus:bg-green-800">Bookmark</SelectItem>
                             </SelectContent>
                           </Select>
-                          <label className="text-white block mb-1 mt-2">URL</label>
-                          <Input value={newTask.socialUrl || ''} onChange={e => setNewTask((t: typeof newTask) => ({ ...t, socialUrl: e.target.value }))} className="bg-white/10 border-white/20 text-white" placeholder="https://twitter.com/..." required />
+                          <label className="text-white block mb-1 mt-2">
+                            {newTask.socialAction === 'follow' ? 'Target Account' : 'URL'}
+                          </label>
+                          <Input 
+                            value={newTask.socialUrl || ''} 
+                            onChange={e => {
+                              const url = e.target.value;
+                              setNewTask((t: typeof newTask) => ({ ...t, socialUrl: url }));
+                              
+                              // Auto-extract tweet ID for like/retweet tasks
+                              if (newTask.socialPlatform === 'twitter' && (newTask.socialAction === 'like' || newTask.socialAction === 'retweet')) {
+                                const tweetId = extractTweetIdFromUrl(url);
+                                if (tweetId) {
+                                  setNewTask((t: typeof newTask) => ({ ...t, socialPostId: tweetId }));
+                                }
+                              }
+                            }} 
+                            className="bg-white/10 border-white/20 text-white" 
+                            placeholder={
+                              newTask.socialAction === 'follow' 
+                                ? "Auto-populated from linked account" 
+                                : "https://twitter.com/..."
+                            }
+                            readOnly={newTask.socialAction === 'follow'}
+                            required 
+                          />
+                          
+                          {/* Show info for follow actions */}
+                          {newTask.socialPlatform === 'twitter' && newTask.socialAction === 'follow' && hasProjectSocialAccount('twitter') && (
+                            <div className="p-2 bg-green-500/20 border border-green-500/30 rounded-lg mt-2">
+                              <p className="text-green-400 text-xs">
+                                ✅ Auto-populated from your linked {newTask.socialPlatform} account
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Show extracted tweet ID for like/retweet tasks */}
+                          {(newTask.socialAction === "like" || newTask.socialAction === "retweet") && newTask.socialPostId && (
+                            <div className="p-2 bg-green-500/20 border border-green-500/30 rounded-lg mt-2">
+                              <p className="text-green-400 text-xs">
+                                ✅ Tweet ID extracted: {newTask.socialPostId}
+                              </p>
+                            </div>
+                          )}
                         </>
                       )}
                       {newTask.socialPlatform === 'telegram' ? (
@@ -1379,7 +1845,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           <div className="mt-4">
             <QuestResponsesViewer
               quest={quest}
-              tasks={tasks as Database["public"]["Tables"]["tasks"]["Row"][]}
+              tasks={tasks}
               isAdmin={isAdminOrCreator()}
             />
           </div>

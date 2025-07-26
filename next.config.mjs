@@ -12,12 +12,100 @@ const nextConfig = {
   // Performance optimizations
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    optimizePackageImports: [
+      'lucide-react', 
+      '@radix-ui/react-icons',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-select',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-tooltip',
+      '@radix-ui/react-toast',
+      '@radix-ui/react-switch',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-radio-group',
+      '@radix-ui/react-slider',
+      '@radix-ui/react-progress',
+      '@radix-ui/react-scroll-area',
+      '@radix-ui/react-separator',
+      '@radix-ui/react-label',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-aspect-ratio',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-badge',
+      '@radix-ui/react-button',
+      '@radix-ui/react-card',
+      '@radix-ui/react-input',
+      '@radix-ui/react-textarea',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-accordion',
+      '@radix-ui/react-alert-dialog',
+      '@radix-ui/react-collapsible',
+      '@radix-ui/react-context-menu',
+      '@radix-ui/react-hover-card',
+      '@radix-ui/react-menubar',
+      '@radix-ui/react-navigation-menu',
+      '@radix-ui/react-toggle',
+      '@radix-ui/react-toggle-group',
+      'sonner',
+      'recharts',
+      'date-fns',
+      'clsx',
+      'class-variance-authority',
+      'tailwind-merge',
+      'cmdk',
+      'embla-carousel-react',
+      'react-day-picker',
+      'react-hook-form',
+      'react-resizable-panels',
+      'vaul',
+      'input-otp'
+    ],
     // React 19 compatibility
     reactCompiler: false,
+    // Enable SWC minification for faster builds
+    swcMinify: true,
+    // Enable module resolution optimization
+    modularizeImports: {
+      'lucide-react': {
+        transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
+      },
+    },
   },
   // Enable compression
   compress: true,
+  // Optimize bundle size
+  webpack: (config, { dev, isServer }) => {
+    // Optimize for development
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      }
+    }
+    
+    // Optimize bundle splitting
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+          ui: {
+            test: /[\\/]components[\\/]ui[\\/]/,
+            name: 'ui',
+            chunks: 'all',
+          },
+        },
+      },
+    }
+    
+    return config
+  },
   // Add caching headers
   async headers() {
     return [
@@ -32,6 +120,10 @@ const nextConfig = {
       },
     ]
   },
+  // Disable source maps in development for faster builds
+  productionBrowserSourceMaps: false,
+  // Enable experimental features for better performance
+  swcMinify: true,
 }
 
 export default nextConfig
