@@ -63,14 +63,6 @@ const nextConfig = {
     ],
     // React 19 compatibility
     reactCompiler: false,
-    // Enable SWC minification for faster builds
-    swcMinify: true,
-    // Enable module resolution optimization
-    modularizeImports: {
-      'lucide-react': {
-        transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
-      },
-    },
   },
   // Enable compression
   compress: true,
@@ -122,7 +114,7 @@ const nextConfig = {
   },
   // Disable source maps in development for faster builds
   productionBrowserSourceMaps: false,
-  // Enable experimental features for better performance
+  // Enable SWC minification for faster builds
   swcMinify: true,
 }
 
