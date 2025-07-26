@@ -38,6 +38,13 @@ import type { Task } from '@/components/quest-detail/types';
 type UserTaskSubmission = Database["public"]["Tables"]["user_task_submissions"]["Row"] & {
   users: Database["public"]["Tables"]["users"]["Row"] | null
   tasks: Database["public"]["Tables"]["tasks"]["Row"] | null
+  xp_earned?: number
+  xp_removed?: number
+  social_username?: string
+  social_post_url?: string
+  quiz_answers?: any[]
+  manual_verification_note?: string
+  xp_removal_reason?: string
 }
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
@@ -161,7 +168,7 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
   }
 
   const getTaskIcon = (task: Task) => {
-    switch (task.task_type) {
+            switch (task.type) {
       case 'social':
         switch (task.social_platform) {
           case 'twitter':
@@ -185,8 +192,14 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
   }
 
   const renderSubmissionResponse = (submission: UserTaskSubmission) => {
-    const task = submission.tasks
-    if (!task) return null
+    const taskData = submission.tasks
+    if (!taskData) return null
+
+    // Map database task to Task type
+    const task: Task = {
+      ...taskData,
+                type: taskData.task_type || 'unknown'
+    }
 
     return (
       <Card key={submission.id} className="mb-4">

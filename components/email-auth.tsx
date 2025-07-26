@@ -8,16 +8,16 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Mail, Eye, EyeOff, User, CheckCircle, ArrowLeft, ArrowRight, Shield } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { useRouter } from "next/navigation"
 
 interface EmailAuthProps {
   onSuccess: (user: any) => void
   onError: (error: string) => void
+  onNavigate?: () => void
 }
 
 type AuthStep = 'login' | 'register' | 'verify' | 'success'
 
-export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
+export default function EmailAuth({ onSuccess, onError, onNavigate }: EmailAuthProps) {
   const [currentStep, setCurrentStep] = useState<AuthStep>('login')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -31,8 +31,6 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
     confirmPassword: "",
     username: "",
   })
-
-  const router = useRouter()
 
   const handleLogin = async () => {
     if (!loginForm.email || !loginForm.password) {
@@ -92,8 +90,10 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
       ({ data: profile } = await supabase.from("users").select("*").eq("id", user.id).single());
 
       onSuccess({ ...data.user, profile })
-      // Redirect to dashboard after successful login
-      router.push('/dashboard')
+      // Let parent component handle navigation
+      if (onNavigate) {
+        onNavigate()
+      }
     } catch (error: any) {
       onError(error.message || "Login failed")
     } finally {
@@ -174,10 +174,12 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
         // Call onSuccess only after verification is complete
         onSuccess({ ...data.user, profile })
         
-        // Redirect to dashboard after successful verification
-        setTimeout(() => {
-          router.push('/dashboard')
-        }, 2000)
+        // Let parent component handle navigation
+        if (onNavigate) {
+          setTimeout(() => {
+            onNavigate()
+          }, 2000)
+        }
       }
     } catch (error: any) {
       onError(error.message || "Verification failed")

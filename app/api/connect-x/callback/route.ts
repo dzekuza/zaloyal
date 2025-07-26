@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/profile?error=credentials_not_configured', request.url));
   }
 
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const searchParams = request.nextUrl.searchParams;
   
   const oauthToken = searchParams.get('oauth_token');

@@ -1,5 +1,7 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -68,16 +70,14 @@ async function checkTasksSchema() {
     if (tasksError) {
       console.error('❌ Error fetching tasks:', tasksError);
     } else {
-      console.log(`✅ Found ${existingTasks?.length || 0} tasks`);
-      if (existingTasks && existingTasks.length > 0) {
-        existingTasks.forEach(task => {
-          console.log(`   - ${task.title} (type: ${task.type}, quest: ${task.quest_id})`);
-        });
-      }
+      console.log('📋 Found tasks:', existingTasks?.length || 0);
+      existingTasks?.forEach((task, index) => {
+        console.log(`  ${index + 1}. ${task.title} (${task.id})`);
+      });
     }
     
   } catch (error) {
-    console.error('❌ Error checking tasks schema:', error);
+    console.error('❌ Error checking schema:', error);
   }
 }
 

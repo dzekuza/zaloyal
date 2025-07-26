@@ -4,15 +4,5 @@
   "scope": "codebase",
   "localEndpoint": "http://localhost:3000",
   "loginUser": "richcase1975@gmail.com",
-  "loginPassword": "7ftGiMiy.",
-  "executionArgs": {
-    "projectName": "zaloyal",
-    "projectPath": "/Users/gvozdovic/ZALOYAL/zaloyal/zaloyal",
-    "testIds": [],
-    "additionalInstruction": "Focus on authentication, registration, and social account linking (especially X/Twitter).",
-    "envs": {
-      "API_KEY": "sk-user-ckkcvvqwjYsXTv-CzyAyeRuUUSmwQNY1i6WDyMlPTg4XuQZnnSydWUiRcdpel1L0uXXhNvJJvAaUpwHXL-x87LH87Z6jIJZXhYz0d0wu_ElSa7I0UfhDLAFg_WdY4ABqx5o"
-    }
-  },
-  "proxy": "http://a80d5bc0-a3d1-4358-aef8-f59a9c46e68e:BZs0XjVRqHwXLCeFf7RsMyhUW6YrdcLK@tun.testsprite.com:8080"
+  "loginPassword": "7ftGiMiy."
 }

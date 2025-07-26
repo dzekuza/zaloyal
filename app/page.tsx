@@ -63,11 +63,11 @@ const getQuests = cache(async (projectIds: string[]) => {
   
   console.log(`✅ Found ${quests?.length || 0} active quests`);
   
-  const result = (quests || []).reduce((acc, q) => {
+  const result = (quests || []).reduce((acc: Record<string, any[]>, q) => {
     acc[q.project_id] = acc[q.project_id] || []
     acc[q.project_id].push(q)
     return acc
-  }, {})
+  }, {} as Record<string, any[]>)
   
   return result;
 })
@@ -87,7 +87,7 @@ export default async function ProjectDiscovery() {
 
     // Process the data to calculate stats
     const processedProjects: Project[] = (projects || []).map(project => {
-      const quests = questsByProject[project.id] || []
+      const quests = (questsByProject as Record<string, any[]>)[project.id] || []
       const xpToCollect = quests.reduce((sum: number, q: { total_xp: number }) => sum + (q.total_xp || 0), 0)
 
       const processedProject = {

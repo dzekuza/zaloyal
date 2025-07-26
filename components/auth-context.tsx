@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo, useCallback, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { walletAuth, type WalletUser } from '@/lib/wallet-auth'
 
@@ -18,64 +18,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [emailUser, setEmailUser] = useState<{ email: string; profile: any } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Memoized check email auth function to prevent unnecessary re-renders
+  const checkEmailAuth = useCallback(async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user && user.email) {
+        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
+        setEmailUser({ email: user.email, profile })
+      }
+      setIsLoading(false)
+    } catch (error) {
+      console.error('Error checking email auth:', error)
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Memoized wallet auth handler
+  const handleWalletAuthChange = useCallback((user: WalletUser | null) => {
+    setUser(user)
+    setIsLoading(false)
+  }, [])
+
+  // Memoized supabase auth handler
+  const handleSupabaseAuthChange = useCallback((event: string, session: any) => {
+    if (event === "SIGNED_IN" && session?.user) {
+      checkEmailAuth();
+    } else if (event === "SIGNED_OUT") {
+      setEmailUser(null);
+      checkEmailAuth(); // Force re-fetch to clear any stale state
+    }
+  }, [checkEmailAuth])
+
   useEffect(() => {
     let isMounted = true
 
     // Check for wallet user
     const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
       if (isMounted) {
-        setUser(user)
-        setIsLoading(false)
+        handleWalletAuthChange(user)
       }
     })
 
     // Check for email user
-    const checkEmailAuth = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (isMounted && user && user.email) {
-          const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-          setEmailUser({ email: user.email, profile })
-        }
-        if (isMounted) {
-          setIsLoading(false)
-        }
-      } catch (error) {
-        console.error('Error checking email auth:', error)
-        if (isMounted) {
-          setIsLoading(false)
-        }
-      }
-    }
-
     checkEmailAuth()
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (isMounted) {
-        if (event === "SIGNED_IN" && session?.user) {
-          checkEmailAuth();
-        } else if (event === "SIGNED_OUT") {
-          setEmailUser(null);
-          checkEmailAuth(); // Force re-fetch to clear any stale state
-        }
-      }
-    });
+    } = supabase.auth.onAuthStateChange(handleSupabaseAuthChange);
 
     return () => {
       isMounted = false
       unsubscribeWallet()
       subscription.unsubscribe()
     }
-  }, [])
+  }, [handleWalletAuthChange, checkEmailAuth, handleSupabaseAuthChange])
 
-  const isAuthenticated = !!(user || emailUser)
+  // Memoized context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => {
+    const isAuthenticated = !!(user || emailUser)
+    return { user, emailUser, isLoading, isAuthenticated }
+  }, [user, emailUser, isLoading])
 
   return (
-    <AuthContext.Provider value={{ user, emailUser, isLoading, isAuthenticated }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )

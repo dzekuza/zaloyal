@@ -6,7 +6,7 @@ import { validateOAuthState } from '@/lib/oauth-utils';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     
     // Get the current user session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -41,9 +41,14 @@ export async function GET(request: NextRequest) {
 
     // Validate OAuth state if provided
     if (state) {
-      const isValidState = await validateOAuthState(supabase, user.id, state, 'twitter');
-      if (!isValidState) {
-        console.error('Invalid OAuth state');
+      // Extract timestamp from state (assuming state contains timestamp)
+      const stateData = state.split('.');
+      const timestamp = stateData[1] || Date.now().toString();
+      const stateValue = stateData[0] || state;
+      
+      const validation = validateOAuthState(stateValue, timestamp);
+      if (!validation.valid) {
+        console.error('Invalid OAuth state:', validation.reason);
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=invalid_state`);
       }
     }

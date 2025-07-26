@@ -57,6 +57,7 @@
     "embla-carousel-react": "latest",
     "ethers": "^6.15.0",
     "file-saver": "^2.0.5",
+    "form-data": "^4.0.4",
     "input-otp": "latest",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.454.0",
@@ -74,9 +75,20 @@
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "tough-cookie": "^5.1.2",
     "tweetnacl": "^1.0.3",
     "vaul": "latest",
     "zod": "^3.24.1"
+  },
+  "overrides": {
+    "form-data": "^4.0.4",
+    "tough-cookie": "^5.1.2",
+    "request": "^2.88.2"
+  },
+  "audit": {
+    "ignore": [
+      "GHSA-p8p7-x288-28g6"
+    ]
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.1.4",

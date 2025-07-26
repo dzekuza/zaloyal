@@ -42,10 +42,10 @@ function getTwitterTaskHeading(twitterTaskType: string): string {
 
   // Helper to get heading and description based on task type/action
   function getTaskHeadingAndDescription(task: Task) {
-    if (task.task_type === 'learn') {
+    if (task.type === 'learn') {
       return { heading: 'Quiz', description: 'Complete the quiz' };
     }
-    if (task.task_type === 'social') {
+    if (task.type === 'social') {
       if (task.social_platform === 'twitter') {
         if (task.social_action === 'follow') return { heading: 'X', description: 'Follow' };
         if (task.social_action === 'like') return { heading: 'X', description: 'Like' };
@@ -93,17 +93,17 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
 
   // Helper to handle 'Complete Task' click
   const handleCompleteTask = (task: Task) => {
-    if (task.task_type === 'learn') {
+    if (task.type === 'learn') {
       setShowQuiz(s => ({ ...s, [task.id]: true }));
       setCompletedTasks(prev => ({ ...prev, [task.id]: true }));
       return;
     }
     // Social, visit, form, download: open URL if present
     let url = '';
-    if (task.task_type === 'social' && task.social_url) url = getAbsoluteUrl(task.social_url);
-    if (task.task_type === 'visit' && task.visit_url) url = getAbsoluteUrl(task.visit_url);
-    if (task.task_type === 'form' && task.form_url) url = getAbsoluteUrl(task.form_url);
-    if (task.task_type === 'download' && task.download_url) url = getAbsoluteUrl(task.download_url);
+    if (task.type === 'social' && task.social_url) url = getAbsoluteUrl(task.social_url);
+    if (task.type === 'visit' && task.visit_url) url = getAbsoluteUrl(task.visit_url);
+    if (task.type === 'form' && task.form_url) url = getAbsoluteUrl(task.form_url);
+    if (task.type === 'download' && task.download_url) url = getAbsoluteUrl(task.download_url);
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
       setCompletedTasks(prev => ({ ...prev, [task.id]: true }));
@@ -145,7 +145,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                   )}
                   {!isCompleted && !isAdminOrCreator() && (
                     <div className="flex gap-1 md:gap-2">
-                      {task.task_type === 'learn' ? (
+                      {task.type === 'learn' ? (
                         <Button onClick={() => { setShowQuiz(s => ({ ...s, [task.id]: true })); setCompletedTasks(prev => ({ ...prev, [task.id]: true })); }} className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm" size="sm">Start Quiz</Button>
                       ) : (
                         <>

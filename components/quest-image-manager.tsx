@@ -68,7 +68,8 @@ export default function QuestImageManager({ questId, currentImageUrl, onImageUpd
           onImageUploaded={handleImageUpload}
           onImageRemoved={handleImageRemove}
           currentImage={currentImageUrl}
-          questId={questId}
+          entityId={questId}
+          uploadType="quest"
         />
 
         {updating && (

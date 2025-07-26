@@ -5,12 +5,18 @@ interface PageContainerProps {
   className?: string;
 }
 
-export default function PageContainer({ children, className = "" }: PageContainerProps) {
+const PageContainer = React.memo(function PageContainer({ children, className = "" }: PageContainerProps) {
+  const containerClassName = `w-full max-w-7xl px-4 py-8 ${className}`.trim();
+  
   return (
     <div className="w-full flex justify-center">
-      <div className={`w-full max-w-7xl px-4 py-8 ${className}`.trim()}>
+      <div className={containerClassName}>
         {children}
       </div>
     </div>
   );
-}
+});
+
+PageContainer.displayName = 'PageContainer';
+
+export default PageContainer;

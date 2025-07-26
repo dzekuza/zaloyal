@@ -1,6 +1,22 @@
 import type React from "react"
 import "./globals.css"
 import ClientLayout from "./ClientLayout"
+// Temporarily disable font imports for testing
+// import { Inter, Poppins } from 'next/font/google'
+
+// Add font configurations
+// const inter = Inter({ 
+//   subsets: ['latin'],
+//   variable: '--font-inter',
+//   display: 'swap',
+// })
+
+// const poppins = Poppins({ 
+//   subsets: ['latin'],
+//   weight: ['300', '400', '500', '600', '700'],
+//   variable: '--font-poppins',
+//   display: 'swap',
+// })
 
 export default function RootLayout({
   children,
@@ -20,20 +36,26 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-                import('@stagewise/toolbar-next').then(({ StagewiseToolbar }) => {
-                  import('@stagewise-plugins/react').then((ReactPlugin) => {
-                    const { createRoot } = require('react-dom/client');
-                    const container = document.createElement('div');
-                    document.body.appendChild(container);
-                    const root = createRoot(container);
-                    root.render(React.createElement(StagewiseToolbar, {
-                      config: {
-                        plugins: [ReactPlugin.default]
-                      }
-                    }));
+              if (typeof window !== 'undefined') {
+                // Only load in development mode
+                const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                if (isDevelopment) {
+                  import('@stagewise/toolbar-next').then(({ StagewiseToolbar }) => {
+                    import('@stagewise-plugins/react').then((ReactPlugin) => {
+                      const { createRoot } = require('react-dom/client');
+                      const container = document.createElement('div');
+                      document.body.appendChild(container);
+                      const root = createRoot(container);
+                      root.render(React.createElement(StagewiseToolbar, {
+                        config: {
+                          plugins: [ReactPlugin.default]
+                        }
+                      }));
+                    });
+                  }).catch(error => {
+                    console.log('Stagewise toolbar not available:', error);
                   });
-                });
+                }
               }
             `,
           }}

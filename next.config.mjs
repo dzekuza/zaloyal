@@ -76,7 +76,7 @@ const nextConfig = {
       }
     }
     
-    // Optimize bundle splitting
+    // Simplified bundle splitting to prevent ChunkLoadError
     config.optimization = {
       ...config.optimization,
       splitChunks: {
@@ -86,11 +86,13 @@ const nextConfig = {
             test: /[\\/]node_modules[\\/]/,
             name: 'vendors',
             chunks: 'all',
+            priority: -10,
           },
           ui: {
             test: /[\\/]components[\\/]ui[\\/]/,
             name: 'ui',
             chunks: 'all',
+            priority: -5,
           },
         },
       },
@@ -114,8 +116,6 @@ const nextConfig = {
   },
   // Disable source maps in development for faster builds
   productionBrowserSourceMaps: false,
-  // Enable SWC minification for faster builds
-  swcMinify: true,
 }
 
 export default nextConfig
