@@ -5,7 +5,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Database types - Updated to match actual schema
+// Database types - Updated to include missing fields being added
 export interface Database {
   public: {
     Tables: {
@@ -18,6 +18,19 @@ export interface Database {
           wallet_address: string | null
           total_xp: number
           level: number
+          // Social media fields (being added)
+          discord_id: string | null
+          discord_username: string | null
+          discord_avatar_url: string | null
+          telegram_id: string | null
+          telegram_username: string | null
+          telegram_avatar_url: string | null
+          twitter_username: string | null
+          twitter_id: string | null
+          twitter_avatar_url: string | null
+          x_username: string | null
+          x_id: string | null
+          x_avatar_url: string | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +42,19 @@ export interface Database {
           wallet_address?: string | null
           total_xp?: number
           level?: number
+          // Social media fields (being added)
+          discord_id?: string | null
+          discord_username?: string | null
+          discord_avatar_url?: string | null
+          telegram_id?: string | null
+          telegram_username?: string | null
+          telegram_avatar_url?: string | null
+          twitter_username?: string | null
+          twitter_id?: string | null
+          twitter_avatar_url?: string | null
+          x_username?: string | null
+          x_id?: string | null
+          x_avatar_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +66,19 @@ export interface Database {
           wallet_address?: string | null
           total_xp?: number
           level?: number
+          // Social media fields (being added)
+          discord_id?: string | null
+          discord_username?: string | null
+          discord_avatar_url?: string | null
+          telegram_id?: string | null
+          telegram_username?: string | null
+          telegram_avatar_url?: string | null
+          twitter_username?: string | null
+          twitter_id?: string | null
+          twitter_avatar_url?: string | null
+          x_username?: string | null
+          x_id?: string | null
+          x_avatar_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -93,6 +132,12 @@ export interface Database {
           quest_id: string
           xp_reward: number
           status: string
+          // Missing fields being added
+          task_type: string
+          social_action: string | null
+          social_url: string | null
+          social_post_id: string | null
+          order_index: number
           created_at: string
           updated_at: string
         }
@@ -103,6 +148,12 @@ export interface Database {
           quest_id: string
           xp_reward?: number
           status?: string
+          // Missing fields being added
+          task_type?: string
+          social_action?: string | null
+          social_url?: string | null
+          social_post_id?: string | null
+          order_index?: number
           created_at?: string
           updated_at?: string
         }
@@ -113,6 +164,12 @@ export interface Database {
           quest_id?: string
           xp_reward?: number
           status?: string
+          // Missing fields being added
+          task_type?: string
+          social_action?: string | null
+          social_url?: string | null
+          social_post_id?: string | null
+          order_index?: number
           created_at?: string
           updated_at?: string
         }
@@ -222,6 +279,11 @@ export interface Database {
           refresh_token: string | null
           expires_at: string | null
           username: string | null
+          // Missing fields being added
+          platform_user_id: string | null
+          platform_username: string | null
+          profile_data: any | null
+          verified: boolean
           created_at: string
           updated_at: string
         }
@@ -234,6 +296,11 @@ export interface Database {
           refresh_token?: string | null
           expires_at?: string | null
           username?: string | null
+          // Missing fields being added
+          platform_user_id?: string | null
+          platform_username?: string | null
+          profile_data?: any | null
+          verified?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -246,6 +313,11 @@ export interface Database {
           refresh_token?: string | null
           expires_at?: string | null
           username?: string | null
+          // Missing fields being added
+          platform_user_id?: string | null
+          platform_username?: string | null
+          profile_data?: any | null
+          verified?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -289,6 +361,9 @@ export interface Database {
           submitted_at: string
           verified_at: string | null
           verification_data: any | null
+          // Missing fields being added
+          task_id: string | null
+          xp_awarded: number
           created_at: string
           updated_at: string
         }
@@ -301,6 +376,9 @@ export interface Database {
           submitted_at?: string
           verified_at?: string | null
           verification_data?: any | null
+          // Missing fields being added
+          task_id?: string | null
+          xp_awarded?: number
           created_at?: string
           updated_at?: string
         }
@@ -313,6 +391,38 @@ export interface Database {
           submitted_at?: string
           verified_at?: string | null
           verification_data?: any | null
+          // Missing fields being added
+          task_id?: string | null
+          xp_awarded?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      quest_categories: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          icon: string | null
+          color: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          icon?: string | null
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          icon?: string | null
+          color?: string | null
           created_at?: string
           updated_at?: string
         }
