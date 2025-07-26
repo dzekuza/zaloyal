@@ -1,22 +1,21 @@
 import type React from "react"
 import "./globals.css"
 import ClientLayout from "./ClientLayout"
-// Temporarily disable font imports for testing
-// import { Inter, Poppins } from 'next/font/google'
+import { Inter, Poppins } from 'next/font/google'
 
 // Add font configurations
-// const inter = Inter({ 
-//   subsets: ['latin'],
-//   variable: '--font-inter',
-//   display: 'swap',
-// })
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
-// const poppins = Poppins({ 
-//   subsets: ['latin'],
-//   weight: ['300', '400', '500', '600', '700'],
-//   variable: '--font-poppins',
-//   display: 'swap',
-// })
+const poppins = Poppins({ 
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
+  display: 'swap',
+})
 
 export default function RootLayout({
   children,
@@ -24,13 +23,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${poppins.variable}`}>
       <head suppressHydrationWarning>
         <title>belink.now Web3 Quest Platform</title>
         <meta name="description" content="Web3 Quest Platform for Community Engagement" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body suppressHydrationWarning>
+      <body suppressHydrationWarning className="font-sans">
         <ClientLayout>{children}</ClientLayout>
         {/* StagewiseToolbar will be loaded client-side only */}
         <script

@@ -205,28 +205,18 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     title: "",
     description: "",
     xp_reward: 100,
-    // Social media fields
-    social_platform: "",
-    social_action: "",
-    social_url: "",
-    // Learning fields
-    learn_content: "",
-    learn_passing_score: 70,
-    // Visit website fields
-    visit_url: "",
-    visit_duration_seconds: 30,
-    // Download fields
-    download_url: "",
-    download_title: "",
-    // Form fields
-    form_url: "",
-    form_title: "",
+    socialAction: "",
+    socialPlatform: "",
+    socialUrl: "",
+    socialUsername: "",
+    socialPostId: "",
     // Quiz fields
     quizHeadline: "",
     quizDescription: "",
     quizAnswers: ["", "", "", ""],
     quizCorrectAnswers: [],
     quizMultiSelect: false,
+    // ... other fields as needed
   })
 
   // Add new state for project data
@@ -237,28 +227,17 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   const checkAuth = useCallback(async () => {
     try {
       // Check wallet auth
-      let walletUser = null
-      try {
-        walletUser = await walletAuth.getCurrentUser()
-        setWalletUser(walletUser)
-      } catch (walletError) {
-        console.error('Wallet auth error:', walletError)
-      }
+      const walletUser = await walletAuth.getCurrentUser()
+      setWalletUser(walletUser)
 
       // Check email auth
-      let emailUser = null
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          emailUser = user
-          setEmailUser(user)
-          setCurrentUserUUID(user.id)
-        }
-      } catch (emailError) {
-        console.error('Email auth error:', emailError)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setEmailUser(user)
+        setCurrentUserUUID(user.id)
       }
 
-      setIsAuthenticated(!!walletUser || !!emailUser)
+      setIsAuthenticated(!!walletUser || !!user)
       setLoading(false)
     } catch (error) {
       console.error('Error checking auth:', error)
@@ -343,36 +322,16 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     setCreateTaskError("")
 
     try {
-      const taskData: any = {
-        quest_id: quest.id,
-        title: newTask.title,
-        description: newTask.description,
-        type: newTask.type,
-        xp_reward: newTask.xp_reward,
-      }
-
-      // Add type-specific fields
-      if (newTask.type === 'social') {
-        taskData.social_platform = newTask.social_platform
-        taskData.social_action = newTask.social_action
-        taskData.social_url = newTask.social_url
-      } else if (newTask.type === 'learn') {
-        taskData.learn_content = newTask.learn_content
-        taskData.learn_passing_score = newTask.learn_passing_score
-      } else if (newTask.type === 'visit') {
-        taskData.visit_url = newTask.visit_url
-        taskData.visit_duration_seconds = newTask.visit_duration_seconds
-      } else if (newTask.type === 'download') {
-        taskData.download_url = newTask.download_url
-        taskData.download_title = newTask.download_title
-      } else if (newTask.type === 'form') {
-        taskData.form_url = newTask.form_url
-        taskData.form_title = newTask.form_title
-      }
-
       const { data, error } = await supabase
         .from('tasks')
-        .insert(taskData)
+        .insert({
+          quest_id: quest.id,
+          title: newTask.title,
+          description: newTask.description,
+          type: newTask.type,
+          xp_reward: newTask.xp_reward,
+          // Add other fields based on task type
+        })
         .select()
         .single()
 
@@ -385,28 +344,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         title: "",
         description: "",
         xp_reward: 100,
-        // Social media fields
-        social_platform: "",
-        social_action: "",
-        social_url: "",
-        // Learning fields
-        learn_content: "",
-        learn_passing_score: 70,
-        // Visit website fields
-        visit_url: "",
-        visit_duration_seconds: 30,
-        // Download fields
-        download_url: "",
-        download_title: "",
-        // Form fields
-        form_url: "",
-        form_title: "",
-        // Quiz fields
-        quizHeadline: "",
-        quizDescription: "",
-        quizAnswers: ["", "", "", ""],
-        quizCorrectAnswers: [],
-        quizMultiSelect: false,
+        // Reset other fields
       })
       toast.success('Task created successfully!')
     } catch (error) {
@@ -576,246 +514,77 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           </Card>
         )}
 
-        {/* Add Task Dialog */}
+                {/* Add Task Dialog */}
         <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[80vh]">
             <DialogHeader>
-              <DialogTitle className="text-white text-xl font-display font-semibold">Add New Task</DialogTitle>
-              <DialogDescription className="text-gray-300 font-body">
+              <DialogTitle>Add New Task</DialogTitle>
+              <DialogDescription>
                 Create a new task for this quest
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-6">
-              {/* Task Type */}
+            <div className="space-y-4">
               <div>
-                <label className="text-sm font-display font-medium text-white mb-2 block">Task Type</label>
+                <label className="text-sm font-medium text-white">Task Type</label>
                 <Select value={newTask.type} onValueChange={(value) => setNewTask({...newTask, type: value})}>
-                  <SelectTrigger className="bg-[#111111] border-[#282828] text-white hover:border-[#404040]">
+                  <SelectTrigger className="bg-[#111111] border-[#282828] text-white">
                     <SelectValue placeholder="Select task type" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#111111] border-[#282828]">
                     <SelectItem value="social">Social Media</SelectItem>
                     <SelectItem value="learn">Learning</SelectItem>
                     <SelectItem value="submit">Submission</SelectItem>
-                    <SelectItem value="visit">Visit Website</SelectItem>
-                    <SelectItem value="download">Download</SelectItem>
-                    <SelectItem value="form">Form Submission</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
-              {/* Title */}
               <div>
-                <label className="text-sm font-display font-medium text-white mb-2 block">Title</label>
+                <label className="text-sm font-medium text-white">Title</label>
                 <Input 
                   value={newTask.title}
                   onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                  className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
+                  className="bg-[#111111] border-[#282828] text-white"
                   placeholder="Enter task title"
                 />
               </div>
               
-              {/* Description */}
               <div>
-                <label className="text-sm font-display font-medium text-white mb-2 block">Description</label>
+                <label className="text-sm font-medium text-white">Description</label>
                 <Textarea 
                   value={newTask.description}
                   onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                  className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500 min-h-[100px]"
+                  className="bg-[#111111] border-[#282828] text-white"
                   placeholder="Enter task description"
                 />
               </div>
               
-              {/* XP Reward */}
               <div>
-                <label className="text-sm font-display font-medium text-white mb-2 block">XP Reward</label>
+                <label className="text-sm font-medium text-white">XP Reward</label>
                 <Input 
                   type="number"
                   value={newTask.xp_reward}
                   onChange={(e) => setNewTask({...newTask, xp_reward: parseInt(e.target.value) || 0})}
-                  className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
+                  className="bg-[#111111] border-[#282828] text-white"
                   placeholder="Enter XP reward"
                 />
               </div>
-
-              {/* Social Media Specific Fields */}
-              {newTask.type === 'social' && (
-                <div className="space-y-4 p-4 bg-[#0a0a0a] rounded-lg border border-[#282828]">
-                  <h4 className="text-white font-display font-medium">Social Media Settings</h4>
-                  
-                                      <div>
-                      <label className="text-sm font-display font-medium text-white mb-2 block">Social Platform</label>
-                    <Select value={newTask.social_platform} onValueChange={(value) => setNewTask({...newTask, social_platform: value})}>
-                      <SelectTrigger className="bg-[#111111] border-[#282828] text-white hover:border-[#404040]">
-                        <SelectValue placeholder="Select platform" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#111111] border-[#282828]">
-                        <SelectItem value="twitter">Twitter/X</SelectItem>
-                        <SelectItem value="discord">Discord</SelectItem>
-                        <SelectItem value="telegram">Telegram</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-display font-medium text-white mb-2 block">Social Action</label>
-                    <Select value={newTask.social_action} onValueChange={(value) => setNewTask({...newTask, social_action: value})}>
-                      <SelectTrigger className="bg-[#111111] border-[#282828] text-white hover:border-[#404040]">
-                        <SelectValue placeholder="Select action" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#111111] border-[#282828]">
-                        <SelectItem value="follow">Follow</SelectItem>
-                        <SelectItem value="like">Like</SelectItem>
-                        <SelectItem value="retweet">Retweet</SelectItem>
-                        <SelectItem value="join">Join Server/Channel</SelectItem>
-                        <SelectItem value="post">Post</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-display font-medium text-white mb-2 block">Social URL</label>
-                    <Input 
-                      value={newTask.social_url}
-                      onChange={(e) => setNewTask({...newTask, social_url: e.target.value})}
-                      className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
-                      placeholder="https://twitter.com/username or https://discord.gg/invite"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Learning Specific Fields */}
-              {newTask.type === 'learn' && (
-                <div className="space-y-4 p-4 bg-[#0a0a0a] rounded-lg border border-[#282828]">
-                  <h4 className="text-white font-display font-medium">Learning Settings</h4>
-                  
-                                      <div>
-                      <label className="text-sm font-display font-medium text-white mb-2 block">Learning Content</label>
-                    <Textarea 
-                      value={newTask.learn_content}
-                      onChange={(e) => setNewTask({...newTask, learn_content: e.target.value})}
-                      className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500 min-h-[100px]"
-                      placeholder="Enter learning content or instructions"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-display font-medium text-white mb-2 block">Passing Score (%)</label>
-                    <Input 
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={newTask.learn_passing_score}
-                      onChange={(e) => setNewTask({...newTask, learn_passing_score: parseInt(e.target.value) || 0})}
-                      className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
-                      placeholder="70"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Visit Website Specific Fields */}
-              {newTask.type === 'visit' && (
-                <div className="space-y-4 p-4 bg-[#0a0a0a] rounded-lg border border-[#282828]">
-                  <h4 className="text-white font-display font-medium">Website Visit Settings</h4>
-                  
-                                      <div>
-                      <label className="text-sm font-display font-medium text-white mb-2 block">Website URL</label>
-                    <Input 
-                      value={newTask.visit_url}
-                      onChange={(e) => setNewTask({...newTask, visit_url: e.target.value})}
-                      className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
-                      placeholder="https://example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-display font-medium text-white mb-2 block">Visit Duration (seconds)</label>
-                    <Input 
-                      type="number"
-                      min="10"
-                      value={newTask.visit_duration_seconds}
-                      onChange={(e) => setNewTask({...newTask, visit_duration_seconds: parseInt(e.target.value) || 30})}
-                      className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
-                      placeholder="30"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Download Specific Fields */}
-              {newTask.type === 'download' && (
-                <div className="space-y-4 p-4 bg-[#0a0a0a] rounded-lg border border-[#282828]">
-                  <h4 className="text-white font-display font-medium">Download Settings</h4>
-                  
-                                      <div>
-                      <label className="text-sm font-display font-medium text-white mb-2 block">Download URL</label>
-                    <Input 
-                      value={newTask.download_url}
-                      onChange={(e) => setNewTask({...newTask, download_url: e.target.value})}
-                      className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
-                      placeholder="https://example.com/file.pdf"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-display font-medium text-white mb-2 block">Download Title</label>
-                    <Input 
-                      value={newTask.download_title}
-                      onChange={(e) => setNewTask({...newTask, download_title: e.target.value})}
-                      className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
-                      placeholder="Download Title"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Form Submission Specific Fields */}
-              {newTask.type === 'form' && (
-                <div className="space-y-4 p-4 bg-[#0a0a0a] rounded-lg border border-[#282828]">
-                  <h4 className="text-white font-display font-medium">Form Settings</h4>
-                  
-                                      <div>
-                      <label className="text-sm font-display font-medium text-white mb-2 block">Form URL</label>
-                    <Input 
-                      value={newTask.form_url}
-                      onChange={(e) => setNewTask({...newTask, form_url: e.target.value})}
-                      className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
-                      placeholder="https://forms.google.com/..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-display font-medium text-white mb-2 block">Form Title</label>
-                    <Input 
-                      value={newTask.form_title}
-                      onChange={(e) => setNewTask({...newTask, form_title: e.target.value})}
-                      className="bg-[#111111] border-[#282828] text-white hover:border-[#404040] focus:border-green-500"
-                      placeholder="Form Title"
-                    />
-                  </div>
-                </div>
-              )}
               
               {createTaskError && (
-                <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-                  <p className="text-red-400 text-sm">{createTaskError}</p>
-                </div>
+                <p className="text-red-400 text-sm">{createTaskError}</p>
               )}
               
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-2">
                 <Button 
                   onClick={handleCreateTask}
                   disabled={creatingTask}
-                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                  className="bg-green-600 hover:bg-green-700 text-white"
                 >
                   {creatingTask ? 'Creating...' : 'Create Task'}
                 </Button>
                 <Button 
                   variant="outline"
                   onClick={() => setShowAddTask(false)}
-                  className="border-[#282828] text-white hover:bg-[#1a1a1a] flex-1"
+                  className="border-[#282828] text-white hover:bg-[#1a1a1a]"
                 >
                   Cancel
                 </Button>
@@ -874,9 +643,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   useEffect(() => {
     setMounted(true)
     checkAuth()
-    // Temporarily disable fetchProjectData to test
-    // fetchProjectData()
-  }, [])
+    fetchProjectData()
+  }, [checkAuth, fetchProjectData])
 
   useEffect(() => {
     if (mounted && quest.project_id && currentUserUUID) {
@@ -884,27 +652,14 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     }
   }, [mounted, quest.project_id, currentUserUUID, fetchCurrentUserSocialAccounts])
 
-  // Temporarily disable loading checks for testing
-  // if (!mounted) {
-  //   return skeletonContent
-  // }
+  // Show loading state while auth is being checked
+  if (!mounted) {
+    return skeletonContent
+  }
 
-  // if (loading) {
-  //   return loadingContent
-  // }
+  if (loading) {
+    return loadingContent
+  }
 
-  return (
-    <div className="min-h-screen bg-[#181818] p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-4">{quest.title}</h1>
-        <p className="text-gray-300 mb-4">{quest.description}</p>
-        <button 
-          onClick={() => setShowAddTask(true)}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-        >
-          Add New Task
-        </button>
-      </div>
-    </div>
-  )
+  return mainContent
 } 

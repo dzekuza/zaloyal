@@ -1,59 +1,210 @@
 {
   "tech_stack": [
     "TypeScript",
-    "Next.js",
-    "React",
-    "Supabase (Postgres, Auth, Storage)",
+    "Next.js 15",
+    "React 19",
+    "Supabase",
     "Tailwind CSS",
-    "Shadcn UI",
     "Radix UI",
-    "Jest (Testing)",
-    "Zod (Validation)",
-    "Lucide Icons",
-    "Ethers/Solana Web3",
-    "Node.js",
-    "Vercel (Deployment)"
+    "Ethers.js",
+    "Solana Web3.js",
+    "Jest",
+    "PostgreSQL"
   ],
   "features": [
     {
-      "name": "Project & Quest Management",
-      "description": "Register projects, create and manage multi-step quests, and manage tasks (social, download, form, visit, learn/quiz).",
-      "files": ["app/register-project/page.tsx", "app/create/page.tsx", "app/project/[id]/page.tsx", "app/project/[id]/ProjectDetailClient.tsx", "components/ProjectCard.tsx", "components/QuestCard.tsx"]
+      "name": "Authentication System",
+      "description": "Multi-provider authentication including wallet (Ethereum/Solana), email, and social OAuth (Twitter/X, Discord, Telegram)",
+      "files": [
+        "components/auth-context.tsx",
+        "components/auth-provider-wrapper.tsx",
+        "components/auth-required.tsx",
+        "components/email-auth.tsx",
+        "components/email-verification.tsx",
+        "components/wallet-connect.tsx",
+        "components/sidebar-wallet-connect.tsx",
+        "components/telegram-login-widget.tsx",
+        "lib/wallet-auth.ts",
+        "app/auth/callback/page.tsx",
+        "app/api/auth/twitter/authorize/route.ts",
+        "app/api/auth/twitter/callback/route.ts",
+        "app/api/auth/twitter/link/route.ts",
+        "app/api/auth/x/link/route.ts",
+        "app/api/connect-discord/route.ts",
+        "app/api/connect-discord/callback/route.ts",
+        "app/api/connect-x/route.ts",
+        "app/api/connect-x/callback/route.ts",
+        "app/api/link-wallet/route.ts"
+      ]
     },
     {
-      "name": "Authentication (Wallet, Email, Social)",
-      "description": "Secure authentication via wallet (EVM/Solana), email, and OAuth (Twitter/X, Discord, Telegram).",
-      "files": ["components/sidebar-wallet-connect.tsx", "components/email-auth.tsx", "lib/wallet-auth.ts", "lib/supabase.ts", "hooks/use-x-auth.ts", "hooks/use-twitter-link.ts"]
+      "name": "Quest Management System",
+      "description": "Complete quest creation, management, and participation system with multiple task types",
+      "files": [
+        "app/quest/[id]/page.tsx",
+        "app/quest/[id]/QuestDetailClient.tsx",
+        "app/quest/[id]/layout.tsx",
+        "components/QuestCard.tsx",
+        "components/QuestStatsBar.tsx",
+        "components/edit-quest-form.tsx",
+        "components/quest-form-wrapper.tsx",
+        "components/quest-image-manager.tsx",
+        "components/quest-responses-viewer.tsx",
+        "components/quest-detail/TaskList.tsx",
+        "components/quest-detail/types.ts",
+        "app/api/quests/[id]/image/route.ts"
+      ]
     },
     {
-      "name": "XP & Leaderboard System",
-      "description": "Earn XP for completing quests, view global and quest-specific leaderboards.",
-      "files": ["app/leaderboard/page.tsx", "components/QuestStatsBar.tsx", "components/ProjectStatsBar.tsx"]
+      "name": "Project Management",
+      "description": "Project creation, editing, and discovery system with owner management",
+      "files": [
+        "app/project/[id]/page.tsx",
+        "app/project/[id]/edit.tsx",
+        "app/project/[id]/layout.tsx",
+        "app/project/page.tsx",
+        "app/register-project/page.tsx",
+        "app/create/page.tsx",
+        "components/ProjectCard.tsx",
+        "components/ProjectDiscoveryClient.tsx",
+        "components/ProjectStatsBar.tsx",
+        "components/edit-project-form.tsx"
+      ]
     },
     {
-      "name": "Real-Time Social Verification",
-      "description": "Automatic verification for social actions (follow, join, like, retweet, subscribe) using X/Twitter, Discord, Telegram APIs.",
-      "files": ["lib/twitter-utils.ts", "lib/oauth-utils.ts", "lib/utils.ts", "components/task-verification.tsx", "hooks/use-x-auth.ts"]
+      "name": "Task Verification System",
+      "description": "Real-time verification of social media tasks (Twitter/X, Discord, Telegram) and other task types",
+      "files": [
+        "components/task-verification.tsx",
+        "app/api/verify/route.ts",
+        "app/api/verify/twitter-follow-real/route.ts",
+        "app/api/verify/discord-join-real/route.ts",
+        "app/api/verify/telegram-join-real/route.ts",
+        "app/api/verify/learn-completion/route.ts",
+        "app/api/verify/manual-completion/route.ts",
+        "lib/twitter-utils.ts",
+        "utils/discord.ts"
+      ]
     },
     {
-      "name": "Responsive UI & Theming",
-      "description": "Mobile-first, accessible, and consistent design using Tailwind CSS, Shadcn UI, and Radix UI.",
-      "files": ["app/globals.css", "tailwind.config.ts", "components/ui/", "components/BackgroundWrapper.tsx", "components/PageContainer.tsx"]
+      "name": "Dashboard and Analytics",
+      "description": "User dashboard with quest progress, XP tracking, and leaderboard functionality",
+      "files": [
+        "app/dashboard/page.tsx",
+        "components/DashboardClient.tsx",
+        "app/leaderboard/page.tsx",
+        "app/profile/page.tsx",
+        "app/search/page.tsx"
+      ]
     },
     {
-      "name": "User Dashboard & Profile Management",
-      "description": "Track active/completed quests, badges, achievements, edit profile, link/unlink social accounts, manage wallet/email.",
-      "files": ["app/dashboard/page.tsx", "app/profile/page.tsx", "components/DashboardClient.tsx", "components/auth-context.tsx"]
+      "name": "UI Components",
+      "description": "Comprehensive UI component library built with Radix UI and Tailwind CSS",
+      "files": [
+        "components/ui/accordion.tsx",
+        "components/ui/alert-dialog.tsx",
+        "components/ui/alert.tsx",
+        "components/ui/avatar.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/collapsible.tsx",
+        "components/ui/command.tsx",
+        "components/ui/context-menu.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/dropdown-menu.tsx",
+        "components/ui/form.tsx",
+        "components/ui/hover-card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/menubar.tsx",
+        "components/ui/navigation-menu.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/progress.tsx",
+        "components/ui/radio-group.tsx",
+        "components/ui/scroll-area.tsx",
+        "components/ui/select.tsx",
+        "components/ui/separator.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/skeleton.tsx",
+        "components/ui/slider.tsx",
+        "components/ui/switch.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/textarea.tsx",
+        "components/ui/toast.tsx",
+        "components/ui/toggle.tsx",
+        "components/ui/toggle-group.tsx",
+        "components/ui/tooltip.tsx"
+      ]
     },
     {
-      "name": "Testing & Validation",
-      "description": "Unit tests for components using Jest and React Testing Library. Schema validation with Zod.",
-      "files": ["__tests__/*.tsx", "jest.config.js", "jest.setup.ts", "components/ui/form.tsx", "lib/utils.ts"]
+      "name": "Navigation and Layout",
+      "description": "Responsive navigation system with mobile support and layout components",
+      "files": [
+        "components/navigation.tsx",
+        "components/mobile-bottom-nav.tsx",
+        "components/PageContainer.tsx",
+        "components/BackgroundWrapper.tsx",
+        "components/ClientLayout.tsx",
+        "app/layout.tsx",
+        "app/loading.tsx",
+        "app/not-found.tsx"
+      ]
     },
     {
-      "name": "API & Database Integration",
-      "description": "API routes for authentication, project, quest, and verification logic. Database schema and migration scripts.",
-      "files": ["app/api/", "scripts/*.sql", "lib/supabase.ts", "lib/supabase-admin.ts"]
+      "name": "File Upload and Storage",
+      "description": "Image and file upload system with Supabase storage integration",
+      "files": [
+        "components/image-upload.tsx",
+        "components/avatar-upload.tsx",
+        "lib/storage.ts",
+        "app/api/quests/[id]/image/route.ts"
+      ]
+    },
+    {
+      "name": "Custom Hooks",
+      "description": "Custom React hooks for authentication, mobile detection, and toast notifications",
+      "files": [
+        "hooks/use-mobile.tsx",
+        "hooks/use-toast.ts",
+        "hooks/use-twitter-link.ts",
+        "hooks/use-x-auth.ts"
+      ]
+    },
+    {
+      "name": "Database and API Integration",
+      "description": "Supabase database integration with server-side and client-side utilities",
+      "files": [
+        "lib/supabase.ts",
+        "lib/supabase-server.ts",
+        "lib/supabase-admin.ts",
+        "lib/oauth-utils.ts",
+        "app/api/users/upsert/route.ts",
+        "app/api/telegram-bot/route.ts"
+      ]
+    },
+    {
+      "name": "Social Media Integration",
+      "description": "Twitter/X, Discord, and Telegram integration for social media tasks",
+      "files": [
+        "components/discord-verify-button.tsx",
+        "components/discord-icon.tsx",
+        "components/telegram-icon.tsx",
+        "components/youtube-icon.tsx",
+        "components/medium-icon.tsx",
+        "lib/twitter-utils.ts",
+        "utils/discord.ts"
+      ]
+    },
+    {
+      "name": "Onboarding and Alerts",
+      "description": "User onboarding system with alert bars and notifications",
+      "files": [
+        "components/onboarding-alert-bar.tsx",
+        "components/loading-spinner.tsx",
+        "components/theme-provider.tsx"
+      ]
     }
   ]
 } 

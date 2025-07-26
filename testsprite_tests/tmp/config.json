@@ -4,5 +4,15 @@
   "scope": "codebase",
   "localEndpoint": "http://localhost:3000",
   "loginUser": "richcase1975@gmail.com",
-  "loginPassword": "7ftGiMiy."
+  "loginPassword": "7ftGiMiy.",
+  "executionArgs": {
+    "projectName": "zaloyal",
+    "projectPath": "/Users/gvozdovic/ZALOYAL/zaloyal/zaloyal",
+    "testIds": [],
+    "additionalInstruction": "Focus on identifying and reporting any errors, bugs, or issues in the application, including console errors, network failures, UI rendering issues, and functionality problems.",
+    "envs": {
+      "API_KEY": "sk-user-ckkcvvqwjYsXTv-CzyAyeRuUUSmwQNY1i6WDyMlPTg4XuQZnnSydWUiRcdpel1L0uXXhNvJJvAaUpwHXL-x87LH87Z6jIJZXhYz0d0wu_ElSa7I0UfhDLAFg_WdY4ABqx5o"
+    }
+  },
+  "proxy": "http://baa9263c-effa-4379-94f3-10fd3c0d7182:JGXkuDgycQIkupZxjAWMHxQakiGig41p@tun.testsprite.com:8080"
 }
