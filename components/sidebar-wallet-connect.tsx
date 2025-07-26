@@ -49,13 +49,13 @@ export default function SidebarWalletConnect() {
   }
 
   const handleTwitterLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'twitter',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`
-      }
-    })
-  }
+    const { data, error } = await supabase.auth.linkIdentity({ provider: 'twitter' });
+    if (error) {
+      // Optionally show a toast or error message
+      console.error('X linking error:', error);
+    }
+    // Optionally handle success (data contains the new identity)
+  };
 
   if (isAuthenticated === false) {
     return (

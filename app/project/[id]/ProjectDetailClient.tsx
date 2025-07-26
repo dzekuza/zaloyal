@@ -132,6 +132,7 @@ export default function ProjectDetailClient({
           src={project.cover_image_url || "/placeholder.jpg"}
           alt={`${project.name} cover`}
           className="w-full h-full object-cover"
+          style={{ width: 'auto' }}
         />
         <div className="absolute inset-0 bg-black/50" />
         
@@ -155,6 +156,7 @@ export default function ProjectDetailClient({
                   src={project.logo_url || "/placeholder.svg?height=80&width=80"}
                   alt={`${project.name} logo`}
                   className="w-20 h-20 rounded-full border-4 border-white bg-white project-logo-cover"
+                  style={{ width: 'auto' }}
                 />
               </div>
               {/* Title and description */}

@@ -1,0 +1,59 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "Next.js",
+    "React",
+    "Supabase (Postgres, Auth, Storage)",
+    "Tailwind CSS",
+    "Shadcn UI",
+    "Radix UI",
+    "Jest (Testing)",
+    "Zod (Validation)",
+    "Lucide Icons",
+    "Ethers/Solana Web3",
+    "Node.js",
+    "Vercel (Deployment)"
+  ],
+  "features": [
+    {
+      "name": "Project & Quest Management",
+      "description": "Register projects, create and manage multi-step quests, and manage tasks (social, download, form, visit, learn/quiz).",
+      "files": ["app/register-project/page.tsx", "app/create/page.tsx", "app/project/[id]/page.tsx", "app/project/[id]/ProjectDetailClient.tsx", "components/ProjectCard.tsx", "components/QuestCard.tsx"]
+    },
+    {
+      "name": "Authentication (Wallet, Email, Social)",
+      "description": "Secure authentication via wallet (EVM/Solana), email, and OAuth (Twitter/X, Discord, Telegram).",
+      "files": ["components/sidebar-wallet-connect.tsx", "components/email-auth.tsx", "lib/wallet-auth.ts", "lib/supabase.ts", "hooks/use-x-auth.ts", "hooks/use-twitter-link.ts"]
+    },
+    {
+      "name": "XP & Leaderboard System",
+      "description": "Earn XP for completing quests, view global and quest-specific leaderboards.",
+      "files": ["app/leaderboard/page.tsx", "components/QuestStatsBar.tsx", "components/ProjectStatsBar.tsx"]
+    },
+    {
+      "name": "Real-Time Social Verification",
+      "description": "Automatic verification for social actions (follow, join, like, retweet, subscribe) using X/Twitter, Discord, Telegram APIs.",
+      "files": ["lib/twitter-utils.ts", "lib/oauth-utils.ts", "lib/utils.ts", "components/task-verification.tsx", "hooks/use-x-auth.ts"]
+    },
+    {
+      "name": "Responsive UI & Theming",
+      "description": "Mobile-first, accessible, and consistent design using Tailwind CSS, Shadcn UI, and Radix UI.",
+      "files": ["app/globals.css", "tailwind.config.ts", "components/ui/", "components/BackgroundWrapper.tsx", "components/PageContainer.tsx"]
+    },
+    {
+      "name": "User Dashboard & Profile Management",
+      "description": "Track active/completed quests, badges, achievements, edit profile, link/unlink social accounts, manage wallet/email.",
+      "files": ["app/dashboard/page.tsx", "app/profile/page.tsx", "components/DashboardClient.tsx", "components/auth-context.tsx"]
+    },
+    {
+      "name": "Testing & Validation",
+      "description": "Unit tests for components using Jest and React Testing Library. Schema validation with Zod.",
+      "files": ["__tests__/*.tsx", "jest.config.js", "jest.setup.ts", "components/ui/form.tsx", "lib/utils.ts"]
+    },
+    {
+      "name": "API & Database Integration",
+      "description": "API routes for authentication, project, quest, and verification logic. Database schema and migration scripts.",
+      "files": ["app/api/", "scripts/*.sql", "lib/supabase.ts", "lib/supabase-admin.ts"]
+    }
+  ]
+} 

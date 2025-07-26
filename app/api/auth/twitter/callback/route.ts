@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createServerClient } from '@/lib/supabase-server';
 import OAuth from 'oauth-1.0a';
 import crypto from 'crypto';
 import { validateOAuthState } from '@/lib/oauth-utils';
 
 export async function GET(request: NextRequest) {
   try {
-    // Pass the cookies function directly
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createServerClient();
     
     // Get the current user session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -41,27 +39,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=invalid_oauth_response`);
     }
 
-    // Validate state parameter if present
-    if (state && timestamp) {
-      const validation = validateOAuthState(state, timestamp);
-      if (!validation.valid) {
-        console.error('OAuth state validation failed:', validation);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=request_expired`);
+    // Validate OAuth state if provided
+    if (state) {
+      const isValidState = await validateOAuthState(supabase, user.id, state, 'twitter');
+      if (!isValidState) {
+        console.error('Invalid OAuth state');
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=invalid_state`);
       }
     }
 
-    // Check if we have Twitter API credentials
-    const twitterApiKey = process.env.TWITTER_API_KEY;
-    const twitterApiSecret = process.env.TWITTER_API_SECRET;
-    if (!twitterApiKey || !twitterApiSecret) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=api_not_configured`);
-    }
-
-    // Create OAuth 1.0a instance
+    // Exchange request token for access token
     const oauth = new OAuth({
       consumer: {
-        key: twitterApiKey,
-        secret: twitterApiSecret,
+        key: process.env.TWITTER_API_KEY!,
+        secret: process.env.TWITTER_API_SECRET!
       },
       signature_method: 'HMAC-SHA1',
       hash_function(base_string: string, key: string) {
@@ -69,162 +60,119 @@ export async function GET(request: NextRequest) {
           .createHmac('sha1', key)
           .update(base_string)
           .digest('base64');
-      },
+      }
     });
 
-    // Exchange request token for access token
+    const accessTokenUrl = 'https://api.twitter.com/oauth/access_token';
     const accessTokenData = {
-      url: 'https://api.twitter.com/oauth/access_token',
+      url: accessTokenUrl,
       method: 'POST',
       data: {
         oauth_token: oauthToken,
-        oauth_verifier: oauthVerifier,
-      },
+        oauth_verifier: oauthVerifier
+      }
     };
 
-    const accessTokenHeaders = oauth.toHeader(oauth.authorize(accessTokenData));
+    const authHeader = oauth.toHeader(oauth.authorize(accessTokenData));
 
-    try {
-      console.log('Exchanging OAuth token for access token...');
-      
-      const response = await fetch(accessTokenData.url, {
-        method: accessTokenData.method,
-        headers: {
-          ...accessTokenHeaders,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams(accessTokenData.data).toString(),
-      });
+    const tokenResponse = await fetch(accessTokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader['Authorization'],
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        oauth_token: oauthToken,
+        oauth_verifier: oauthVerifier
+      })
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Access token exchange failed:', response.status, errorText);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=access_token_failed`);
-      }
-
-      const responseText = await response.text();
-      const params = new URLSearchParams(responseText);
-      const accessToken = params.get('oauth_token');
-      const accessTokenSecret = params.get('oauth_token_secret');
-      const userId = params.get('user_id');
-      const screenName = params.get('screen_name');
-
-      if (!accessToken || !accessTokenSecret || !userId || !screenName) {
-        console.error('Invalid access token response:', responseText);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=invalid_access_token`);
-      }
-
-      console.log('Access token obtained successfully for user:', screenName);
-
-      // --- v2 API: Get user info ---
-      const profileData = {
-        url: 'https://api.twitter.com/2/users/me?user.fields=profile_image_url,username,name',
-        method: 'GET',
-      };
-
-      const profileHeaders = oauth.toHeader(oauth.authorize(profileData, {
-        key: accessToken,
-        secret: accessTokenSecret,
-      }));
-
-      const profileResponse = await fetch(profileData.url, {
-        method: profileData.method,
-        headers: {
-          ...profileHeaders,
-        },
-      });
-
-      if (!profileResponse.ok) {
-        const errorText = await profileResponse.text();
-        console.error('Profile fetch failed:', profileResponse.status, errorText);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_fetch_failed`);
-      }
-
-      const profileJson = await profileResponse.json();
-      const profile = profileJson.data;
-
-      // Get profile image URL
-      let profileImageUrl = null;
-      if (profile && profile.profile_image_url) {
-        // Use the highest resolution available
-        profileImageUrl = profile.profile_image_url.replace('_normal', '_400x400');
-      }
-
-      console.log('Profile fetched successfully:', profile?.username);
-
-      // Update user profile with Twitter data
-      try {
-        // Try RPC function first
-        const { error: rpcError } = await supabase.rpc('update_user_twitter_profile', {
-          user_id: user.id,
-          twitter_id: userId,
-          twitter_username: profile?.username || screenName,
-          twitter_avatar_url: profileImageUrl || null
-        });
-
-        if (rpcError) {
-          console.warn('RPC function failed, using direct update:', rpcError);
-          // Fallback to direct table update
-          const { error: updateError } = await supabase.from('users').update({
-            x_id: userId,
-            x_username: profile?.username || screenName,
-            x_avatar_url: profileImageUrl,
-          }).eq('id', user.id);
-
-          if (updateError) {
-            console.error('Profile update failed:', updateError);
-            return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_update_failed`);
-          }
-        }
-      } catch (err) {
-        console.warn('Database function not available, using direct update');
-        // Fallback to direct table update
-        const { error: updateError } = await supabase.from('users').update({
-          x_id: userId,
-          x_username: profile?.username || screenName,
-          x_avatar_url: profileImageUrl,
-        }).eq('id', user.id);
-
-        if (updateError) {
-          console.error('Profile update failed:', updateError);
-          return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=profile_update_failed`);
-        }
-      }
-
-      console.log('Twitter profile updated successfully');
-
-      // Store OAuth tokens in Supabase Auth identities
-      try {
-        // Create a custom identity for the user with OAuth tokens
-        const { error: identityError } = await supabase.auth.updateUser({
-          data: {
-            twitter_oauth_token: accessToken,
-            twitter_oauth_token_secret: accessTokenSecret,
-            twitter_user_id: userId,
-            twitter_username: profile?.username || screenName,
-          }
-        });
-
-        if (identityError) {
-          console.warn('Failed to store OAuth tokens in user data:', identityError);
-        } else {
-          console.log('OAuth tokens stored successfully');
-        }
-      } catch (err) {
-        console.warn('Could not store OAuth tokens:', err);
-      }
-
-      // Redirect to profile with success message (no reload parameter)
-      const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/profile?success=twitter_linked`;
-      return NextResponse.redirect(redirectUrl);
-
-    } catch (error) {
-      console.error('OAuth exchange error:', error);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=oauth_error`);
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('Token exchange failed:', errorText);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=token_exchange_failed`);
     }
+
+    const tokenData = await tokenResponse.text();
+    const params = new URLSearchParams(tokenData);
+    const accessToken = params.get('oauth_token');
+    const accessTokenSecret = params.get('oauth_token_secret');
+    const userId = params.get('user_id');
+    const screenName = params.get('screen_name');
+
+    if (!accessToken || !accessTokenSecret || !userId || !screenName) {
+      console.error('Invalid token response:', tokenData);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=invalid_token_response`);
+    }
+
+    // Get user details from Twitter API
+    const userResponse = await fetch(`https://api.twitter.com/2/users/me`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`
+      }
+    });
+
+    let twitterUserData = null;
+    if (userResponse.ok) {
+      const userData = await userResponse.json();
+      twitterUserData = userData.data;
+    }
+
+    // Store the OAuth tokens in social_accounts table
+    const { error: insertError } = await supabase
+      .from('social_accounts')
+      .upsert({
+        user_id: user.id,
+        platform: 'twitter',
+        platform_user_id: userId,
+        platform_username: screenName,
+        access_token: accessToken,
+        access_token_secret: accessTokenSecret,
+        refresh_token: null, // Twitter doesn't use refresh tokens
+        token_expires_at: null,
+        profile_data: twitterUserData || {
+          id: userId,
+          username: screenName,
+          name: screenName
+        },
+        verified: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id,platform'
+      });
+
+    if (insertError) {
+      console.error('Error storing tokens:', insertError);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=token_storage_failed`);
+    }
+
+    // Update user profile with Twitter information
+    const { error: profileError } = await supabase
+      .from('users')
+      .update({
+        twitter_username: screenName,
+        twitter_id: userId,
+        twitter_avatar_url: twitterUserData?.profile_image_url || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id);
+
+    if (profileError) {
+      console.error('Error updating profile:', profileError);
+      // Don't fail the whole flow for profile update errors
+    }
+
+    console.log('Successfully connected Twitter account:', {
+      userId: user.id,
+      twitterUsername: screenName,
+      twitterUserId: userId
+    });
+
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?success=twitter_connected`);
 
   } catch (error) {
     console.error('Twitter callback error:', error);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=callback_error`);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/profile?error=oauth_callback_failed`);
   }
 } 

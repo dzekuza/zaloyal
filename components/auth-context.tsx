@@ -57,13 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (isMounted) {
         if (event === "SIGNED_IN" && session?.user) {
-          checkEmailAuth()
+          checkEmailAuth();
         } else if (event === "SIGNED_OUT") {
-          setEmailUser(null)
-          setIsLoading(false)
+          setEmailUser(null);
+          checkEmailAuth(); // Force re-fetch to clear any stale state
         }
       }
-    })
+    });
 
     return () => {
       isMounted = false

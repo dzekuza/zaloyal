@@ -1,68 +1,220 @@
 import { supabase } from "./supabase"
 
 export class StorageService {
-  private bucketName = "publicprofile"
+  // Storage bucket names for different content types
+  private readonly BUCKETS = {
+    QUEST_IMAGES: "quest-images",
+    PROJECT_COVERS: "project-covers", 
+    PROJECT_LOGOS: "project-logos",
+    USER_AVATARS: "user-avatars",
+    QUEST_RESPONSES: "quest-responses"
+  }
 
+  // Generate unique filename with timestamp and random string
+  private generateUniqueFilename(originalName: string, prefix: string = ""): string {
+    const fileExt = originalName.split(".").pop()?.toLowerCase() || "jpg"
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 15)
+    return `${prefix}${timestamp}-${random}.${fileExt}`
+  }
+
+  // Validate file before upload
+  private validateFile(file: File, maxSizeMB: number = 5, allowedTypes: string[] = ["image/jpeg", "image/png", "image/webp"]): string | null {
+    // Check file type
+    if (!allowedTypes.includes(file.type)) {
+      return `File type not supported. Please use: ${allowedTypes.join(", ")}`
+    }
+
+    // Check file size
+    const maxSizeBytes = maxSizeMB * 1024 * 1024
+    if (file.size > maxSizeBytes) {
+      return `File size too large. Maximum size is ${maxSizeMB}MB`
+    }
+
+    return null
+  }
+
+  // Upload quest image
   async uploadQuestImage(file: File, questId?: string): Promise<string | null> {
     try {
-      // Generate unique filename
-      const fileExt = file.name.split(".").pop()
-      const fileName = `quest-images/${questId || Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-
-      // Upload file
-      const { data, error } = await supabase.storage.from(this.bucketName).upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      })
-
-      if (error) {
-        console.error("Upload error:", error)
+      const validationError = this.validateFile(file, 5, ["image/jpeg", "image/png", "image/webp", "image/gif"])
+      if (validationError) {
+        console.error("File validation error:", validationError)
         return null
       }
 
-      // Get public URL
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from(this.bucketName).getPublicUrl(fileName)
+      const fileName = questId 
+        ? `quests/${questId}/cover.${file.name.split(".").pop()?.toLowerCase()}`
+        : `quests/temp/${this.generateUniqueFilename(file.name, "quest-")}`
+
+      const { data, error } = await supabase.storage
+        .from(this.BUCKETS.QUEST_IMAGES)
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: true,
+        })
+
+      if (error) {
+        console.error("Quest image upload error:", error)
+        return null
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(this.BUCKETS.QUEST_IMAGES)
+        .getPublicUrl(fileName)
 
       return publicUrl
     } catch (error) {
-      console.error("Storage service error:", error)
+      console.error("Quest image upload error:", error)
       return null
     }
   }
 
+  // Upload project cover image
+  async uploadProjectCover(file: File, projectId: string): Promise<string | null> {
+    try {
+      const validationError = this.validateFile(file, 5, ["image/jpeg", "image/png", "image/webp"])
+      if (validationError) {
+        console.error("File validation error:", validationError)
+        return null
+      }
+
+      const fileName = `projects/${projectId}/cover.${file.name.split(".").pop()?.toLowerCase()}`
+
+      const { data, error } = await supabase.storage
+        .from(this.BUCKETS.PROJECT_COVERS)
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: true,
+        })
+
+      if (error) {
+        console.error("Project cover upload error:", error)
+        return null
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(this.BUCKETS.PROJECT_COVERS)
+        .getPublicUrl(fileName)
+
+      return publicUrl
+    } catch (error) {
+      console.error("Project cover upload error:", error)
+      return null
+    }
+  }
+
+  // Upload project logo
+  async uploadProjectLogo(file: File, projectId: string): Promise<string | null> {
+    try {
+      const validationError = this.validateFile(file, 2, ["image/jpeg", "image/png", "image/webp", "image/svg+xml"])
+      if (validationError) {
+        console.error("File validation error:", validationError)
+        return null
+      }
+
+      const fileName = `projects/${projectId}/logo.${file.name.split(".").pop()?.toLowerCase()}`
+
+      const { data, error } = await supabase.storage
+        .from(this.BUCKETS.PROJECT_LOGOS)
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: true,
+        })
+
+      if (error) {
+        console.error("Project logo upload error:", error)
+        return null
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(this.BUCKETS.PROJECT_LOGOS)
+        .getPublicUrl(fileName)
+
+      return publicUrl
+    } catch (error) {
+      console.error("Project logo upload error:", error)
+      return null
+    }
+  }
+
+  // Upload user avatar
   async uploadUserAvatar(file: File, userId: string): Promise<string | null> {
     try {
-      const fileExt = file.name.split(".").pop()
-      const fileName = `profile/${userId}-${Date.now()}.${fileExt}`
-
-      // Upload file (upsert to replace existing)
-      const { data, error } = await supabase.storage.from(this.bucketName).upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: true,
-      })
-
-      if (error) {
-        console.error("Avatar upload error:", error)
+      const validationError = this.validateFile(file, 1, ["image/jpeg", "image/png", "image/webp"])
+      if (validationError) {
+        console.error("File validation error:", validationError)
         return null
       }
 
-      // Get public URL
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from(this.bucketName).getPublicUrl(fileName)
+      const fileName = `users/${userId}/avatar.${file.name.split(".").pop()?.toLowerCase()}`
+
+      const { data, error } = await supabase.storage
+        .from(this.BUCKETS.USER_AVATARS)
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: true,
+        })
+
+      if (error) {
+        console.error("User avatar upload error:", error)
+        return null
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(this.BUCKETS.USER_AVATARS)
+        .getPublicUrl(fileName)
 
       return publicUrl
     } catch (error) {
-      console.error("Avatar upload error:", error)
+      console.error("User avatar upload error:", error)
       return null
     }
   }
 
-  async deleteFile(filePath: string): Promise<boolean> {
+  // Upload quest/task response (for private responses)
+  async uploadQuestResponse(file: File, questId: string, userId: string, taskId?: string): Promise<string | null> {
     try {
-      const { error } = await supabase.storage.from(this.bucketName).remove([filePath])
+      const validationError = this.validateFile(file, 10, [
+        "image/jpeg", "image/png", "image/webp", 
+        "video/mp4", "video/webm", 
+        "application/pdf"
+      ])
+      if (validationError) {
+        console.error("File validation error:", validationError)
+        return null
+      }
+
+      const timestamp = Date.now()
+      const fileName = taskId 
+        ? `quests/${questId}/responses/${userId}/${taskId}-${timestamp}.${file.name.split(".").pop()?.toLowerCase()}`
+        : `quests/${questId}/responses/${userId}/${timestamp}.${file.name.split(".").pop()?.toLowerCase()}`
+
+      const { data, error } = await supabase.storage
+        .from(this.BUCKETS.QUEST_RESPONSES)
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        })
+
+      if (error) {
+        console.error("Quest response upload error:", error)
+        return null
+      }
+
+      // For private responses, return the path instead of public URL
+      return `${this.BUCKETS.QUEST_RESPONSES}/${fileName}`
+    } catch (error) {
+      console.error("Quest response upload error:", error)
+      return null
+    }
+  }
+
+  // Delete file from storage
+  async deleteFile(filePath: string, bucketName?: string): Promise<boolean> {
+    try {
+      const bucket = bucketName || this.BUCKETS.QUEST_IMAGES
+      const { error } = await supabase.storage.from(bucket).remove([filePath])
 
       if (error) {
         console.error("Delete error:", error)
@@ -76,12 +228,77 @@ export class StorageService {
     }
   }
 
-  getPublicUrl(filePath: string): string {
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(this.bucketName).getPublicUrl(filePath)
-
+  // Get public URL for a file
+  getPublicUrl(filePath: string, bucketName?: string): string {
+    const bucket = bucketName || this.BUCKETS.QUEST_IMAGES
+    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filePath)
     return publicUrl
+  }
+
+  // Get storage statistics
+  async getStorageStats(): Promise<any> {
+    try {
+      const stats: Record<string, any> = {}
+      for (const [key, bucketName] of Object.entries(this.BUCKETS)) {
+        const { data, error } = await supabase.storage.from(bucketName).list('', {
+          limit: 1000,
+          offset: 0,
+        })
+        
+        if (!error && data) {
+          stats[key] = {
+            bucket: bucketName,
+            fileCount: data.length,
+            totalSize: data.reduce((sum, file) => sum + (file.metadata?.size || 0), 0)
+          }
+        }
+      }
+      return stats
+    } catch (error) {
+      console.error("Storage stats error:", error)
+      return null
+    }
+  }
+
+  // Clean up old temporary files
+  async cleanupTempFiles(): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.storage
+        .from(this.BUCKETS.QUEST_IMAGES)
+        .list('quests/temp', {
+          limit: 1000,
+          offset: 0,
+        })
+
+      if (error) {
+        console.error("Cleanup error:", error)
+        return false
+      }
+
+      // Delete files older than 24 hours
+      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000)
+      const oldFiles = data?.filter(file => {
+        const fileTime = parseInt(file.name.split('-')[0]) || 0
+        return fileTime < oneDayAgo
+      }) || []
+
+      if (oldFiles.length > 0) {
+        const filePaths = oldFiles.map(file => `quests/temp/${file.name}`)
+        const { error: deleteError } = await supabase.storage
+          .from(this.BUCKETS.QUEST_IMAGES)
+          .remove(filePaths)
+
+        if (deleteError) {
+          console.error("Cleanup delete error:", deleteError)
+          return false
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error("Cleanup error:", error)
+      return false
+    }
   }
 }
 

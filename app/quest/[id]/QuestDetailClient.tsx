@@ -818,6 +818,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                   src={quest.image_url}
                   alt={quest.title}
                   className="w-full h-64 object-cover"
+                  style={{ width: 'auto' }}
                 />
               ) : (
                 <QuestPlaceholderCover 

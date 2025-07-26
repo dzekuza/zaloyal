@@ -32,6 +32,7 @@ import BackgroundWrapper from "@/components/BackgroundWrapper";
 import AuthRequired from "@/components/auth-required";
 import PageContainer from "@/components/PageContainer";
 import { toast } from 'sonner';
+import { useToast } from "@/components/ui/use-toast";
 
 interface ProjectForm {
   // Step 1: Basic Info
@@ -257,15 +258,15 @@ export default function RegisterProject() {
         // If wallet users can have X, add logic here
       }
       // Create the project with X fields
-      const { data: insertedProjects, error: projectError } = await supabase.from("projects").insert({
+      const projectData = {
         owner_id: userId,
         name: formData.name,
         description: formData.description,
-        website_url: formData.websiteUrl,
+        website_url: formData.websiteUrl || null,
         logo_url: formData.logoUrl || null,
         cover_image_url: formData.coverImageUrl || null,
-        contract_address: formData.contractAddress ? formData.contractAddress : null,
-        blockchain_network: formData.blockchainNetwork,
+        contract_address: formData.contractAddress || null,
+        blockchain_network: formData.blockchainNetwork || null,
         twitter_url: formData.twitterUrl || null,
         discord_url: formData.discordUrl || null,
         telegram_url: formData.telegramUrl || null,
@@ -273,14 +274,33 @@ export default function RegisterProject() {
         medium_url: formData.mediumUrl || null,
         category: formData.category,
         status: 'approved', // Make project live immediately
-        x_username,
-        x_id,
-        x_avatar_url,
-      }).select().single();
+        x_username: x_username || null,
+        x_id: x_id || null,
+        x_avatar_url: x_avatar_url || null,
+      };
+
+      console.log('Creating project with data:', {
+        ...projectData,
+        x_username: x_username ? `${x_username.substring(0, 3)}...` : null,
+        x_id: x_id ? `${x_id.substring(0, 3)}...` : null
+      });
+
+      const { data: insertedProjects, error: projectError } = await supabase
+        .from("projects")
+        .insert(projectData)
+        .select()
+        .single();
 
       if (projectError) {
         console.error('Project registration error:', projectError);
-        alert('Failed to submit project: ' + (projectError.message || JSON.stringify(projectError)));
+        
+        // Check if it's a schema issue
+        if (projectError.message && projectError.message.includes('twitter_url')) {
+          alert('Database schema issue detected. Please run the schema migration script first.');
+          console.error('Schema issue - missing twitter_url column');
+        } else {
+          alert('Failed to submit project: ' + (projectError.message || JSON.stringify(projectError)));
+        }
         throw projectError;
       }
 
@@ -666,8 +686,11 @@ export default function RegisterProject() {
                         onImageUploaded={(url) => handleInputChange("logoUrl", url)}
                         onImageRemoved={() => handleInputChange("logoUrl", "")}
                         currentImage={formData.logoUrl}
+                        uploadType="project-logo"
+                        entityId={createdProjectId || "temp"}
                         maxSizeMB={2}
                         label="Upload Project Logo"
+                        height="h-32"
                       />
                     </div>
 
@@ -680,8 +703,11 @@ export default function RegisterProject() {
                         onImageUploaded={(url) => handleInputChange("coverImageUrl", url)}
                         onImageRemoved={() => handleInputChange("coverImageUrl", "")}
                         currentImage={formData.coverImageUrl}
+                        uploadType="project-cover"
+                        entityId={createdProjectId || "temp"}
                         maxSizeMB={5}
                         label="Upload Cover Image"
+                        height="h-48"
                       />
                     </div>
                   </div>

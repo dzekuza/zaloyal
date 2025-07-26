@@ -1,0 +1,554 @@
+[
+  {
+    "id": "TC001",
+    "title": "Wallet Authentication Success",
+    "description": "Verify that a user can successfully authenticate using an EVM wallet (e.g., MetaMask) and Solana wallet without errors.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Select wallet authentication and connect a supported EVM wallet."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that the user is successfully authenticated and redirected to the dashboard."
+      },
+      {
+        "type": "action",
+        "description": "Log out and repeat authentication with a Solana wallet."
+      },
+      {
+        "type": "assertion",
+        "description": "User is authenticated and redirected without errors."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Email Authentication with Valid and Invalid Credentials",
+    "description": "Validate email login flow accepts valid credentials and rejects invalid ones with appropriate messages.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Enter a registered email and correct password and submit."
+      },
+      {
+        "type": "assertion",
+        "description": "User should be logged in and redirected to dashboard."
+      },
+      {
+        "type": "action",
+        "description": "Log out, enter a valid email with an incorrect password and submit."
+      },
+      {
+        "type": "assertion",
+        "description": "An error message indicating invalid credentials is displayed."
+      },
+      {
+        "type": "action",
+        "description": "Try logging in with an unregistered email."
+      },
+      {
+        "type": "assertion",
+        "description": "An appropriate error or sign-up suggestion is shown."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Social OAuth Authentication (Twitter/X, Discord, Telegram)",
+    "description": "Test OAuth login flows for Twitter/X, Discord, and Telegram, verifying secure redirection, token exchange, and user authentication.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "From login page, choose social OAuth login for Twitter/X."
+      },
+      {
+        "type": "action",
+        "description": "Complete OAuth authorization and ensure redirection back to the platform."
+      },
+      {
+        "type": "assertion",
+        "description": "User is authenticated and profile data is available."
+      },
+      {
+        "type": "action",
+        "description": "Log out and repeat for Discord and Telegram OAuth flows."
+      },
+      {
+        "type": "assertion",
+        "description": "Authentication and profile fetching succeed for each."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Project Registration and Quest Creation with Multiple Task Types",
+    "description": "Verify that project owners can register a project, create quests, and assign multi-step tasks of all supported types correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as a project owner."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to project registration page and complete registration."
+      },
+      {
+        "type": "assertion",
+        "description": "Project is created successfully and visible in the project dashboard."
+      },
+      {
+        "type": "action",
+        "description": "Create a new quest with multiple steps including social tasks (follow, join), download tasks, form submission, visit links, and learn/quiz."
+      },
+      {
+        "type": "assertion",
+        "description": "Each task type accepts input as expected and can be saved."
+      },
+      {
+        "type": "action",
+        "description": "Publish the quest and confirm visibility to users."
+      },
+      {
+        "type": "assertion",
+        "description": "Quest appears in the project quests list and user-facing quest browsers."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "User Quest Participation and Completion Flow",
+    "description": "Validate the full user journey for joining a project, embarking on a multi-step quest, completing all task types, and receiving XP.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as a regular user."
+      },
+      {
+        "type": "action",
+        "description": "Browse projects and join a selected project."
+      },
+      {
+        "type": "assertion",
+        "description": "User is joined successfully and quests are visible."
+      },
+      {
+        "type": "action",
+        "description": "Select a multi-step quest and start completing tasks."
+      },
+      {
+        "type": "action",
+        "description": "Complete each task using respective verification methods, including social API verification for follows, likes, joins."
+      },
+      {
+        "type": "assertion",
+        "description": "Tasks are validated in real time and user is allowed to proceed."
+      },
+      {
+        "type": "action",
+        "description": "Finish all tasks and submit quest completion."
+      },
+      {
+        "type": "assertion",
+        "description": "User receives the correct amount of XP and quest status updates to completed."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Real-Time Social Task Verification via Twitter/X API",
+    "description": "Verify that social tasks involving Twitter/X such as follow, like, retweet, and subscribe are validated correctly by real-time API checks.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as user connected via Twitter OAuth."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to complete a quest task requiring follow, like, retweet, or subscribe on Twitter/X."
+      },
+      {
+        "type": "assertion",
+        "description": "The system queries the Twitter/X API and validates the user action correctly."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to complete task without performing the required social action."
+      },
+      {
+        "type": "assertion",
+        "description": "Verification fails and user is informed that the task is incomplete."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Real-Time Discord Task Verification",
+    "description": "Validate real-time verification of Discord social tasks like join server using Discord API and OAuth linkage.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in and link Discord account."
+      },
+      {
+        "type": "action",
+        "description": "Complete a quest task that requires joining a specific Discord server."
+      },
+      {
+        "type": "assertion",
+        "description": "Discord API confirms server membership and task is marked complete."
+      },
+      {
+        "type": "action",
+        "description": "Simulate leaving the server and attempting to reverify."
+      },
+      {
+        "type": "assertion",
+        "description": "Verification fails appropriately."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Real-Time Telegram Task Verification",
+    "description": "Test automatic verification of Telegram join and subscribe actions for quests.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in and link Telegram account."
+      },
+      {
+        "type": "action",
+        "description": "Complete quest task requiring joining a Telegram channel or group."
+      },
+      {
+        "type": "assertion",
+        "description": "Telegram API confirms membership and task is validated."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to fake task completion without joining."
+      },
+      {
+        "type": "assertion",
+        "description": "Verification fails and user cannot proceed."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "XP Calculation and Leaderboard Update",
+    "description": "Ensure XP is correctly accumulated after quest completion and leaderboard updates reflect user ranking globally and per quest.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Complete quests with varying XP rewards."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify XP totals update correctly on user profile."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to global leaderboard and quest-specific leaderboard."
+      },
+      {
+        "type": "assertion",
+        "description": "User ranking is displayed correctly according to XP."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Responsive and Accessible UI Verification",
+    "description": "Test that all main UI pages (login, dashboard, project pages, quest pages) render correctly and meet accessibility standards on devices of various sizes.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open UI pages on desktop, tablet, and mobile devices."
+      },
+      {
+        "type": "assertion",
+        "description": "Layouts adapt correctly with no horizontal scrolling or broken elements."
+      },
+      {
+        "type": "action",
+        "description": "Run accessibility audit tools (e.g., axe) on key pages."
+      },
+      {
+        "type": "assertion",
+        "description": "No critical accessibility violations are found."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "User Dashboard and Profile Management Functionality",
+    "description": "Verify users can view active and completed quests, badges, achievements on dashboard and edit profile details including linking/unlinking social accounts and wallets.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in and navigate to the user dashboard."
+      },
+      {
+        "type": "assertion",
+        "description": "Active and completed quests are accurately displayed."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to profile settings and edit user information."
+      },
+      {
+        "type": "action",
+        "description": "Link a new social OAuth account and unlink an existing wallet."
+      },
+      {
+        "type": "assertion",
+        "description": "Changes are saved correctly and reflected immediately."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Security Test: Encrypted Tokens and Role-Level Security Enforcement",
+    "description": "Verify that the authentication tokens are encrypted and Role-Level Security (RLS) policies restrict database access appropriately for different user roles.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Authenticate as a user and inspect tokens for encryption."
+      },
+      {
+        "type": "assertion",
+        "description": "Tokens are encrypted and cannot be tampered with."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access database resources or APIs unauthorized for current role."
+      },
+      {
+        "type": "assertion",
+        "description": "Access is denied in accordance with RLS policies."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Error Handling for Invalid OAuth Callback or Token",
+    "description": "Test the system's behavior when OAuth callbacks return errors or invalid tokens during social authentication flows.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate OAuth callback with missing or invalid token."
+      },
+      {
+        "type": "assertion",
+        "description": "User receives a clear error message and is not authenticated."
+      },
+      {
+        "type": "action",
+        "description": "Simulate network error during OAuth flow."
+      },
+      {
+        "type": "assertion",
+        "description": "Proper error handling occurs with informative feedback to the user."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Validation Using Zod Schemas for User Input and API Requests",
+    "description": "Ensure that all user inputs and API request payloads conform to defined Zod schemas and invalid data is rejected with appropriate errors.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Submit invalid data in project registration form (e.g., missing required fields, incorrect types)."
+      },
+      {
+        "type": "assertion",
+        "description": "Validation errors are displayed preventing form submission."
+      },
+      {
+        "type": "action",
+        "description": "Send malformed API requests to authentication and quest creation endpoints."
+      },
+      {
+        "type": "assertion",
+        "description": "API rejects requests with descriptive error responses."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Privacy Policy and Terms Accessibility",
+    "description": "Verify that privacy policy and terms of service are integrated into the platform and accessible from key pages.",
+    "category": "functional",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to footer or help sections on multiple pages."
+      },
+      {
+        "type": "assertion",
+        "description": "Privacy policy and terms are visible and open correctly."
+      },
+      {
+        "type": "action",
+        "description": "Check that privacy-related checkboxes or acceptance flows appear during registration or login."
+      },
+      {
+        "type": "assertion",
+        "description": "User can access and acknowledge policies."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "API Endpoint Security and Response Validation",
+    "description": "Validate all API endpoints for authentication, project management, quest management, and verification respond correctly and securely to authorized and unauthorized requests.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send authorized requests to API endpoints and verify successful operation."
+      },
+      {
+        "type": "assertion",
+        "description": "API returns expected data with correct HTTP status codes."
+      },
+      {
+        "type": "action",
+        "description": "Send unauthorized requests or requests with invalid tokens."
+      },
+      {
+        "type": "assertion",
+        "description": "API returns proper 401/403 responses without data leakage."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Unit and Integration Tests Execution Validation",
+    "description": "Confirm that all unit and integration tests for React components and backend logic run successfully using Jest and React Testing Library.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Run full test suite with Jest."
+      },
+      {
+        "type": "assertion",
+        "description": "All tests pass without failures."
+      },
+      {
+        "type": "action",
+        "description": "Review coverage reports to ensure key components like authentication, quest creation, social verification are covered."
+      },
+      {
+        "type": "assertion",
+        "description": "Coverage meets or exceeds quality standards."
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Concurrent Quest Participation and XP Awarding",
+    "description": "Test multiple users completing the same quest simultaneously to ensure XP awarding and leaderboard updates occur correctly without race conditions.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate multiple distinct users completing the same quest at the same time."
+      },
+      {
+        "type": "assertion",
+        "description": "Each user receives correct XP and leaderboard ranks reflect simultaneous updates without errors."
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Handling Network Failures During Task Verification",
+    "description": "Check that the system handles network failures when calling social APIs gracefully, providing retry options or error messages.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate network failure or API timeout during social task verification."
+      },
+      {
+        "type": "assertion",
+        "description": "User is notified of verification failure with instructions or automatic retry attempts."
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Linking and Unlinking Multiple Social and Wallet Accounts",
+    "description": "Verify that users can link multiple social OAuth accounts and wallets to their profile and can unlink them safely without losing mandatory access.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in and navigate to profile settings."
+      },
+      {
+        "type": "action",
+        "description": "Link additional social accounts (Twitter, Discord, Telegram) and wallets."
+      },
+      {
+        "type": "assertion",
+        "description": "New links are reflected in the profile."
+      },
+      {
+        "type": "action",
+        "description": "Unlink a social account and confirm no impact on required authentication."
+      },
+      {
+        "type": "assertion",
+        "description": "User can still log in using remaining methods."
+      }
+    ]
+  }
+]

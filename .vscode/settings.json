@@ -23,12 +23,12 @@
   ],
   "sqltools.connections": [
     {
-      "previewLimit": 50,
-      "server": "aws-0-eu-north-1.pooler.supabase.com",
-      "port": 6543,
+      "database": "postgres",
       "driver": "PostgreSQL",
       "name": "supabase",
-      "database": "postgres",
+      "port": 6543,
+      "previewLimit": 50,
+      "server": "aws-0-eu-north-1.pooler.supabase.com",
       "username": "postgres.vihyvzsohwvspoptztjt"
     }
   ]

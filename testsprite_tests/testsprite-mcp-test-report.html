@@ -1,0 +1,182 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Markdown Preview</title>
+      <style>
+        body {
+          font-family: sans-serif;
+          padding: 40px;
+          line-height: 1.6;
+          background: #fdfdfd;
+          color: #333;
+        }
+        pre {
+          background: #f4f4f4;
+          padding: 10px;
+          border-radius: 5px;
+          overflow-x: auto;
+        }
+        code {
+          font-family: monospace;
+          background: #eee;
+          padding: 2px 4px;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-top: 20px;
+        }
+        th, td {
+          border: 1px solid #ccc;
+          padding: 8px 12px;
+          text-align: left;
+        }
+        th {
+          background-color: #f2f2f2;
+          font-weight: bold;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>TestSprite AI Testing Report (MCP)</h1>
+<hr>
+<h2>1️⃣ Document Metadata</h2>
+<ul>
+<li><strong>Project Name:</strong> zaloyal</li>
+<li><strong>Version:</strong> 0.1.0</li>
+<li><strong>Date:</strong> 2025-07-24</li>
+<li><strong>Prepared by:</strong> TestSprite AI Team</li>
+</ul>
+<hr>
+<h2>2️⃣ Requirement Validation Summary</h2>
+<h3>Requirement: Authentication (Wallet, Email, Social)</h3>
+<ul>
+<li><strong>Description:</strong> Covers wallet, email/password, and social (Twitter/X, Discord, Telegram) authentication flows, including error handling and UI feedback.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC001</li>
+<li><strong>Test Name:</strong> Wallet Authentication Success</li>
+<li><strong>Test Code:</strong> <a href="./TC001_Wallet_Authentication_Success.py">TC001_Wallet_Authentication_Success.py</a></li>
+<li><strong>Test Error:</strong> Wallet authentication options for EVM and Solana wallets are missing on the login page, preventing the completion of the authentication tests. Stopping further testing.</li>
+<li><strong>Test Visualization and Result:</strong> <a href="https://www.testsprite.com/dashboard/mcp/tests/ea34051e-d5ea-4ecc-b2c4-ab3598bb955a/feba84b2-0034-43ec-a28a-bd7fe8b6d2ab">View Result</a></li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Wallet authentication UI is not rendered; users cannot authenticate with wallets.</li>
+</ul>
+<hr>
+<h4>Test 2</h4>
+<ul>
+<li><strong>Test ID:</strong> TC002</li>
+<li><strong>Test Name:</strong> Email Authentication with Valid and Invalid Credentials</li>
+<li><strong>Test Code:</strong> <a href="./TC002_Email_Authentication_with_Valid_and_Invalid_Credentials.py">TC002_Email_Authentication_with_Valid_and_Invalid_Credentials.py</a></li>
+<li><strong>Test Error:</strong> Valid login succeeded, but invalid and unregistered login attempts did not show error messages or sign-up suggestions.</li>
+<li><strong>Test Visualization and Result:</strong> <a href="https://www.testsprite.com/dashboard/mcp/tests/ea34051e-d5ea-4ecc-b2c4-ab3598bb955a/5a5f0f86-ed67-43cd-884a-f79367467496">View Result</a></li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Missing error feedback for failed logins; critical for user experience.</li>
+</ul>
+<hr>
+<h4>Test 3</h4>
+<ul>
+<li><strong>Test ID:</strong> TC003</li>
+<li><strong>Test Name:</strong> Social OAuth Authentication (Twitter/X, Discord, Telegram)</li>
+<li><strong>Test Code:</strong> <a href="./TC003_Social_OAuth_Authentication_TwitterX_Discord_Telegram.py">TC003_Social_OAuth_Authentication_TwitterX_Discord_Telegram.py</a></li>
+<li><strong>Test Error:</strong> OAuth login modal/options do not appear after clicking 'Log In'.</li>
+<li><strong>Test Visualization and Result:</strong> <a href="https://www.testsprite.com/dashboard/mcp/tests/ea34051e-d5ea-4ecc-b2c4-ab3598bb955a/87843cec-f30a-4422-bbdf-00a6b49b01b5">View Result</a></li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Social login UI/modal not rendered; OAuth flows blocked.</li>
+</ul>
+<hr>
+<h4>Test 4</h4>
+<ul>
+<li><strong>Test ID:</strong> TC006</li>
+<li><strong>Test Name:</strong> Real-Time Social Task Verification via Twitter/X API</li>
+<li><strong>Test Code:</strong> <a href="./TC006_Real_Time_Social_Task_Verification_via_TwitterX_API.py">TC006_Real_Time_Social_Task_Verification_via_TwitterX_API.py</a></li>
+<li><strong>Test Error:</strong> Twitter OAuth login option missing in login modal; cannot validate Twitter tasks.</li>
+<li><strong>Test Visualization and Result:</strong> <a href="https://www.testsprite.com/dashboard/mcp/tests/ea34051e-d5ea-4ecc-b2c4-ab3598bb955a/4783ce72-4003-47eb-b7c7-9c6721bbfa17">View Result</a></li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Twitter OAuth integration missing from login modal; blocks social task validation.</li>
+</ul>
+<hr>
+<h4>Test 5</h4>
+<ul>
+<li><strong>Test ID:</strong> TC013</li>
+<li><strong>Test Name:</strong> Error Handling for Invalid OAuth Callback or Token</li>
+<li><strong>Test Code:</strong> <a href="./TC013_Error_Handling_for_Invalid_OAuth_Callback_or_Token.py">TC013_Error_Handling_for_Invalid_OAuth_Callback_or_Token.py</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> <a href="https://www.testsprite.com/dashboard/mcp/tests/ea34051e-d5ea-4ecc-b2c4-ab3598bb955a/29212c8b-4b74-4c36-b05e-bd2121a35d78">View Result</a></li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> Low</li>
+<li><strong>Analysis / Findings:</strong> Proper error handling for OAuth callback/token errors.</li>
+</ul>
+<hr>
+<h3>Requirement: Registration &amp; User Profile</h3>
+<ul>
+<li><strong>Description:</strong> Covers user registration, profile management, and social account linking.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC011</li>
+<li><strong>Test Name:</strong> User Dashboard and Profile Management Functionality</li>
+<li><strong>Test Code:</strong> <a href="./TC011_User_Dashboard_and_Profile_Management_Functionality.py">TC011_User_Dashboard_and_Profile_Management_Functionality.py</a></li>
+<li><strong>Test Error:</strong> Active and completed quests do not display on dashboard; profile editing and social linking untestable.</li>
+<li><strong>Test Visualization and Result:</strong> <a href="https://www.testsprite.com/dashboard/mcp/tests/ea34051e-d5ea-4ecc-b2c4-ab3598bb955a/54fab8d5-f5ac-4d8e-ac85-c56d7d17538a">View Result</a></li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Dashboard/profile data not rendered; social linking inaccessible.</li>
+</ul>
+<hr>
+<h2>3️⃣ Coverage &amp; Matching Metrics</h2>
+<ul>
+<li><strong>Key gaps / risks:</strong>
+<ul>
+<li>Wallet and social authentication UI not rendered</li>
+<li>No error feedback for failed logins</li>
+<li>Twitter OAuth missing from login modal</li>
+<li>Profile/quest data not rendered; social linking inaccessible</li>
+</ul>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Total Tests</th>
+<th>✅ Passed</th>
+<th>❌ Failed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Authentication</td>
+<td>5</td>
+<td>1</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Registration/Profile</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>4️⃣ Recommendations</h2>
+<ul>
+<li>Fix wallet and social login UI/modal rendering</li>
+<li>Add error feedback for failed logins</li>
+<li>Ensure Twitter OAuth is present in login modal</li>
+<li>Debug dashboard/profile data fetching and rendering</li>
+<li>Re-test after fixes</li>
+</ul>
+
+    </body>
+    </html>
+  

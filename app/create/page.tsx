@@ -292,6 +292,49 @@ export default function CreateQuest() {
   };
 
   const saveTask = () => {
+    // Find the selected project object
+    const selectedProject = userProjects.find((p) => p.id === selectedProjectId);
+    
+    // Helper: get project owner's linked social account username
+    const getProjectOwnerSocialUsername = (platform: string) => {
+      if (!selectedProject) return null;
+      if (platform === 'twitter') return selectedProject.x_username;
+      return null;
+    };
+
+    // Helper: validate tweet URL is from the linked account
+    const validateTweetUrl = (url: string) => {
+      if (!url) return { isValid: false, error: 'Tweet URL is required' };
+      
+      const projectOwnerUsername = getProjectOwnerSocialUsername('twitter');
+      if (!projectOwnerUsername) {
+        return { isValid: false, error: 'Project owner must have a linked Twitter account' };
+      }
+
+      // Extract username from tweet URL
+      const tweetUrlMatch = url.match(/twitter\.com\/([^\/]+)\/status\//);
+      if (!tweetUrlMatch) {
+        return { isValid: false, error: 'Invalid tweet URL format' };
+      }
+
+      const tweetUsername = tweetUrlMatch[1];
+      if (tweetUsername !== projectOwnerUsername) {
+        return { isValid: false, error: `Tweet must be from @${projectOwnerUsername} (project owner's linked account)` };
+      }
+
+      return { isValid: true, error: null };
+    };
+
+    // Validate tweet URL for like/retweet tasks
+    if (currentTask.type === "social" && currentTask.socialPlatform === "twitter" && 
+        (currentTask.socialAction === "like" || currentTask.socialAction === "retweet")) {
+      const validation = validateTweetUrl(currentTask.socialUrl || '');
+      if (!validation.isValid) {
+        alert(validation.error);
+        return;
+      }
+    }
+
     // Auto-extract tweet ID and username from URLs for Twitter tasks
     let taskToSave = { ...currentTask };
     if (currentTask.type === "social" && currentTask.socialPlatform === "twitter") {
@@ -466,6 +509,7 @@ export default function CreateQuest() {
   const renderTaskSpecificFields = () => {
     // Find the selected project object
     const selectedProject = userProjects.find((p) => p.id === selectedProjectId);
+    
     // Helper: does the project have the relevant social link?
     const hasProjectSocial = (platform: string) => {
       if (!selectedProject) return false;
@@ -474,16 +518,58 @@ export default function CreateQuest() {
       if (platform === 'telegram') return !!selectedProject.telegram_url;
       return false;
     };
+
+    // Helper: get project owner's linked social account username
+    const getProjectOwnerSocialUsername = (platform: string) => {
+      if (!selectedProject) return null;
+      if (platform === 'twitter') return selectedProject.x_username;
+      // Add other platforms as needed
+      return null;
+    };
+
     // Should we show the URL field?
     const shouldShowUrlField = () => {
-      if (currentTask.socialPlatform === 'discord' && currentTask.socialAction === 'join' && hasProjectSocial('discord')) return false;
-      if (currentTask.socialPlatform === 'telegram' && currentTask.socialAction === 'join' && hasProjectSocial('telegram')) return false;
-      if (currentTask.socialPlatform === 'twitter' && currentTask.socialAction === 'follow' && hasProjectSocial('twitter')) return false;
-      // Always show for like/retweet
-      if (currentTask.socialAction === 'like' || currentTask.socialAction === 'retweet') return true;
-      // Default: show
+      // For follow tasks: use linked account, no URL needed
+      if (currentTask.socialPlatform === 'twitter' && currentTask.socialAction === 'follow' && hasProjectSocial('twitter')) {
+        return false;
+      }
+      if (currentTask.socialPlatform === 'discord' && currentTask.socialAction === 'join' && hasProjectSocial('discord')) {
+        return false;
+      }
+      if (currentTask.socialPlatform === 'telegram' && currentTask.socialAction === 'join' && hasProjectSocial('telegram')) {
+        return false;
+      }
+      // For like/retweet tasks: always require URL (must be from linked account)
+      if (currentTask.socialAction === 'like' || currentTask.socialAction === 'retweet') {
+        return true;
+      }
+      // Default: show for other cases
       return true;
     };
+
+    // Helper: validate tweet URL is from the linked account
+    const validateTweetUrl = (url: string) => {
+      if (!url) return { isValid: false, error: 'Tweet URL is required' };
+      
+      const projectOwnerUsername = getProjectOwnerSocialUsername('twitter');
+      if (!projectOwnerUsername) {
+        return { isValid: false, error: 'Project owner must have a linked Twitter account' };
+      }
+
+      // Extract username from tweet URL
+      const tweetUrlMatch = url.match(/twitter\.com\/([^\/]+)\/status\//);
+      if (!tweetUrlMatch) {
+        return { isValid: false, error: 'Invalid tweet URL format' };
+      }
+
+      const tweetUsername = tweetUrlMatch[1];
+      if (tweetUsername !== projectOwnerUsername) {
+        return { isValid: false, error: `Tweet must be from @${projectOwnerUsername} (project owner's linked account)` };
+      }
+
+      return { isValid: true, error: null };
+    };
+
     switch (currentTask.type) {
       case "social":
         return (
@@ -527,12 +613,42 @@ export default function CreateQuest() {
                 </Select>
               </div>
             </div>
+
+            {/* Smart verification messaging */}
+            {currentTask.socialPlatform === 'twitter' && currentTask.socialAction === 'follow' && hasProjectSocial('twitter') && (
+              <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
+                <p className="text-green-400 text-sm">
+                  ✅ Will use project owner's linked Twitter account (@{getProjectOwnerSocialUsername('twitter')}) for verification
+                </p>
+              </div>
+            )}
+
+            {currentTask.socialPlatform === 'twitter' && (currentTask.socialAction === 'like' || currentTask.socialAction === 'retweet') && (
+              <div className="p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                <p className="text-blue-400 text-sm">
+                  ℹ️ Tweet must be from project owner's linked account (@{getProjectOwnerSocialUsername('twitter') || 'Not linked'})
+                </p>
+              </div>
+            )}
+
             {shouldShowUrlField() && (
               <div>
                 <Label className="text-white">URL/Link</Label>
                 <Input
                   value={currentTask.socialUrl || ""}
-                  onChange={(e) => setCurrentTask((prev) => ({ ...prev, socialUrl: e.target.value }))}
+                  onChange={(e) => {
+                    const url = e.target.value;
+                    setCurrentTask((prev) => ({ ...prev, socialUrl: url }));
+                    
+                    // Validate tweet URL for like/retweet tasks
+                    if (currentTask.socialPlatform === 'twitter' && (currentTask.socialAction === 'like' || currentTask.socialAction === 'retweet')) {
+                      const validation = validateTweetUrl(url);
+                      if (!validation.isValid) {
+                        // You could add error state here
+                        console.warn('Tweet URL validation:', validation.error);
+                      }
+                    }
+                  }}
                   placeholder={
                     currentTask.socialAction === "like" || currentTask.socialAction === "retweet"
                       ? "https://twitter.com/username/status/1234567890"
@@ -542,11 +658,20 @@ export default function CreateQuest() {
                 />
                 {(currentTask.socialAction === "like" || currentTask.socialAction === "retweet") && (
                   <p className="text-xs text-gray-400 mt-1">
-                    Paste the full tweet URL - the tweet ID will be extracted automatically
+                    Paste the full tweet URL - must be from project owner's linked account
                   </p>
                 )}
               </div>
             )}
+
+            {currentTask.socialAction === "follow" && !hasProjectSocial('twitter') && (
+              <div className="p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
+                <p className="text-yellow-400 text-sm">
+                  ⚠️ Project owner must link their Twitter account for automatic verification
+                </p>
+              </div>
+            )}
+
             {currentTask.socialAction === "follow" && (
               <div>
                 <Label className="text-white">Username (without @)</Label>
@@ -558,6 +683,7 @@ export default function CreateQuest() {
                 />
               </div>
             )}
+
             {(currentTask.socialAction === "like" || currentTask.socialAction === "retweet") && (
               <div>
                 <Label className="text-white">Post ID (Optional)</Label>
@@ -813,7 +939,10 @@ export default function CreateQuest() {
                     onImageUploaded={(url) => setQuestForm((prev) => ({ ...prev, imageUrl: url }))}
                     onImageRemoved={() => setQuestForm((prev) => ({ ...prev, imageUrl: "" }))}
                     currentImage={questForm.imageUrl}
+                    uploadType="quest"
+                    entityId={selectedProjectId || undefined}
                     className="mt-2"
+                    height="h-48"
                   />
                 </div>
 

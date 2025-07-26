@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createServerClient } from '@/lib/supabase-server';
 import OAuth from 'oauth-1.0a';
 import crypto from 'crypto';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createServerClient();
     
     // Get the current user session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -61,68 +60,70 @@ export async function GET(request: NextRequest) {
     };
 
     const requestTokenHeaders = oauth.toHeader(oauth.authorize(requestTokenData));
-    console.log('DEBUG: OAuth headers:', requestTokenHeaders);
 
-    try {
-      console.log('Requesting OAuth token from Twitter...');
-      
-      const response = await fetch(requestTokenData.url, {
-        method: requestTokenData.method,
-        headers: {
-          ...requestTokenHeaders,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams(requestTokenData.data).toString(),
-      });
+    const tokenResponse = await fetch('https://api.twitter.com/oauth/request_token', {
+      method: 'POST',
+      headers: {
+        'Authorization': requestTokenHeaders['Authorization'],
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        oauth_callback: callbackUrl,
+      }),
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Request token failed:', response.status, errorText);
-        console.error('Request URL:', requestTokenData.url);
-        console.error('Request headers:', requestTokenHeaders);
-        console.error('Request body:', new URLSearchParams(requestTokenData.data).toString());
-        return NextResponse.json(
-          { error: `Failed to get request token from Twitter: ${response.status} - ${errorText}` },
-          { status: 500 }
-        );
-      }
-
-      const responseText = await response.text();
-      const params = new URLSearchParams(responseText);
-      const oauthToken = params.get('oauth_token');
-      const oauthTokenSecret = params.get('oauth_token_secret');
-
-      if (!oauthToken) {
-        console.error('No oauth_token in response:', responseText);
-        return NextResponse.json(
-          { error: 'Invalid response from Twitter' },
-          { status: 500 }
-        );
-      }
-
-      console.log('OAuth request token obtained successfully');
-
-      // Redirect to Twitter authorization URL
-      const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`;
-      
-      return NextResponse.json({
-        success: true,
-        authUrl: authUrl,
-        message: 'Redirect to Twitter for authorization'
-      });
-
-    } catch (error) {
-      console.error('OAuth request token error:', error);
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('Twitter OAuth error:', errorText);
       return NextResponse.json(
-        { error: 'Failed to initiate OAuth flow' },
+        { error: 'Failed to get request token from Twitter' },
         { status: 500 }
       );
     }
 
+    const tokenData = await tokenResponse.text();
+    const params = new URLSearchParams(tokenData);
+    const oauthToken = params.get('oauth_token');
+    const oauthTokenSecret = params.get('oauth_token_secret');
+
+    if (!oauthToken || !oauthTokenSecret) {
+      console.error('Invalid token response:', tokenData);
+      return NextResponse.json(
+        { error: 'Invalid response from Twitter OAuth' },
+        { status: 500 }
+      );
+    }
+
+    // Store OAuth state
+    const { error: stateError } = await supabase.rpc('store_oauth_state', {
+      p_user_id: user.id,
+      p_state: state,
+      p_code_verifier: oauthTokenSecret,
+      p_platform: 'twitter'
+    });
+
+    if (stateError) {
+      console.error('Error storing OAuth state:', stateError);
+      return NextResponse.json(
+        { error: 'Failed to initialize OAuth flow' },
+        { status: 500 }
+      );
+    }
+
+    // Build authorization URL
+    const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}&state=${state}&timestamp=${timestamp}`;
+
+    return NextResponse.json({
+      authUrl,
+      state,
+      oauthToken,
+      oauthTokenSecret
+    });
+
   } catch (error) {
-    console.error('Twitter authorize error:', error);
+    console.error('Twitter OAuth error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error during OAuth initialization' },
       { status: 500 }
     );
   }

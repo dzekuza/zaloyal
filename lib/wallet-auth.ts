@@ -15,24 +15,112 @@ class WalletAuth {
   private listeners: ((user: WalletUser | null) => void)[] = []
   private isInitialized = false
 
-  // Only allow wallet linking, not authentication
-  async connectWallet(): Promise<string> {
-    const provider = (window as any).solana
-    if (!provider || !provider.isPhantom) {
-      throw new Error("Phantom Wallet is not installed")
+  // Get the correct URI for wallet authentication
+  private getWalletAuthUri(): string {
+    // Use the current domain or fallback to localhost for development
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/terms`
     }
-    await provider.connect()
-    const walletAddress = provider.publicKey.toString()
-    // Only link wallet to profile, do not authenticate
-    // Save wallet address to user profile
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
-    const { error } = await supabase
-      .from("users")
-      .update({ wallet_address: walletAddress })
-      .eq("id", user.id);
+    // Fallback for server-side rendering
+    return process.env.NEXT_PUBLIC_APP_URL 
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/terms`
+      : 'http://localhost:3000/terms'
+  }
+
+  // Link wallet to the current authenticated user (email/social)
+  async linkWalletToCurrentUser(): Promise<string> {
+    const provider = (window as any).solana;
+    if (!provider) throw new Error('No Solana wallet found');
+    
+    // Get the current authenticated user first
+    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !currentUser) {
+      throw new Error('You must be logged in to link a wallet');
+    }
+    
+    // Connect to wallet
+    await provider.connect();
+    const walletAddress = provider.publicKey.toString();
+    
+    console.log('[Wallet Auth] Linking wallet:', {
+      userId: currentUser.id,
+      walletAddress: walletAddress.substring(0, 10) + '...',
+      platform: 'solana'
+    });
+    
+    try {
+      // Use the new database function to handle wallet linking with uniqueness check
+      const { data, error } = await supabase.rpc('link_wallet_to_user', {
+        p_user_id: currentUser.id,
+        p_wallet_address: walletAddress
+      });
+      
+      if (error) {
+        console.error('Error linking wallet:', error);
+        throw new Error(error.message || 'Failed to link wallet');
+      }
+      
+      console.log('[Wallet Auth] Successfully linked wallet');
+      
+      this.currentUser = { walletAddress } as WalletUser;
+      this.notifyListeners();
+      localStorage.setItem("wallet_user", JSON.stringify({ walletAddress }));
+      return walletAddress;
+      
+    } catch (error) {
+      console.error('Wallet linking error:', error);
+      throw error;
+    }
+  }
+
+  // Unlink wallet from current user
+  async unlinkWalletFromCurrentUser(): Promise<void> {
+    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !currentUser) {
+      throw new Error('You must be logged in to unlink a wallet');
+    }
+    
+    try {
+      const { error } = await supabase.rpc('unlink_wallet_from_user', {
+        p_user_id: currentUser.id
+      });
+      
+      if (error) {
+        console.error('Error unlinking wallet:', error);
+        throw new Error(error.message || 'Failed to unlink wallet');
+      }
+      
+      console.log('[Wallet Auth] Successfully unlinked wallet');
+      
+      this.currentUser = null;
+      this.notifyListeners();
+      localStorage.removeItem("wallet_user");
+      
+    } catch (error) {
+      console.error('Wallet unlinking error:', error);
+      throw error;
+    }
+  }
+
+  // For backward compatibility, connectWallet calls linkWalletToCurrentUser
+  async connectWallet(): Promise<string> {
+    return this.linkWalletToCurrentUser();
+  }
+
+  async signInWithSolanaWallet(): Promise<string> {
+    // For wallet-only login (not linking)
+    const provider = (window as any).solana;
+    if (!provider) throw new Error('No Solana wallet found');
+    await provider.connect();
+    
+    const { data, error } = await supabase.auth.signInWithWeb3({
+      chain: 'solana',
+      statement: `I accept the Terms of Service at ${this.getWalletAuthUri()}`,
+      wallet: provider,
+    });
     if (error) throw error;
-    // Optionally update local state
+    
+    const walletAddress = provider.publicKey.toString();
     this.currentUser = { walletAddress } as WalletUser;
     this.notifyListeners();
     localStorage.setItem("wallet_user", JSON.stringify({ walletAddress }));
@@ -47,6 +135,7 @@ class WalletAuth {
     this.currentUser = null
     this.notifyListeners()
     localStorage.removeItem("wallet_user")
+    await supabase.auth.signOut();
   }
 
   private notifyListeners() {
@@ -54,23 +143,40 @@ class WalletAuth {
   }
 
   async getCurrentUser(): Promise<WalletUser | null> {
-    // 1. Check if authenticated with Supabase
     if (typeof window !== 'undefined') {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Fetch wallet address from users table
-        const { data: profile } = await supabase.from("users").select("wallet_address,username,total_xp,level,rank").eq("id", user.id).single()
-        if (profile && profile.wallet_address) {
+        // First try to get wallet from users table
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('wallet_address, username, total_xp, level')
+          .eq('id', user.id)
+          .single();
+        
+        if (!userError && userData?.wallet_address) {
           const walletUser: WalletUser = {
-            walletAddress: profile.wallet_address,
-            username: profile.username || undefined,
-            totalXP: profile.total_xp,
-            level: profile.level,
-            rank: profile.rank || undefined,
-          }
-          this.currentUser = walletUser
-          localStorage.setItem("wallet_user", JSON.stringify(walletUser))
-          return walletUser
+            walletAddress: userData.wallet_address,
+            username: userData.username || undefined,
+            totalXP: userData.total_xp || undefined,
+            level: userData.level || undefined,
+          };
+          this.currentUser = walletUser;
+          localStorage.setItem("wallet_user", JSON.stringify(walletUser));
+          return walletUser;
+        }
+        
+        // Fallback: Extract wallet address from user identity data (Solana public key)
+        const solanaIdentity = user.identities?.find(
+          (id: any) => id.provider === 'web3' && id.identity_data?.public_key
+        );
+        if (solanaIdentity && solanaIdentity.identity_data && solanaIdentity.identity_data.public_key) {
+          const walletUser: WalletUser = {
+            walletAddress: solanaIdentity.identity_data.public_key,
+            username: user.user_metadata?.username || undefined,
+          };
+          this.currentUser = walletUser;
+          localStorage.setItem("wallet_user", JSON.stringify(walletUser));
+          return walletUser;
         }
       }
       // Fallback to localStorage

@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       const { data, error } = await supabaseAdmin
         .from('visit_tracking')
         .select('id')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .eq('task_id', taskId)
         .maybeSingle();
       const ok = !!data && !error;
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       const { data, error } = await supabaseAdmin
         .from('form_submissions')
         .select('id')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .eq('task_id', taskId)
         .maybeSingle();
       const ok = !!data && !error;
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       const { data, error } = await supabaseAdmin
         .from('download_tracking')
         .select('id')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .eq('task_id', taskId)
         .maybeSingle();
       const ok = !!data && !error;

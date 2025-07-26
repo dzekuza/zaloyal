@@ -6,18 +6,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Mail, Eye, EyeOff, User } from "lucide-react"
+import { Mail, Eye, EyeOff, User, CheckCircle, ArrowLeft, ArrowRight, Shield } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 
 interface EmailAuthProps {
   onSuccess: (user: any) => void
   onError: (error: string) => void
 }
 
+type AuthStep = 'login' | 'register' | 'verify' | 'success'
+
 export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
+  const [currentStep, setCurrentStep] = useState<AuthStep>('login')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [verificationEmail, setVerificationEmail] = useState("")
+  const [otpCode, setOtpCode] = useState("")
+  const [isVerificationFromLogin, setIsVerificationFromLogin] = useState(false)
   const [loginForm, setLoginForm] = useState({ email: "", password: "" })
   const [registerForm, setRegisterForm] = useState({
     email: "",
@@ -25,6 +31,8 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
     confirmPassword: "",
     username: "",
   })
+
+  const router = useRouter()
 
   const handleLogin = async () => {
     if (!loginForm.email || !loginForm.password) {
@@ -39,11 +47,32 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
         password: loginForm.password,
       })
 
-      if (error) throw error
+      if (error) {
+        // Check if the error is due to unverified email
+        if (error.message.includes('Email not confirmed') || error.message.includes('Email not verified')) {
+          // User exists but email not verified - show verification step
+          setVerificationEmail(loginForm.email)
+          setCurrentStep('verify')
+          setLoading(false)
+          return
+        }
+        throw error
+      }
 
+              // Check if user email is verified
+        const { user } = data;
+        if (!user.email_confirmed_at) {
+          // Email not verified - show verification step
+          setVerificationEmail(loginForm.email)
+          setIsVerificationFromLogin(true)
+          setCurrentStep('verify')
+          setLoading(false)
+          return
+        }
+
+      // Email is verified - proceed with normal login
       // Always upsert user profile after login
-      const { user } = data;
-      let { data: profile } = await supabase.from("users").select("*").eq("email", loginForm.email).single()
+      let { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
       await supabase.from("users").upsert({
         id: user.id,
         email: user.email,
@@ -53,16 +82,18 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
           : profile?.username
           ? { username: profile.username }
           : {}),
-        email_verified: false,
+        // Do not overwrite email_verified blindly
         total_xp: profile?.total_xp || 0,
         level: profile?.level || 1,
         completed_quests: profile?.completed_quests || 0,
         role: profile?.role || "participant",
       });
-      // Fetch the up-to-date profile
-      ({ data: profile } = await supabase.from("users").select("*").eq("email", loginForm.email).single());
+      // Fetch the up-to-date profile by user ID
+      ({ data: profile } = await supabase.from("users").select("*").eq("id", user.id).single());
 
       onSuccess({ ...data.user, profile })
+      // Redirect to dashboard after successful login
+      router.push('/dashboard')
     } catch (error: any) {
       onError(error.message || "Login failed")
     } finally {
@@ -85,10 +116,9 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
       onError("Password must be at least 6 characters")
       return
     }
-
     setLoading(true)
     try {
-      // Register with Supabase Auth - simpler approach
+      // Register with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: registerForm.email,
         password: registerForm.password,
@@ -98,43 +128,16 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
           },
         },
       })
-
       if (error) {
         console.error('Signup error:', error);
         throw error;
       }
-
-      console.log('Signup response:', data);
-
-      // Check if user was created successfully
       if (data.user) {
-        console.log('User created successfully:', data.user.id);
-        
-        // Manually create user profile (don't rely on trigger)
-        try {
-          const { error: profileError } = await supabase.from("users").upsert({
-            id: data.user.id,
-            email: data.user.email,
-            username: registerForm.username,
-            total_xp: 0,
-            level: 1,
-            completed_quests: 0,
-            role: "participant",
-          });
-
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-            // Don't throw here, the user was created successfully
-          } else {
-            console.log('User profile created successfully');
-          }
-        } catch (profileError) {
-          console.error('Profile creation failed:', profileError);
-          // Don't throw here, the user was created successfully
-        }
-
-        // Call onSuccess with the user
-        onSuccess(data.user);
+        // Move to verification step
+        setVerificationEmail(registerForm.email)
+        setIsVerificationFromLogin(false)
+        setCurrentStep('verify')
+        // Don't call onSuccess yet - wait for verification
       } else {
         throw new Error("User not created");
       }
@@ -146,28 +149,244 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
     }
   }
 
+  const handleOtpVerification = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      onError("Please enter a valid 6-digit code")
+      return
+    }
+
+    setLoading(true)
+    try {
+      // Try signup verification
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: verificationEmail,
+        token: otpCode,
+        type: 'signup'
+      })
+
+      if (error) throw error
+
+      if (data.user) {
+        // Fetch the user profile after confirmation
+        const { data: profile } = await supabase.from("users").select("*").eq("id", data.user.id).single()
+        setCurrentStep('success')
+        
+        // Call onSuccess only after verification is complete
+        onSuccess({ ...data.user, profile })
+        
+        // Redirect to dashboard after successful verification
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 2000)
+      }
+    } catch (error: any) {
+      onError(error.message || "Verification failed")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: verificationEmail,
+      })
+
+      if (error) throw error
+
+      onError("Verification code resent! Check your email.")
+    } catch (error: any) {
+      onError(error.message || "Failed to resend code")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBackToRegister = () => {
+    setCurrentStep('register')
+    setOtpCode("")
+    setVerificationEmail("")
+    // Clear any previous error
+    onError("")
+  }
+
+  const handleBackToLogin = () => {
+    setCurrentStep('login')
+    setOtpCode("")
+    setVerificationEmail("")
+  }
+
+  // Success step
+  if (currentStep === 'success') {
+    return (
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center">
+          <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-6 h-6 text-white" />
+          </div>
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-white mb-2">Account Created Successfully!</h2>
+          <p className="text-gray-300 text-sm">Your email has been verified. Redirecting to dashboard...</p>
+        </div>
+        <div className="animate-spin rounded-full border-b-2 border-green-500 h-6 w-6 mx-auto"></div>
+      </div>
+    )
+  }
+
+  // Verification step
+  if (currentStep === 'verify') {
+    return (
+      <div className="space-y-4">
+        {/* Compact step indicator */}
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <div className="flex items-center">
+            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-3 h-3 text-white" />
+            </div>
+            <span className="ml-1 text-xs text-green-400">
+              {isVerificationFromLogin ? "Login" : "Registration"}
+            </span>
+          </div>
+          <ArrowRight className="w-3 h-3 text-gray-400" />
+          <div className="flex items-center">
+            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+              <Shield className="w-3 h-3 text-white" />
+            </div>
+            <span className="ml-1 text-xs text-blue-400">Verification</span>
+          </div>
+          <ArrowRight className="w-3 h-3 text-gray-400" />
+          <div className="flex items-center">
+            <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-3 h-3 text-white" />
+            </div>
+            <span className="ml-1 text-xs text-gray-400">Complete</span>
+          </div>
+        </div>
+
+        <div className="text-center mb-4">
+          <div className="text-white flex items-center justify-center gap-2 text-lg font-semibold">
+            <Shield className="w-4 h-4" />
+            Verify Your Email
+          </div>
+          <div className="text-gray-300 text-sm mt-1">
+            {isVerificationFromLogin 
+              ? "Please verify your email to complete login. Enter the 6-digit code sent to " + verificationEmail
+              : "Enter the 6-digit code sent to " + verificationEmail
+            }
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="otp-code" className="text-white text-sm">
+              Verification Code
+            </Label>
+            <Input
+              id="otp-code"
+              type="text"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Enter 6-digit code"
+              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 text-center text-lg tracking-widest"
+              maxLength={6}
+            />
+          </div>
+          
+          <Button
+            onClick={handleOtpVerification}
+            disabled={loading || otpCode.length !== 6}
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
+          >
+            {loading ? "Verifying..." : "Verify Email"}
+          </Button>
+          
+          <div className="text-center space-y-2">
+            <Button
+              variant="ghost"
+              onClick={handleResendOtp}
+              disabled={loading}
+              className="text-gray-300 hover:text-white text-sm"
+            >
+              Resend Code
+            </Button>
+            <br />
+            <Button
+              variant="ghost"
+              onClick={isVerificationFromLogin ? handleBackToLogin : handleBackToRegister}
+              className="text-gray-400 hover:text-white flex items-center gap-2 text-sm"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              {isVerificationFromLogin ? "Back to Login" : "Back to Registration"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <>
-      <div className="text-center mb-6">
-        <div className="text-white flex items-center justify-center gap-2 text-2xl font-semibold">
-          <Mail className="w-5 h-5" />
+    <div className="space-y-4">
+      {/* Compact step indicator for login/register */}
+      <div className="flex items-center justify-center space-x-2 mb-4">
+        <div className="flex items-center">
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+            currentStep === 'login' ? 'bg-blue-500' : 'bg-gray-500'
+          }`}>
+            <Mail className="w-3 h-3 text-white" />
+          </div>
+          <span className={`ml-1 text-xs ${
+            currentStep === 'login' ? 'text-blue-400' : 'text-gray-400'
+          }`}>Authentication</span>
+        </div>
+        <ArrowRight className="w-3 h-3 text-gray-400" />
+        <div className="flex items-center">
+          <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
+            <Shield className="w-3 h-3 text-white" />
+          </div>
+          <span className="ml-1 text-xs text-gray-400">Verification</span>
+        </div>
+        <ArrowRight className="w-3 h-3 text-gray-400" />
+        <div className="flex items-center">
+          <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-3 h-3 text-white" />
+          </div>
+          <span className="ml-1 text-xs text-gray-400">Complete</span>
+        </div>
+      </div>
+
+      <div className="text-center mb-4">
+        <div className="text-white flex items-center justify-center gap-2 text-lg font-semibold">
+          <Mail className="w-4 h-4" />
           Email Authentication
         </div>
-        <div className="text-gray-300 mt-1">Sign in or create an account with email</div>
+        <div className="text-gray-300 text-sm mt-1">Sign in or create an account with email</div>
       </div>
-      <Tabs defaultValue="login" className="space-y-4">
+      
+      <Tabs defaultValue="login" className="space-y-3">
         <TabsList className="grid w-full grid-cols-2 bg-white/10">
-          <TabsTrigger value="login" className="data-[state=active]:bg-white/20 text-white">
+          <TabsTrigger 
+            value="login" 
+            className="data-[state=active]:bg-white/20 text-white text-sm"
+            onClick={() => setCurrentStep('login')}
+          >
             Sign In
           </TabsTrigger>
-          <TabsTrigger value="register" className="data-[state=active]:bg-white/20 text-white">
+          <TabsTrigger 
+            value="register" 
+            className="data-[state=active]:bg-white/20 text-white text-sm"
+            onClick={() => setCurrentStep('register')}
+          >
             Sign Up
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="login" className="space-y-4">
+        
+        <TabsContent value="login" className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="login-email" className="text-white flex items-center gap-2">
-              <Mail className="w-4 h-4" />
+            <Label htmlFor="login-email" className="text-white flex items-center gap-2 text-sm">
+              <Mail className="w-3 h-3" />
               Email
             </Label>
             <Input
@@ -180,8 +399,8 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="login-password" className="text-white flex items-center gap-2">
-              <Eye className="w-4 h-4" />
+            <Label htmlFor="login-password" className="text-white flex items-center gap-2 text-sm">
+              <Eye className="w-3 h-3" />
               Password
             </Label>
             <div className="relative">
@@ -200,7 +419,7 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
                 className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-white"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
               </Button>
             </div>
           </div>
@@ -212,10 +431,11 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
             {loading ? "Signing In..." : "Sign In"}
           </Button>
         </TabsContent>
-        <TabsContent value="register" className="space-y-4">
+        
+        <TabsContent value="register" className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="register-username" className="text-white flex items-center gap-2">
-              <User className="w-4 h-4" />
+            <Label htmlFor="register-username" className="text-white flex items-center gap-2 text-sm">
+              <User className="w-3 h-3" />
               Username
             </Label>
             <Input
@@ -227,8 +447,8 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="register-email" className="text-white flex items-center gap-2">
-              <Mail className="w-4 h-4" />
+            <Label htmlFor="register-email" className="text-white flex items-center gap-2 text-sm">
+              <Mail className="w-3 h-3" />
               Email
             </Label>
             <Input
@@ -241,8 +461,8 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="register-password" className="text-white flex items-center gap-2">
-              <Eye className="w-4 h-4" />
+            <Label htmlFor="register-password" className="text-white flex items-center gap-2 text-sm">
+              <Eye className="w-3 h-3" />
               Password
             </Label>
             <div className="relative">
@@ -261,13 +481,13 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
                 className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-white"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
               </Button>
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirm-password" className="text-white flex items-center gap-2">
-              <Eye className="w-4 h-4" />
+            <Label htmlFor="confirm-password" className="text-white flex items-center gap-2 text-sm">
+              <Eye className="w-3 h-3" />
               Confirm Password
             </Label>
             <Input
@@ -288,6 +508,6 @@ export default function EmailAuth({ onSuccess, onError }: EmailAuthProps) {
           </Button>
         </TabsContent>
       </Tabs>
-    </>
+    </div>
   )
 }

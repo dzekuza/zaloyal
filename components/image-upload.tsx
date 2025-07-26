@@ -13,22 +13,26 @@ interface ImageUploadProps {
   onImageUploaded: (url: string) => void
   onImageRemoved?: () => void
   currentImage?: string
-  questId?: string
+  uploadType?: "quest" | "project-cover" | "project-logo" | "user-avatar" | "quest-response"
+  entityId?: string // questId, projectId, userId, etc.
   className?: string
   maxSizeMB?: number
   acceptedTypes?: string[]
   label?: string
+  height?: string
 }
 
 export default function ImageUpload({
   onImageUploaded,
   onImageRemoved,
   currentImage,
-  questId,
+  uploadType = "quest",
+  entityId,
   className = "",
-  maxSizeMB = 5,
-  acceptedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"],
-  label = "Upload Quest Image",
+  maxSizeMB,
+  acceptedTypes,
+  label,
+  height = "h-48",
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -36,16 +40,63 @@ export default function ImageUpload({
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Default settings based on upload type
+  const getDefaultSettings = () => {
+    switch (uploadType) {
+      case "quest":
+        return {
+          maxSize: 5,
+          types: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+          label: "Upload Quest Image"
+        }
+      case "project-cover":
+        return {
+          maxSize: 5,
+          types: ["image/jpeg", "image/png", "image/webp"],
+          label: "Upload Project Cover"
+        }
+      case "project-logo":
+        return {
+          maxSize: 2,
+          types: ["image/jpeg", "image/png", "image/webp", "image/svg+xml"],
+          label: "Upload Project Logo"
+        }
+      case "user-avatar":
+        return {
+          maxSize: 1,
+          types: ["image/jpeg", "image/png", "image/webp"],
+          label: "Upload Avatar"
+        }
+      case "quest-response":
+        return {
+          maxSize: 10,
+          types: ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "application/pdf"],
+          label: "Upload Response"
+        }
+      default:
+        return {
+          maxSize: 5,
+          types: ["image/jpeg", "image/png", "image/webp"],
+          label: "Upload Image"
+        }
+    }
+  }
+
+  const defaultSettings = getDefaultSettings()
+  const finalMaxSize = maxSizeMB || defaultSettings.maxSize
+  const finalAcceptedTypes = acceptedTypes || defaultSettings.types
+  const finalLabel = label || defaultSettings.label
+
   const validateFile = (file: File): string | null => {
     // Check file type
-    if (!acceptedTypes.includes(file.type)) {
-      return `File type not supported. Please use: ${acceptedTypes.join(", ")}`
+    if (!finalAcceptedTypes.includes(file.type)) {
+      return `File type not supported. Please use: ${finalAcceptedTypes.join(", ")}`
     }
 
     // Check file size
-    const maxSizeBytes = maxSizeMB * 1024 * 1024
+    const maxSizeBytes = finalMaxSize * 1024 * 1024
     if (file.size > maxSizeBytes) {
-      return `File size too large. Maximum size is ${maxSizeMB}MB`
+      return `File size too large. Maximum size is ${finalMaxSize}MB`
     }
 
     return null
@@ -74,7 +125,40 @@ export default function ImageUpload({
         })
       }, 200)
 
-      const imageUrl = await storageService.uploadQuestImage(file, questId)
+      let imageUrl: string | null = null
+
+      // Upload based on type
+      switch (uploadType) {
+        case "quest":
+          imageUrl = await storageService.uploadQuestImage(file, entityId)
+          break
+        case "project-cover":
+          if (!entityId) {
+            throw new Error("Project ID is required for project cover upload")
+          }
+          imageUrl = await storageService.uploadProjectCover(file, entityId)
+          break
+        case "project-logo":
+          if (!entityId) {
+            throw new Error("Project ID is required for project logo upload")
+          }
+          imageUrl = await storageService.uploadProjectLogo(file, entityId)
+          break
+        case "user-avatar":
+          if (!entityId) {
+            throw new Error("User ID is required for avatar upload")
+          }
+          imageUrl = await storageService.uploadUserAvatar(file, entityId)
+          break
+        case "quest-response":
+          if (!entityId) {
+            throw new Error("Quest ID is required for response upload")
+          }
+          imageUrl = await storageService.uploadQuestResponse(file, entityId, "temp-user-id")
+          break
+        default:
+          imageUrl = await storageService.uploadQuestImage(file, entityId)
+      }
 
       clearInterval(progressInterval)
       setUploadProgress(100)
@@ -89,7 +173,7 @@ export default function ImageUpload({
       }
     } catch (error) {
       console.error("Upload error:", error)
-      setError("Upload failed. Please try again.")
+      setError(error instanceof Error ? error.message : "Upload failed. Please try again.")
     } finally {
       setUploading(false)
     }
@@ -136,7 +220,7 @@ export default function ImageUpload({
       <input
         ref={fileInputRef}
         type="file"
-        accept={acceptedTypes.join(",")}
+        accept={finalAcceptedTypes.join(",")}
         onChange={handleFileSelect}
         className="hidden"
       />
@@ -144,7 +228,11 @@ export default function ImageUpload({
       {currentImage && !uploading ? (
         <Card className="bg-[#111111] border-[#282828] overflow-hidden">
           <CardContent className="p-0 relative">
-            <img src={currentImage || "/placeholder.svg"} alt="Quest image" className="w-full h-48 object-cover" />
+            <img 
+              src={currentImage || "/placeholder.svg"} 
+              alt="Uploaded image" 
+              className={`w-full ${height} object-cover`} 
+            />
             <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
               <Button size="sm" onClick={openFileDialog} className="bg-green-600 hover:bg-green-700 text-white">
                 <Upload className="w-4 h-4 mr-2" />
@@ -191,11 +279,11 @@ export default function ImageUpload({
                     <ImageIcon className="w-8 h-8 text-white" />
                   </div>
                   <div>
-                    <p className="text-white font-medium mb-2">{label}</p>
+                    <p className="text-white font-medium mb-2">{finalLabel}</p>
                     <p className="text-gray-400 text-sm mb-4">Drag and drop an image here, or click to browse</p>
                     <div className="text-xs text-gray-500">
-                      <p>Supported formats: JPEG, PNG, GIF, WebP</p>
-                      <p>Maximum size: {maxSizeMB}MB</p>
+                      <p>Supported formats: {finalAcceptedTypes.map(type => type.split('/')[1].toUpperCase()).join(", ")}</p>
+                      <p>Maximum size: {finalMaxSize}MB</p>
                     </div>
                   </div>
                   <Button

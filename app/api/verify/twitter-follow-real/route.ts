@@ -136,7 +136,27 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
       
-      // For like verification, we need OAuth 1.0a
+      // Get project owner's OAuth tokens from social_accounts
+      const { data: projectOwnerSocialAccount, error: socialAccountError } = await supabase
+        .from('social_accounts')
+        .select('access_token, access_token_secret')
+        .eq('user_id', project.owner_id)
+        .eq('platform', 'x')
+        .single();
+      
+      if (socialAccountError || !projectOwnerSocialAccount) {
+        return NextResponse.json({ 
+          error: "Project owner's X account not linked or OAuth tokens not available." 
+        }, { status: 400 });
+      }
+      
+      if (!projectOwnerSocialAccount.access_token || !projectOwnerSocialAccount.access_token_secret) {
+        return NextResponse.json({ 
+          error: "Project owner's X account OAuth tokens are incomplete. Please re-link the account." 
+        }, { status: 400 });
+      }
+      
+      // For like verification, use project owner's OAuth tokens
       const oauth = new OAuth({
         consumer: {
           key: twitterApiKey,
@@ -151,10 +171,16 @@ export async function POST(request: NextRequest) {
         },
       });
       
-      // Note: For OAuth 1.0a, we need user's access tokens which aren't available
-      // For now, we'll use Application-Only auth and provide a clear message
-      verified = false;
-      message = "Like verification requires OAuth authentication. Please link your Twitter account through OAuth to verify likes.";
+      // Verify like using project owner's tokens
+      verified = await verifyTwitterLikeOAuth(
+        oauth, 
+        projectOwnerSocialAccount.access_token, 
+        projectOwnerSocialAccount.access_token_secret, 
+        xUsername, 
+        tweetId
+      );
+      
+      message = verified ? "Like verified!" : "Please like the tweet first";
     } else if (task.social_action === "retweet") {
       // Extract tweet ID from social_url if social_post_id is not available
       let tweetId = task.social_post_id;
@@ -168,7 +194,27 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
       
-      // For retweet verification, we need OAuth 1.0a
+      // Get project owner's OAuth tokens from social_accounts
+      const { data: projectOwnerSocialAccount, error: socialAccountError } = await supabase
+        .from('social_accounts')
+        .select('access_token, access_token_secret')
+        .eq('user_id', project.owner_id)
+        .eq('platform', 'x')
+        .single();
+      
+      if (socialAccountError || !projectOwnerSocialAccount) {
+        return NextResponse.json({ 
+          error: "Project owner's X account not linked or OAuth tokens not available." 
+        }, { status: 400 });
+      }
+      
+      if (!projectOwnerSocialAccount.access_token || !projectOwnerSocialAccount.access_token_secret) {
+        return NextResponse.json({ 
+          error: "Project owner's X account OAuth tokens are incomplete. Please re-link the account." 
+        }, { status: 400 });
+      }
+      
+      // For retweet verification, use project owner's OAuth tokens
       const oauth = new OAuth({
         consumer: {
           key: twitterApiKey,
@@ -183,10 +229,16 @@ export async function POST(request: NextRequest) {
         },
       });
       
-      // Note: For OAuth 1.0a, we need user's access tokens which aren't available
-      // For now, we'll use Application-Only auth and provide a clear message
-      verified = false;
-      message = "Retweet verification requires OAuth authentication. Please link your Twitter account through OAuth to verify retweets.";
+      // Verify retweet using project owner's tokens
+      verified = await verifyTwitterRetweetOAuth(
+        oauth, 
+        projectOwnerSocialAccount.access_token, 
+        projectOwnerSocialAccount.access_token_secret, 
+        xUsername, 
+        tweetId
+      );
+      
+      message = verified ? "Retweet verified!" : "Please retweet the tweet first";
     } else {
       return NextResponse.json({ error: "Unsupported social action" }, { status: 400 });
     }

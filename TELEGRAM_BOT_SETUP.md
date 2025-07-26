@@ -59,10 +59,10 @@ TELEGRAM_DEFAULT_CHANNEL_USERNAME=@your_channel_name
 For production, set up a webhook:
 
 ```bash
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+curl -X POST "https://api.telegram.org/bot<7489086471:AAE14Y6eHtnE_w-NpGYSM4_OXBmk0oQ-PJw>/setWebhook" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://yourdomain.com/api/telegram-bot",
+    "url": "https://bekink.now/api/telegram-bot",
     "allowed_updates": ["message", "callback_query"]
   }'
 ```

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createServerClient } from '@/lib/supabase-server';
 import crypto from 'crypto';
+import OAuth from 'oauth-1.0a';
 
 export async function GET(request: NextRequest) {
   const X_CLIENT_ID = process.env.X_CLIENT_ID;
@@ -13,13 +13,17 @@ export async function GET(request: NextRequest) {
 
   // Check if credentials are available
   if (!X_CLIENT_ID || !X_CLIENT_SECRET) {
+    console.error('[X OAuth] Missing credentials:', { 
+      X_CLIENT_ID: X_CLIENT_ID ? 'SET' : 'MISSING',
+      X_CLIENT_SECRET: X_CLIENT_SECRET ? 'SET' : 'MISSING',
+      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL
+    });
     return NextResponse.json({ 
       error: 'X API credentials not configured. Please set X_CLIENT_ID and X_CLIENT_SECRET in environment variables.' 
     }, { status: 500 });
   }
 
-  const cookieStore = cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  const supabase = createServerClient();
   
   try {
     // Check if user is authenticated
@@ -28,39 +32,100 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    // Generate PKCE parameters
-    const codeVerifier = crypto.randomBytes(32).toString('base64url');
-    const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
-    const state = crypto.randomBytes(32).toString('base64url');
-
-    // Store PKCE parameters in session
-    const { error: sessionError } = await supabase.rpc('store_oauth_state', {
-      p_user_id: user.id,
-      p_state: state,
-      p_code_verifier: codeVerifier,
-      p_platform: 'x'
+    // Step 1: Get request token using OAuth 1.0a
+    const oauth = new OAuth({
+      consumer: {
+        key: X_CLIENT_ID,
+        secret: X_CLIENT_SECRET
+      },
+      signature_method: 'HMAC-SHA1',
+      hash_function(base_string, key) {
+        return crypto.createHmac('sha1', key).update(base_string).digest('base64');
+      }
     });
+
+    const requestTokenUrl = 'https://api.twitter.com/oauth/request_token';
+    const requestData = {
+      url: requestTokenUrl,
+      method: 'POST',
+      data: {
+        oauth_callback: X_REDIRECT_URI
+      }
+    };
+
+    const authHeader = oauth.toHeader(oauth.authorize(requestData));
+
+    const tokenResponse = await fetch(requestTokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader['Authorization'],
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        oauth_callback: X_REDIRECT_URI
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('[X OAuth] Request token error:', errorText);
+      return NextResponse.json({ 
+        error: 'Failed to get request token from X API' 
+      }, { status: 500 });
+    }
+
+    const tokenData = await tokenResponse.text();
+    const params = new URLSearchParams(tokenData);
+    const oauthToken = params.get('oauth_token');
+    const oauthTokenSecret = params.get('oauth_token_secret');
+
+    if (!oauthToken || !oauthTokenSecret) {
+      console.error('[X OAuth] Missing token data:', tokenData);
+      return NextResponse.json({ 
+        error: 'Invalid response from X API' 
+      }, { status: 500 });
+    }
+
+    // Generate state parameter for security
+    const state = crypto.randomBytes(32).toString('hex');
+    const timestamp = Date.now().toString();
+
+    // Store OAuth state in database
+    let sessionError;
+    try {
+      ({ error: sessionError } = await supabase.rpc('store_oauth_state', {
+        p_user_id: user.id,
+        p_state: state,
+        p_code_verifier: '', // X doesn't use PKCE
+        p_platform: 'x'
+      }));
+    } catch (err) {
+      sessionError = err;
+    }
 
     if (sessionError) {
       console.error('Error storing OAuth state:', sessionError);
-      return NextResponse.json({ error: 'Failed to initialize OAuth flow' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Failed to initialize OAuth flow' 
+      }, { status: 500 });
     }
 
-    // Build authorization URL
-    const authUrl = new URL('https://twitter.com/i/oauth2/authorize');
-    authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('client_id', X_CLIENT_ID);
-    authUrl.searchParams.set('redirect_uri', X_REDIRECT_URI);
-    authUrl.searchParams.set('scope', 'tweet.read users.read follows.read like.read offline.access');
-    authUrl.searchParams.set('state', state);
-    authUrl.searchParams.set('code_challenge', codeChallenge);
-    authUrl.searchParams.set('code_challenge_method', 'S256');
+    // Build X authorization URL
+    const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}&state=${state}&timestamp=${timestamp}`;
 
-    // Redirect the user to X for authentication
-    return NextResponse.redirect(authUrl.toString());
+    // Return the authorization URL for client-side redirect
+    return NextResponse.json({ 
+      authUrl: authUrl,
+      state: state,
+      oauthToken: oauthToken,
+      oauthTokenSecret: oauthTokenSecret
+    });
+
   } catch (error) {
-    console.error('OAuth initialization error:', error);
-    return NextResponse.json({ error: 'Failed to initialize OAuth flow' }, { status: 500 });
+    console.error('[X OAuth] Error:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error during OAuth initialization' 
+    }, { status: 500 });
   }
 }
 
@@ -75,118 +140,112 @@ export async function POST(request: NextRequest) {
   // Check if credentials are available
   if (!X_CLIENT_ID || !X_CLIENT_SECRET) {
     return NextResponse.json({ 
-      error: 'X API credentials not configured. Please set X_CLIENT_ID and X_CLIENT_SECRET in environment variables.' 
+      error: 'X API credentials not configured' 
     }, { status: 500 });
   }
 
-  const cookieStore = cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  const supabase = createServerClient();
   
   try {
-    const { code, state } = await request.json();
-
-    if (!code || !state) {
-      return NextResponse.json({ error: 'Missing code or state parameter' }, { status: 400 });
-    }
-
     // Check if user is authenticated
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    // Retrieve stored PKCE parameters
-    const { data: oauthState, error: stateError } = await supabase.rpc('get_oauth_state', {
-      p_user_id: user.id,
-      p_state: state,
-      p_platform: 'x'
+    // Step 1: Get request token using OAuth 1.0a
+    const oauth = new OAuth({
+      consumer: {
+        key: X_CLIENT_ID,
+        secret: X_CLIENT_SECRET
+      },
+      signature_method: 'HMAC-SHA1',
+      hash_function(base_string, key) {
+        return crypto.createHmac('sha1', key).update(base_string).digest('base64');
+      }
     });
 
-    if (stateError || !oauthState) {
-      return NextResponse.json({ error: 'Invalid or expired OAuth state' }, { status: 400 });
-    }
+    const requestTokenUrl = 'https://api.twitter.com/oauth/request_token';
+    const requestData = {
+      url: requestTokenUrl,
+      method: 'POST',
+      data: {
+        oauth_callback: X_REDIRECT_URI
+      }
+    };
 
-    // Exchange code for tokens
-    const tokenResponse = await fetch('https://api.twitter.com/2/oauth2/token', {
+    const authHeader = oauth.toHeader(oauth.authorize(requestData));
+
+    const tokenResponse = await fetch(requestTokenUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${Buffer.from(`${X_CLIENT_ID}:${X_CLIENT_SECRET}`).toString('base64')}`
+        'Authorization': authHeader['Authorization'],
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
       body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: X_REDIRECT_URI,
-        code_verifier: oauthState.code_verifier
+        oauth_callback: X_REDIRECT_URI
       })
     });
 
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json();
-      console.error('Token exchange error:', errorData);
-      return NextResponse.json({ error: 'Failed to exchange code for tokens' }, { status: 400 });
+      const errorText = await tokenResponse.text();
+      console.error('[X OAuth] Request token error:', errorText);
+      return NextResponse.json({ 
+        error: 'Failed to get request token from X API' 
+      }, { status: 500 });
     }
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.text();
+    const params = new URLSearchParams(tokenData);
+    const oauthToken = params.get('oauth_token');
+    const oauthTokenSecret = params.get('oauth_token_secret');
 
-    // Get user info from X
-    const userResponse = await fetch('https://api.twitter.com/2/users/me', {
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`
-      }
-    });
-
-    if (!userResponse.ok) {
-      return NextResponse.json({ error: 'Failed to get user info from X' }, { status: 400 });
+    if (!oauthToken || !oauthTokenSecret) {
+      console.error('[X OAuth] Missing token data:', tokenData);
+      return NextResponse.json({ 
+        error: 'Invalid response from X API' 
+      }, { status: 500 });
     }
 
-    const userData = await userResponse.json();
-    const xUser = userData.data;
+    // Generate state parameter for security
+    const state = crypto.randomBytes(32).toString('hex');
+    const timestamp = Date.now().toString();
 
-    // Store social account
-    const { error: insertError } = await supabase
-      .from('social_accounts')
-      .upsert({
-        user_id: user.id,
-        platform: 'x',
-        account_id: xUser.id,
-        username: xUser.username,
-        access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
-        expires_at: new Date(Date.now() + tokenData.expires_in * 1000)
-      }, {
-        onConflict: 'user_id,platform'
-      });
+    // Store OAuth state in database
+    let sessionError;
+    try {
+      ({ error: sessionError } = await supabase.rpc('store_oauth_state', {
+        p_user_id: user.id,
+        p_state: state,
+        p_code_verifier: '', // X doesn't use PKCE
+        p_platform: 'x'
+      }));
+    } catch (err) {
+      sessionError = err;
+    }
 
-    // Always upsert users table with new X data
-    await supabase
-      .from('users')
-      .upsert({
-        id: user.id,
-        x_id: xUser.id,
-        x_username: xUser.username,
-        x_avatar_url: xUser.profile_image_url || null,
-      }, { onConflict: 'id' });
+    if (sessionError) {
+      console.error('Error storing OAuth state:', sessionError);
+      return NextResponse.json({ 
+        error: 'Failed to initialize OAuth flow' 
+      }, { status: 500 });
+    }
 
-    // Clean up OAuth state
-    await supabase.rpc('clear_oauth_state', {
-      p_user_id: user.id,
-      p_state: state,
-      p_platform: 'x'
-    });
+    // Build X authorization URL
+    const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}&state=${state}&timestamp=${timestamp}`;
 
+    // Return the authorization URL for client-side redirect
     return NextResponse.json({ 
-      success: true,
-      message: 'X account linked successfully',
-      user: {
-        id: xUser.id,
-        username: xUser.username,
-        name: xUser.name
-      }
+      authUrl: authUrl,
+      state: state,
+      oauthToken: oauthToken,
+      oauthTokenSecret: oauthTokenSecret
     });
 
   } catch (error) {
-    console.error('OAuth callback error:', error);
-    return NextResponse.json({ error: 'Failed to complete OAuth flow' }, { status: 500 });
+    console.error('[X OAuth] Error:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error during OAuth initialization' 
+    }, { status: 500 });
   }
 } 

@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       const { data: existingSubmission } = await supabase
         .from("user_task_submissions")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("id", user.id)
         .eq("task_id", taskId)
         .single()
 
