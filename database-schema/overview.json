@@ -1,0 +1,165 @@
+{
+  "database_overview": {
+    "project_name": "Zaloyal",
+    "description": "A quest and engagement platform with social media integration and wallet connectivity",
+    "schema": "public",
+    "last_updated": "2025-01-27T00:00:00Z",
+    "total_tables": 9,
+    "total_functions": 17,
+    "total_triggers": 5,
+    "total_rls_policies": 40
+  },
+  "table_summary": [
+    {
+      "name": "users",
+      "description": "User profiles with social media integrations and wallet connectivity",
+      "columns": 27,
+      "relationships": 4,
+      "rls_enabled": true
+    },
+    {
+      "name": "projects",
+      "description": "Project information and metadata for quest creators",
+      "columns": 29,
+      "relationships": 3,
+      "rls_enabled": true
+    },
+    {
+      "name": "project_members",
+      "description": "Project membership and role management",
+      "columns": 6,
+      "relationships": 2,
+      "rls_enabled": true
+    },
+    {
+      "name": "quests",
+      "description": "Quest definitions and metadata",
+      "columns": 11,
+      "relationships": 3,
+      "rls_enabled": true
+    },
+    {
+      "name": "tasks",
+      "description": "Individual tasks within quests with various types",
+      "columns": 33,
+      "relationships": 3,
+      "rls_enabled": true
+    },
+    {
+      "name": "social_accounts",
+      "description": "Linked social media accounts for users",
+      "columns": 16,
+      "relationships": 1,
+      "rls_enabled": true
+    },
+    {
+      "name": "oauth_states",
+      "description": "OAuth state management for social authentication",
+      "columns": 7,
+      "relationships": 0,
+      "rls_enabled": true
+    },
+    {
+      "name": "user_task_submissions",
+      "description": "User task completion records and verification",
+      "columns": 22,
+      "relationships": 4,
+      "rls_enabled": true
+    },
+    {
+      "name": "quest_categories",
+      "description": "Quest categorization system",
+      "columns": 7,
+      "relationships": 0,
+      "rls_enabled": true
+    }
+  ],
+  "function_categories": {
+    "user_management": [
+      "create_user_profile",
+      "get_user_by_wallet_address",
+      "link_wallet_to_user",
+      "unlink_wallet_from_user",
+      "set_user_role_creator"
+    ],
+    "project_management": [
+      "add_project_owner_as_member"
+    ],
+    "social_integration": [
+      "sync_social_accounts",
+      "sync_twitter_to_social_accounts",
+      "sync_wallet_address",
+      "store_oauth_state"
+    ],
+    "storage_management": [
+      "cleanup_old_files",
+      "generate_unique_filename",
+      "get_storage_path",
+      "get_storage_stats",
+      "validate_file_upload"
+    ],
+    "timestamp_management": [
+      "update_quest_categories_updated_at",
+      "update_user_task_submissions_updated_at"
+    ]
+  },
+  "trigger_summary": [
+    {
+      "name": "trg_add_project_owner_as_member",
+      "table": "projects",
+      "timing": "AFTER INSERT",
+      "description": "Auto-adds project owner as member"
+    },
+    {
+      "name": "trg_set_user_role_creator",
+      "table": "projects",
+      "timing": "AFTER INSERT",
+      "description": "Sets user role to creator"
+    },
+    {
+      "name": "update_quest_categories_updated_at_trigger",
+      "table": "quest_categories",
+      "timing": "BEFORE UPDATE",
+      "description": "Updates timestamp"
+    },
+    {
+      "name": "trigger_sync_wallet_address",
+      "table": "social_accounts",
+      "timing": "AFTER INSERT/DELETE/UPDATE",
+      "description": "Syncs wallet addresses"
+    },
+    {
+      "name": "trigger_update_user_task_submissions_updated_at",
+      "table": "user_task_submissions",
+      "timing": "BEFORE UPDATE",
+      "description": "Updates timestamp"
+    }
+  ],
+  "security_overview": {
+    "rls_enabled_tables": 9,
+    "policy_categories": {
+      "user_privacy": "Users can only access their own data",
+      "project_ownership": "Project owners have full access to their projects",
+      "public_read_access": "Public can read approved projects and active quests",
+      "service_role_access": "Service role has full access for backend operations"
+    }
+  },
+  "key_features": [
+    "Multi-platform social media integration (Twitter, Discord, Telegram)",
+    "Wallet connectivity (Solana)",
+    "Quest and task management system",
+    "XP and leveling system",
+    "Project-based organization",
+    "Real-time social task verification",
+    "File upload and storage management",
+    "OAuth authentication flow",
+    "Comprehensive security with RLS policies"
+  ],
+  "file_structure": {
+    "tables.json": "Complete table definitions with columns and relationships",
+    "functions.json": "All database functions with source code and descriptions",
+    "triggers.json": "Database triggers with timing and descriptions",
+    "rls-policies.json": "Row Level Security policies for all tables",
+    "overview.json": "This comprehensive overview file"
+  }
+} 

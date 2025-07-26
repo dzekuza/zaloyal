@@ -1,9 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "types": ["jest", "testing-library__jest-dom"],
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["**/*.ts", "**/*.tsx", "**/*.test.tsx", "**/*.test.ts"]
-}

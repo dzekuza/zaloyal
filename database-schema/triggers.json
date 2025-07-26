@@ -1,0 +1,65 @@
+{
+  "triggers": [
+    {
+      "trigger_name": "trg_add_project_owner_as_member",
+      "table_name": "projects",
+      "function_name": "add_project_owner_as_member",
+      "enabled": "O",
+      "trigger_definition": "CREATE TRIGGER trg_add_project_owner_as_member AFTER INSERT ON public.projects FOR EACH ROW EXECUTE FUNCTION add_project_owner_as_member()",
+      "description": "Automatically adds project owner as a member when a project is created",
+      "timing": "AFTER",
+      "events": ["INSERT"],
+      "granularity": "ROW"
+    },
+    {
+      "trigger_name": "trg_set_user_role_creator",
+      "table_name": "projects",
+      "function_name": "set_user_role_creator",
+      "enabled": "O",
+      "trigger_definition": "CREATE TRIGGER trg_set_user_role_creator AFTER INSERT ON public.projects FOR EACH ROW EXECUTE FUNCTION set_user_role_creator()",
+      "description": "Sets user role to creator when they create a project",
+      "timing": "AFTER",
+      "events": ["INSERT"],
+      "granularity": "ROW"
+    },
+    {
+      "trigger_name": "update_quest_categories_updated_at_trigger",
+      "table_name": "quest_categories",
+      "function_name": "update_quest_categories_updated_at",
+      "enabled": "O",
+      "trigger_definition": "CREATE TRIGGER update_quest_categories_updated_at_trigger BEFORE UPDATE ON public.quest_categories FOR EACH ROW EXECUTE FUNCTION update_quest_categories_updated_at()",
+      "description": "Updates the updated_at timestamp when quest categories are modified",
+      "timing": "BEFORE",
+      "events": ["UPDATE"],
+      "granularity": "ROW"
+    },
+    {
+      "trigger_name": "trigger_sync_wallet_address",
+      "table_name": "social_accounts",
+      "function_name": "sync_wallet_address",
+      "enabled": "O",
+      "trigger_definition": "CREATE TRIGGER trigger_sync_wallet_address AFTER INSERT OR DELETE OR UPDATE ON public.social_accounts FOR EACH ROW EXECUTE FUNCTION sync_wallet_address()",
+      "description": "Synchronizes wallet addresses between social_accounts and users tables",
+      "timing": "AFTER",
+      "events": ["INSERT", "DELETE", "UPDATE"],
+      "granularity": "ROW"
+    },
+    {
+      "trigger_name": "trigger_update_user_task_submissions_updated_at",
+      "table_name": "user_task_submissions",
+      "function_name": "update_user_task_submissions_updated_at",
+      "enabled": "O",
+      "trigger_definition": "CREATE TRIGGER trigger_update_user_task_submissions_updated_at BEFORE UPDATE ON public.user_task_submissions FOR EACH ROW EXECUTE FUNCTION update_user_task_submissions_updated_at()",
+      "description": "Updates the updated_at timestamp when user task submissions are modified",
+      "timing": "BEFORE",
+      "events": ["UPDATE"],
+      "granularity": "ROW"
+    }
+  ],
+  "metadata": {
+    "total_triggers": 5,
+    "schema": "public",
+    "last_updated": "2025-01-27T00:00:00Z",
+    "description": "Complete trigger definitions for the Zaloyal platform database"
+  }
+} 
