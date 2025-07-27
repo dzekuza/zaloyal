@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Validate environment variables
 if (!supabaseUrl) {
@@ -19,6 +19,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true
   }
 });
+
+// Discord OAuth configuration
+export const discordAuthConfig = {
+  clientId: '1397282925849874492',
+  redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+  scopes: 'identify connections guilds.join guilds.channels.read email guilds.members.read gdm.join'
+}
 
 // Database types - Updated to remove old social media fields from users table
 export interface Database {
@@ -179,7 +186,6 @@ export interface Database {
           status: string
           created_at: string
           updated_at: string
-          user_id: string
         }
         Insert: {
           id?: string
@@ -191,7 +197,6 @@ export interface Database {
           status?: string
           created_at?: string
           updated_at?: string
-          user_id: string
         }
         Update: {
           id?: string
@@ -203,7 +208,6 @@ export interface Database {
           status?: string
           created_at?: string
           updated_at?: string
-          user_id?: string
         }
       }
       user_task_submissions: {

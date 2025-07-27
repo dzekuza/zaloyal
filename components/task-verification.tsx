@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useXAuth } from '@/hooks/use-x-auth';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, XCircle, Clock, AlertCircle, ExternalLink } from 'lucide-react';
 
 interface Task {
@@ -182,6 +182,7 @@ export function TaskVerification({ task, onVerificationComplete }: TaskVerificat
               variant="outline"
               size="sm"
               asChild
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
               <a 
                 href={task.social_url} 

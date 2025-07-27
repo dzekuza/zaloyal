@@ -41,6 +41,7 @@ export default function XAuthButton() {
           variant="outline" 
           size="sm"
           onClick={disconnectX}
+          className="bg-white/10 border-white/20 text-white hover:bg-white/20"
         >
           Disconnect
         </Button>
@@ -49,7 +50,7 @@ export default function XAuthButton() {
   }
 
   return (
-    <Button onClick={connectX}>
+    <Button onClick={connectX} className="bg-green-600 hover:bg-green-700 text-white">
       Connect X Account
     </Button>
   )

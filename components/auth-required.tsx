@@ -23,13 +23,13 @@ export default function AuthRequired({
     if (onAuthClick) {
       onAuthClick();
     } else {
-      // Fallback to profile page if no onAuthClick provided
-      window.location.href = '/profile';
+      // Use the same event-based approach as the navigation component
+      window.dispatchEvent(new CustomEvent('open-auth-dialog'));
     }
   };
 
   return (
-    <div className={`flex items-center justify-center min-h-[50vh] px-4 ${className}`}>
+    <div className={`min-h-screen flex items-center justify-center px-4 ${className}`}>
       <Card className="bg-[#111111] rounded-lg max-w-md w-full">
         <CardContent className="p-6 text-center">
           <div className="flex flex-col items-center gap-4">

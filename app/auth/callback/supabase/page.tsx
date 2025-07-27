@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/hooks/use-toast'
 
 export default function SupabaseAuthCallback() {
   const [loading, setLoading] = useState(false)
@@ -70,7 +70,30 @@ export default function SupabaseAuthCallback() {
           // Handle social account linking for X (Twitter)
           if (data.session.user.app_metadata?.provider === 'twitter') {
             try {
-              // Store social account data
+              // Ensure user exists in users table first
+              const { error: userError } = await supabase
+                .from('users')
+                .upsert({
+                  id: data.session.user.id,
+                  user_id: data.session.user.id,
+                  email: data.session.user.email,
+                  username: data.session.user.user_metadata?.preferred_username || data.session.user.user_metadata?.screen_name || 'user_' + data.session.user.id.substring(0, 8),
+                  avatar_url: data.session.user.user_metadata?.profile_image_url || data.session.user.user_metadata?.avatar_url,
+                  total_xp: 0,
+                  level: 1,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'id'
+                })
+              
+              if (userError) {
+                console.error('Error ensuring user exists:', userError)
+              } else {
+                console.log('DEBUG: User ensured in database successfully')
+              }
+
+              // Also store social account data for backward compatibility
               const { error: socialError } = await supabase
                 .from('social_accounts')
                 .upsert({

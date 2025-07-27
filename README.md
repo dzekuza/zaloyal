@@ -81,14 +81,14 @@ pnpm dev
 ## 🚢 Deployment
 
 - Deploy to [Vercel](https://vercel.com/) or your preferred platform.
-- For database setup, see `/scripts/restoration-guide-2025-07-24.md` for backup/restore and migration instructions.
+- Database schema is managed through Supabase MCP and the provided SQL files.
 
 ---
 
 ## 🧪 Testing
 
 - Unit tests: `npm test` or `pnpm test`
-- Test setup: Jest, React Testing Library (`__tests__` directory)
+- Test setup: Jest, React Testing Library
 
 ---
 

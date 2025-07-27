@@ -43,9 +43,16 @@ export class StorageService {
         return null
       }
 
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.error("User not authenticated for upload")
+        return null
+      }
+
       const fileName = questId 
         ? `quests/${questId}/cover.${file.name.split(".").pop()?.toLowerCase()}`
-        : `quests/temp/${this.generateUniqueFilename(file.name, "quest-")}`
+        : `quests/temp/${user.id}/${this.generateUniqueFilename(file.name, "quest-")}`
 
       const { data, error } = await supabase.storage
         .from(this.BUCKETS.QUEST_IMAGES)
@@ -86,7 +93,10 @@ export class StorageService {
         return null
       }
 
-      const fileName = `projects/${projectId}/cover.${file.name.split(".").pop()?.toLowerCase()}`
+      // Use a temporary path for new projects
+      const fileName = projectId === "temp" 
+        ? `temp/${user.id}/${Date.now()}-cover.${file.name.split(".").pop()?.toLowerCase()}`
+        : `projects/${projectId}/cover.${file.name.split(".").pop()?.toLowerCase()}`
 
       const { data, error } = await supabase.storage
         .from(this.BUCKETS.PROJECT_COVERS)
@@ -127,7 +137,10 @@ export class StorageService {
         return null
       }
 
-      const fileName = `projects/${projectId}/logo.${file.name.split(".").pop()?.toLowerCase()}`
+      // Use a temporary path for new projects
+      const fileName = projectId === "temp" 
+        ? `temp/${user.id}/${Date.now()}-logo.${file.name.split(".").pop()?.toLowerCase()}`
+        : `projects/${projectId}/logo.${file.name.split(".").pop()?.toLowerCase()}`
 
       const { data, error } = await supabase.storage
         .from(this.BUCKETS.PROJECT_LOGOS)
@@ -158,6 +171,13 @@ export class StorageService {
       const validationError = this.validateFile(file, 1, ["image/jpeg", "image/png", "image/webp"])
       if (validationError) {
         console.error("File validation error:", validationError)
+        return null
+      }
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.error("User not authenticated for upload")
         return null
       }
 
@@ -196,6 +216,13 @@ export class StorageService {
       ])
       if (validationError) {
         console.error("File validation error:", validationError)
+        return null
+      }
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.error("User not authenticated for upload")
         return null
       }
 
@@ -270,6 +297,55 @@ export class StorageService {
       return stats
     } catch (error) {
       console.error("Storage stats error:", error)
+      return null
+    }
+  }
+
+  // Move temporary image to actual project folder
+  async moveTempImage(tempUrl: string, projectId: string, type: 'logo' | 'cover'): Promise<string | null> {
+    try {
+      // Extract the file path from the URL
+      const urlParts = tempUrl.split('/')
+      const fileName = urlParts[urlParts.length - 1]
+      const tempPath = `temp/${fileName}`
+      const newPath = `projects/${projectId}/${type}.${fileName.split('.').pop()}`
+
+      // Download the file from temp location
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from(type === 'logo' ? this.BUCKETS.PROJECT_LOGOS : this.BUCKETS.PROJECT_COVERS)
+        .download(tempPath)
+
+      if (downloadError || !fileData) {
+        console.error("Error downloading temp file:", downloadError)
+        return null
+      }
+
+      // Upload to new location
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(type === 'logo' ? this.BUCKETS.PROJECT_LOGOS : this.BUCKETS.PROJECT_COVERS)
+        .upload(newPath, fileData, {
+          cacheControl: "3600",
+          upsert: true,
+        })
+
+      if (uploadError) {
+        console.error("Error uploading to new location:", uploadError)
+        return null
+      }
+
+      // Get the new public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(type === 'logo' ? this.BUCKETS.PROJECT_LOGOS : this.BUCKETS.PROJECT_COVERS)
+        .getPublicUrl(newPath)
+
+      // Delete the temp file
+      await supabase.storage
+        .from(type === 'logo' ? this.BUCKETS.PROJECT_LOGOS : this.BUCKETS.PROJECT_COVERS)
+        .remove([tempPath])
+
+      return publicUrl
+    } catch (error) {
+      console.error("Error moving temp image:", error)
       return null
     }
   }

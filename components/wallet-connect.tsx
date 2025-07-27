@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/components/auth-provider-wrapper"
@@ -92,7 +92,7 @@ export default function WalletConnect() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
+        <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
           <Wallet className="mr-2 h-4 w-4" />
           Connect Wallet
         </Button>
@@ -104,96 +104,98 @@ export default function WalletConnect() {
             Choose your preferred authentication method. Email accounts can link wallets for additional functionality.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="email" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="email">Email & Social</TabsTrigger>
-            <TabsTrigger value="wallet">Wallet Only</TabsTrigger>
-          </TabsList>
-          <TabsContent value="email" className="space-y-4">
-            <div className="space-y-4">
-              <EmailAuth 
-                onSuccess={(user) => {
-                  // Handle successful email authentication
-                  setAuthError("");
-                  console.log('Email auth success:', user);
-                }}
-                onError={(error) => {
-                  setAuthError(error);
-                }}
-              />
-              <div className="flex flex-col space-y-2">
-                <Button 
-                  onClick={handleTwitterLogin}
-                  variant="outline" 
-                  className="w-full"
-                >
-                  <XIcon className="mr-2 h-4 w-4" />
-                  Continue with X (Twitter)
-                </Button>
-                <Button 
-                  onClick={() => window.location.href = '/api/connect-discord'}
-                  variant="outline" 
-                  className="w-full"
-                >
-                  <DiscordIcon className="mr-2 h-4 w-4" />
-                  Continue with Discord
-                </Button>
-              </div>
-              {isAuthenticated && (
-                <div className="pt-4">
+        <div className="px-6 pb-6">
+          <Tabs defaultValue="email" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="email">Email & Social</TabsTrigger>
+              <TabsTrigger value="wallet">Wallet Only</TabsTrigger>
+            </TabsList>
+            <TabsContent value="email" className="space-y-4">
+              <div className="space-y-4">
+                <EmailAuth 
+                  onSuccess={(user) => {
+                    // Handle successful email authentication
+                    setAuthError("");
+                    console.log('Email auth success:', user);
+                  }}
+                  onError={(error) => {
+                    setAuthError(error);
+                  }}
+                />
+                <div className="flex flex-col space-y-2">
                   <Button 
-                    onClick={connectWallet}
-                    disabled={isConnecting}
-                    className="w-full"
+                    onClick={handleTwitterLogin}
+                    variant="outline" 
+                    className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20"
                   >
-                    <Wallet className="mr-2 h-4 w-4" />
-                    {isConnecting ? "Connecting..." : "Link Wallet"}
+                    <XIcon className="mr-2 h-4 w-4" />
+                    Continue with X (Twitter)
+                  </Button>
+                  <Button 
+                    onClick={() => window.location.href = '/api/connect-discord'}
+                    variant="outline" 
+                    className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  >
+                    <DiscordIcon className="mr-2 h-4 w-4" />
+                    Continue with Discord
                   </Button>
                 </div>
-              )}
-            </div>
-          </TabsContent>
-          <TabsContent value="wallet" className="space-y-4">
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Sign in with your wallet using web3 payments integration.
+                {isAuthenticated && (
+                  <div className="pt-4">
+                    <Button 
+                      onClick={connectWallet}
+                      disabled={isConnecting}
+                      className="w-full"
+                    >
+                      <Wallet className="mr-2 h-4 w-4" />
+                      {isConnecting ? "Connecting..." : "Link Wallet"}
+                    </Button>
+                  </div>
+                )}
               </div>
-              <Button 
-                onClick={async () => {
-                  setIsConnecting(true)
-                  try {
-                    await walletAuth.signInWithSolanaWallet()
-                  } catch (error: any) {
-                    setAuthError(error.message)
-                  } finally {
-                    setIsConnecting(false)
-                  }
-                }}
-                disabled={isConnecting}
-                className="w-full"
-              >
-                <Wallet className="mr-2 h-4 w-4" />
-                {isConnecting ? "Connecting..." : "Sign in with Wallet"}
+            </TabsContent>
+            <TabsContent value="wallet" className="space-y-4">
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  Sign in with your wallet using web3 payments integration.
+                </div>
+                <Button 
+                  onClick={async () => {
+                    setIsConnecting(true)
+                    try {
+                      await walletAuth.signInWithSolanaWallet()
+                    } catch (error: any) {
+                      setAuthError(error.message)
+                    } finally {
+                      setIsConnecting(false)
+                    }
+                  }}
+                  disabled={isConnecting}
+                  className="w-full"
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  {isConnecting ? "Connecting..." : "Sign in with Wallet"}
+                </Button>
+                {authError && (
+                  <div className="text-sm text-red-500">{authError}</div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+          {user && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Wallet className="h-4 w-4" />
+                <span className="text-sm">
+                  {user.walletAddress.substring(0, 6)}...{user.walletAddress.substring(-4)}
+                </span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={disconnectWallet}>
+                <LogOut className="h-4 w-4" />
               </Button>
-              {authError && (
-                <div className="text-sm text-red-500">{authError}</div>
-              )}
             </div>
-          </TabsContent>
-        </Tabs>
-        {user && (
-          <div className="flex items-center justify-between pt-4 border-t">
-            <div className="flex items-center space-x-2">
-              <Wallet className="h-4 w-4" />
-              <span className="text-sm">
-                {user.walletAddress.substring(0, 6)}...{user.walletAddress.substring(-4)}
-              </span>
-            </div>
-            <Button variant="ghost" size="sm" onClick={disconnectWallet}>
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )

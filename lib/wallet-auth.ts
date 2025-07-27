@@ -146,6 +146,7 @@ class WalletAuth {
           .eq('platform', 'solana')
           .single();
         
+        // Don't throw error if no solana account found - just return null
         if (!socialError && socialAccount?.wallet_address) {
           const walletUser: WalletUser = {
             walletAddress: socialAccount.wallet_address,

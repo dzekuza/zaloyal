@@ -13,11 +13,11 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { LogOut, Copy, ExternalLink, User, Link, AlertCircle } from "lucide-react"
 import AvatarUpload from "@/components/avatar-upload"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import PageContainer from "@/components/PageContainer";
 import { useAuth } from "@/components/auth-provider-wrapper"
-import AuthDialog from "@/components/auth-dialog"
+import AuthRequired from "@/components/auth-required"
 
 // Simple icon components to avoid react-icons import issues
 const DiscordIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -48,7 +48,7 @@ interface LinkedIdentity {
 }
 
 export default function ProfilePage() {
-  const { user, loading: authLoading, signOut, clearAuthState } = useAuth()
+  const { user, loading: authLoading, signOut, clearAuthState, clearOAuthState } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -58,7 +58,6 @@ export default function ProfilePage() {
   const [linkedIdentities, setLinkedIdentities] = useState<LinkedIdentity[]>([]);
   const [isLinking, setIsLinking] = useState<string | null>(null);
   const [isUnlinking, setIsUnlinking] = useState<string | null>(null);
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   // Editable fields
   const [username, setUsername] = useState("")
@@ -299,21 +298,31 @@ export default function ProfilePage() {
   const handleLinkDiscord = async () => {
     setIsLinking('discord');
     try {
-      // First check if the OAuth endpoint is available
-      const response = await fetch('/api/connect-discord', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to initiate Discord OAuth');
+      // Check if user is authenticated
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in with your email first.",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // If successful, redirect to Discord OAuth
-      window.location.href = '/api/connect-discord';
+      // Use Supabase's native Discord OAuth
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'discord',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: 'identify connections guilds.join guilds.channels.read email guilds.members.read gdm.join'
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // The redirect will happen automatically
+      console.log('Discord OAuth initiated successfully');
     } catch (error) {
       console.error('Discord linking error:', error);
       toast({
@@ -381,6 +390,17 @@ export default function ProfilePage() {
     try {
       console.log('DEBUG: Initiating X OAuth via Supabase Auth');
 
+      // Clear any existing OAuth state to prevent token reuse issues
+      // This is especially important when switching between different X accounts
+      localStorage.removeItem('supabase.auth.token')
+      sessionStorage.removeItem('supabase.auth.token')
+      
+      // Generate a unique state parameter to prevent token reuse
+      const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      
+      // Store the state for verification (optional)
+      sessionStorage.setItem('oauth_state', state)
+
       // Debug: Check authentication state
       const { data: { user: supabaseUser } } = await supabase.auth.getUser();
       
@@ -399,12 +419,14 @@ export default function ProfilePage() {
         return;
       }
 
-      // Try OAuth with additional parameters for basic access
+      // Try OAuth with additional parameters for basic access and fresh state
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'twitter',
         options: {
           redirectTo: `${window.location.origin}/auth/callback/supabase`,
           queryParams: {
+            // Add unique state parameter to prevent token reuse
+            state: state,
             // Add additional parameters that might help with basic access
             force_login: 'true',
             screen_name: user.email?.split('@')[0] || '',
@@ -436,7 +458,7 @@ export default function ProfilePage() {
         return;
       }
 
-      console.log('DEBUG: OAuth initiated successfully:', data);
+      console.log('DEBUG: OAuth initiated successfully with fresh state:', data);
       
       // The redirect should happen automatically
       // If not, manually redirect
@@ -452,6 +474,15 @@ export default function ProfilePage() {
         variant: "destructive",
       });
     }
+  };
+
+  // Clear OAuth state to help with account switching
+  const handleClearOAuthState = () => {
+    clearOAuthState();
+    toast({
+      title: "OAuth State Cleared",
+      description: "You can now try linking a different X account. Please try the X authentication again.",
+    });
   };
 
   // Unlink X (Twitter) account using Supabase Auth
@@ -679,18 +710,10 @@ export default function ProfilePage() {
   // If not signed in, show sign-in prompt
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-semibold text-white">Sign In Required</h2>
-          <p className="text-gray-400">Please sign in with your email to access your profile and connect social accounts.</p>
-          <Button 
-            onClick={() => setShowAuthDialog(true)}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            Sign In
-          </Button>
-        </div>
-      </div>
+      <AuthRequired 
+        title="Sign In Required"
+        message="Please sign in with your email to access your profile and connect social accounts."
+      />
     )
   }
 
@@ -708,7 +731,7 @@ export default function ProfilePage() {
               onClick={debugAuthState}
               variant="outline"
               size="sm"
-              className="text-xs"
+              className="text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
               Debug Auth State
             </Button>
@@ -724,11 +747,17 @@ export default function ProfilePage() {
           
           <Tabs defaultValue="profile" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-[#181818] border-[#282828]">
-              <TabsTrigger value="profile" className="flex items-center gap-2">
+              <TabsTrigger 
+                value="profile" 
+                className="flex items-center gap-2 text-gray-400 hover:text-white hover:bg-transparent data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:border-green-600"
+              >
                 <User className="w-4 h-4" />
                 Profile
               </TabsTrigger>
-              <TabsTrigger value="accounts" className="flex items-center gap-2">
+              <TabsTrigger 
+                value="accounts" 
+                className="flex items-center gap-2 text-gray-400 hover:text-white hover:bg-transparent data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:border-green-600"
+              >
                 <Link className="w-4 h-4" />
                 Linked Accounts
               </TabsTrigger>
@@ -815,7 +844,7 @@ export default function ProfilePage() {
                     />
                   </div>
                   <DialogFooter className="mt-4 flex flex-row gap-2 justify-end">
-                    <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleting}>Cancel</Button>
+                    <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleting} className="bg-white/10 border-white/20 text-white hover:bg-white/20">Cancel</Button>
                     <Button
                       variant="destructive"
                       onClick={handleDeleteAccount}
@@ -900,6 +929,7 @@ export default function ProfilePage() {
                         size="sm" 
                         onClick={handleLinkDiscord}
                         disabled={isLinking === 'discord'}
+                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                       >
                         {isLinking === 'discord' ? 'Connecting...' : 'Connect'}
                       </Button>
@@ -937,7 +967,8 @@ export default function ProfilePage() {
                         </div>
                       </div>
                       <Button 
-                        className="bg-black hover:bg-gray-800 text-white"
+                        variant="outline"
+                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                         onClick={handleLinkX}
                         disabled={isLinking === 'x'}
                       >
@@ -969,13 +1000,6 @@ export default function ProfilePage() {
           </Tabs>
         </CardContent>
       </Card>
-      
-      {/* Auth Dialog */}
-      <AuthDialog 
-        open={showAuthDialog} 
-        onOpenChange={setShowAuthDialog}
-        defaultTab="signin"
-      />
     </PageContainer>
   )
 } 

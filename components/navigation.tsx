@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,15 +12,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, LogOut, Trophy, Building2, Home, BarChart3, Users, Copy, Check, Info } from "lucide-react"
-import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { supabase } from "@/lib/supabase"
 import { useRouter, usePathname } from "next/navigation"
 import Image from "next/image";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import OnboardingAlertBar from "@/components/onboarding-alert-bar";
 import { useAuth } from "@/components/auth-provider-wrapper";
-import LoadingSpinner from "@/components/loading-spinner";
 
 interface NavigationProps {
   onAuthClick: () => void
@@ -173,8 +170,8 @@ function ProfileDropdown({
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 md:w-64 border-[#282828] bg-[#111111]">
-        <div className="px-2 py-1.5">
+      <DropdownMenuContent align="end" side="bottom" sideOffset={8} className="w-56 md:w-64 border-[#282828] bg-[#111111] text-white">
+        <div className="px-3 py-2">
           <p className="text-sm font-medium text-white">{displayName}</p>
           <div className="flex items-center gap-1 text-xs text-gray-400">
             {displayAddress}
@@ -202,22 +199,22 @@ function ProfileDropdown({
           </div>
         </div>
         <DropdownMenuSeparator className="bg-[#282828]" />
-        <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
-          <Link href="/profile">
-            <User className="w-4 h-4 mr-2" />
+        <DropdownMenuItem asChild className="text-white hover:bg-[#1a1a1a] hover:text-white focus:bg-[#1a1a1a] focus:text-white">
+          <Link href="/profile" className="flex items-center">
+            <User className="w-4 h-4 mr-2 text-gray-300" />
             Profile
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-[#282828]" />
-        <DropdownMenuItem asChild className="hover:bg-[#161616] hover:text-white">
-          <Link href="/register-project">
-            <Building2 className="w-4 h-4 mr-2" />
+        <DropdownMenuItem asChild className="text-white hover:bg-[#1a1a1a] hover:text-white focus:bg-[#1a1a1a] focus:text-white">
+          <Link href="/register-project" className="flex items-center">
+            <Building2 className="w-4 h-4 mr-2 text-gray-300" />
             Register Project
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={handleSignOut}
-          className="text-red-400 hover:text-red-300"
+          className="text-red-400 hover:text-red-300 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-300"
         >
           <LogOut className="w-4 h-4 mr-2" />
           Sign Out

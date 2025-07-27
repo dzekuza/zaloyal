@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
       ({ error: sessionError } = await supabase.rpc('store_oauth_state', {
         p_user_id: user.id,
         p_state: state,
-        p_code_verifier: '', // Discord doesn't use PKCE
-        p_platform: 'discord'
+        p_platform: 'discord',
+        p_code_verifier: '' // Discord doesn't use PKCE
       }));
     } catch (err) {
       sessionError = err;
@@ -93,8 +93,8 @@ export async function POST(request: NextRequest) {
       ({ error: sessionError } = await supabase.rpc('store_oauth_state', {
         p_user_id: user.id,
         p_state: state,
-        p_code_verifier: '', // Discord doesn't use PKCE
-        p_platform: 'discord'
+        p_platform: 'discord',
+        p_code_verifier: '' // Discord doesn't use PKCE
       }));
     } catch (err) {
       sessionError = err;

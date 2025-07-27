@@ -115,7 +115,7 @@ export default function EditProjectPage() {
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
-              <Button type="button" variant="outline" onClick={() => router.push(`/project/${id}`)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => router.push(`/project/${id}`)} className="bg-white/10 border-white/20 text-white hover:bg-white/20">Cancel</Button>
             </div>
             {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
           </form>
@@ -138,6 +138,7 @@ export default function EditProjectPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => router.push(`/quest/${quest.id}/edit`)}
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                   >
                     Edit
                   </Button>

@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
+import { storageService } from "@/lib/storage"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import ImageUpload from "@/components/image-upload"
 import WalletConnect from "@/components/wallet-connect"
@@ -32,7 +33,7 @@ import { useRouter } from "next/navigation"
 import AuthRequired from "@/components/auth-required";
 import PageContainer from "@/components/PageContainer";
 import { toast } from 'sonner';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth-provider-wrapper";
 
 interface ProjectForm {
@@ -302,6 +303,7 @@ export default function RegisterProject() {
         github_url: formData.githubUrl || null,
         medium_url: formData.mediumUrl || null,
         category: formData.category,
+        additional_info: formData.additionalInfo || null,
         status: 'approved', // Make project live immediately
       };
 
@@ -332,6 +334,39 @@ export default function RegisterProject() {
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('onboarding_project', 'true');
+      }
+
+      // Move uploaded images from temp to actual project folder
+      if (insertedProjects?.id) {
+        try {
+          // Move logo if it exists
+          if (formData.logoUrl && formData.logoUrl.includes('/temp/')) {
+            const newLogoUrl = await storageService.moveTempImage(formData.logoUrl, insertedProjects.id, 'logo');
+            if (newLogoUrl) {
+              formData.logoUrl = newLogoUrl;
+            }
+          }
+          
+          // Move cover if it exists
+          if (formData.coverImageUrl && formData.coverImageUrl.includes('/temp/')) {
+            const newCoverUrl = await storageService.moveTempImage(formData.coverImageUrl, insertedProjects.id, 'cover');
+            if (newCoverUrl) {
+              formData.coverImageUrl = newCoverUrl;
+            }
+          }
+          
+          // Update project with new image URLs
+          await supabase
+            .from("projects")
+            .update({
+              logo_url: formData.logoUrl,
+              cover_image_url: formData.coverImageUrl
+            })
+            .eq("id", insertedProjects.id);
+        } catch (error) {
+          console.error("Error moving images:", error);
+          // Don't fail the submission if image move fails
+        }
       }
 
       setCreatedProjectId(insertedProjects?.id || null);

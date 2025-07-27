@@ -77,7 +77,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   } catch (error) {
     console.error("Error loading project:", error)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+      <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-4">Project Not Found</h1>
           <p className="text-gray-300 mb-6">The project you're looking for doesn't exist or has been removed.</p>

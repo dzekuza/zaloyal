@@ -20,7 +20,7 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
   const [title, setTitle] = useState(quest.title || "")
   const [description, setDescription] = useState(quest.description || "")
   // Removed imageUrl state as it's not supported in the database
-  const [totalXp, setTotalXp] = useState(quest.total_xp || 0)
+  // Removed totalXp state as total_xp is now calculated automatically from tasks
   const [status, setStatus] = useState(quest.status || "active")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -194,7 +194,7 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
             title: title.trim(),
             description: description.trim(),
             project_id: quest.project_id,
-            total_xp: totalXp,
+            // total_xp is now calculated automatically from tasks
             status,
           })
           .select()
@@ -210,7 +210,7 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
           .update({
             title: title.trim(),
             description: description.trim(),
-            total_xp: totalXp,
+            // total_xp is now calculated automatically from tasks
             status,
           })
           .eq("id", quest.id)
@@ -324,17 +324,7 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
           />
         </div>
         {/* Removed quest image upload section as it's not supported in the database */}
-        <div className="space-y-2">
-          <label className="text-white block mb-1 font-medium">Total XP</label>
-          <Input 
-            type="number" 
-            value={totalXp} 
-            onChange={e => setTotalXp(Number(e.target.value))} 
-            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
-            min={0} 
-            required 
-          />
-        </div>
+        {/* Removed Total XP input as total_xp is now calculated automatically from tasks */}
         <div className="space-y-2">
           <label className="text-white block mb-1 font-medium">Status</label>
           <Select value={status} onValueChange={setStatus}>

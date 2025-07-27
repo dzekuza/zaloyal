@@ -8,17 +8,14 @@ import { DiscordIcon } from '@/components/discord-icon'
 import { TelegramIcon } from '@/components/telegram-icon'
 import { MediumIcon } from '@/components/medium-icon'
 import { YoutubeIcon } from '@/components/youtube-icon'
-import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import ProjectStatsBar from "@/components/ProjectStatsBar"
-import BackgroundWrapper from "@/components/BackgroundWrapper";
 import QuestFormWrapper from "@/components/quest-form-wrapper"
-import PageContainer from "@/components/PageContainer";
 import QuestCard from '@/components/QuestCard';
 import { toast } from "sonner"
-import AuthRequired from '@/components/auth-required';
+import { useAuth } from '@/components/auth-provider-wrapper'
 
 interface Project {
   id: string;
@@ -55,7 +52,6 @@ interface Quest {
   task_count?: number;
   participants?: number;
   time_limit_days?: number;
-  // Removed image_url as it doesn't exist in the database
 }
 
 function isQuestCompleted(quest: Quest) {
@@ -75,64 +71,48 @@ export default function ProjectDetailClient({
   project: Project, 
   quests: Quest[] 
 }) {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [isOwner, setIsOwner] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const { user, loading } = useAuth()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-    const checkAuth = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          setCurrentUserId(user.id)
-          // Check if user is the project owner
-          setIsOwner(project.owner_id === user.id)
-        }
-      } catch (error) {
-        console.error('Error checking auth:', error)
-      }
-    }
-    checkAuth()
-  }, [project.owner_id])
+  // Check if user is the project owner
+  const isOwner = user?.id === project.owner_id
 
   // Calculate total XP
   const xpToCollect = quests.reduce((sum, q) => sum + (q.total_xp || 0), 0)
 
-  if (!mounted) {
+  if (loading) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-white text-xl">Loading...</p>
-        </div>
-      </BackgroundWrapper>
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+        <p className="text-white text-xl">Loading...</p>
+      </div>
     )
   }
 
-  if (!currentUserId) {
+  if (!user) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen flex items-center justify-center">
-          <AuthRequired
-            title="Sign In Required"
-            message="Please sign in with your email or wallet to view this project."
-            onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-          />
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Sign In Required</h1>
+          <p className="text-gray-300 mb-6">Please sign in to view this project.</p>
+          <Button 
+            onClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+            className="bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+          >
+            Sign In
+          </Button>
         </div>
-      </BackgroundWrapper>
+      </div>
     )
   }
 
   return (
-    <BackgroundWrapper>
+    <div className="min-h-screen bg-[#181818]">
       {/* Cover Image */}
       <div className="relative h-64 sm:h-80 lg:h-96">
         <img
           src={project.cover_image_url || "/placeholder.jpg"}
           alt={`${project.name} cover`}
           className="w-full h-full object-cover"
-          style={{ width: 'auto' }}
         />
         <div className="absolute inset-0 bg-black/50" />
         
@@ -148,7 +128,7 @@ export default function ProjectDetailClient({
 
         {/* Project info overlay */}
         <div className="absolute bottom-0 left-0 w-full">
-          <PageContainer className="w-full max-w-full pb-4 px-2 sm:px-6">
+          <div className="w-full max-w-7xl mx-auto px-4 pb-4">
             <div className="flex flex-row items-end gap-6">
               {/* Logo */}
               <div className="flex items-center h-20">
@@ -156,7 +136,6 @@ export default function ProjectDetailClient({
                   src={project.logo_url || "/placeholder.svg?height=80&width=80"}
                   alt={`${project.name} logo`}
                   className="w-20 h-20 rounded-full border-4 border-white bg-white project-logo-cover"
-                  style={{ width: 'auto' }}
                 />
               </div>
               {/* Title and description */}
@@ -170,15 +149,15 @@ export default function ProjectDetailClient({
                 <p className="text-gray-300 text-base sm:text-lg max-w-full sm:max-w-2xl text-left mt-1">{project.description}</p>
               </div>
             </div>
-          </PageContainer>
+          </div>
         </div>
       </div>
 
-      {/* Project Stats Bar (separate, below cover) */}
+      {/* Project Stats Bar */}
       <ProjectStatsBar questCount={quests.length} participants={project.total_participants || 0} xpToCollect={xpToCollect} />
 
       {/* Main Content: Quests and Connect */}
-      <PageContainer>
+      <div className="w-full max-w-7xl mx-auto px-4 py-8">
         {/* Featured Quests */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">Quests</h2>
@@ -320,7 +299,7 @@ export default function ProjectDetailClient({
             </div>
           </div>
         )}
-      </PageContainer>
-    </BackgroundWrapper>
+      </div>
+    </div>
   )
 } 

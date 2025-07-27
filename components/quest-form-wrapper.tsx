@@ -7,7 +7,7 @@ interface Quest {
   project_id: string;
   title: string;
   description?: string | null;
-  total_xp?: number;
+  // total_xp is now calculated automatically from tasks
   status?: string;
   created_at?: string;
   task_count?: number;
@@ -30,7 +30,7 @@ export default function QuestFormWrapper({ quest, projectId, onSave }: QuestForm
       project_id: projectId,
       title: '',
       description: '',
-      total_xp: 0,
+      // total_xp is now calculated automatically from tasks
       status: 'active',
       image_url: ''
     }

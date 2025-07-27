@@ -459,6 +459,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           xp_awarded: task.xp_reward
         }
 
+        // Save task submission to database
         const { error: submissionError } = await supabase
           .from('user_task_submissions')
           .insert(submissionData)
@@ -528,11 +529,12 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       // Generate dynamic title and description based on task type
       switch (newTask.type) {
         case 'social':
-          if (!newTask.social_platform || !newTask.social_action) {
-            setCreateTaskError('Please select both social network and action')
-            setCreatingTask(false)
-            return
-          }
+          // Remove validation for non-existent database fields
+          // if (!newTask.social_platform || !newTask.social_action) {
+          //   setCreateTaskError('Please select both social network and action')
+          //   setCreatingTask(false)
+          //   return
+          // }
 
           // Generate dynamic title and description
           const platformNames: Record<string, string> = {
@@ -550,10 +552,6 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
           taskData.title = `${platformNames[newTask.social_platform]}`
           taskData.description = `${actionNames[newTask.social_action]}`
-          
-          // Add social media specific fields
-          taskData.social_platform = newTask.social_platform
-          taskData.social_action = newTask.social_action
           
           // For follow actions, automatically fetch admin's social account
           if (newTask.social_action === 'follow') {

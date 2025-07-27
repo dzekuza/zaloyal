@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase"
 import ProjectDiscoveryClient from "@/components/ProjectDiscoveryClient";
-import { cache } from "react"
 import PageContainer from "@/components/PageContainer";
+import { cache } from "react"
 
 interface Project {
   id: string;

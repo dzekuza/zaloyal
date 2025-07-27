@@ -36,16 +36,16 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
       {/* Dashboard Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex gap-2 whitespace-nowrap overflow-x-auto bg-transparent shadow-none p-0 border-0 justify-start w-auto">
-            <TabsTrigger value="overview" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none">
+            <TabsTrigger value="overview" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none hover:text-white hover:bg-transparent">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="quests" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none">
+            <TabsTrigger value="quests" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none hover:text-white hover:bg-transparent">
               Quests
             </TabsTrigger>
-            <TabsTrigger value="achievements" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none">
+            <TabsTrigger value="achievements" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none hover:text-white hover:bg-transparent">
               Achievements
             </TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none">
+            <TabsTrigger value="history" className="data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-green-500 text-gray-300 px-4 py-2 font-medium bg-transparent border-0 rounded-none hover:text-white hover:bg-transparent">
               History
             </TabsTrigger>
           </TabsList>

@@ -73,6 +73,7 @@ export default function EmailAuth({ onSuccess, onError, onNavigate }: EmailAuthP
       let { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
       await supabase.from("users").upsert({
         id: user.id,
+        user_id: user.id,
         email: user.email,
         // Only set username if it exists in user_metadata or profile
         ...(user.user_metadata?.username

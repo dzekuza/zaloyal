@@ -1,6 +1,7 @@
 import type React from "react"
 import "./globals.css"
 import ClientLayout from "./ClientLayout"
+import { Toaster } from "@/components/ui/toaster"
 import { Inter, Poppins } from 'next/font/google'
 
 // Add font configurations
@@ -31,6 +32,7 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning className="font-sans">
         <ClientLayout>{children}</ClientLayout>
+        <Toaster />
       </body>
     </html>
   )

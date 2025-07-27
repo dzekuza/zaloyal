@@ -3,10 +3,9 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { Inter } from 'next/font/google'
 import Navigation from '@/components/navigation'
-import PageContainer from '@/components/PageContainer'
 import LoadingSpinner from '@/components/loading-spinner'
 import { useAuth, AuthProvider } from '@/components/auth-provider-wrapper'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/hooks/use-toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import AuthDialog from '@/components/auth-dialog'
 import { supabase } from '@/lib/supabase'
@@ -26,8 +25,8 @@ const LoadingScreen = React.memo(() => (
 ))
 LoadingScreen.displayName = 'LoadingScreen'
 
-function ClientLayoutContent({ children }: { children: React.ReactNode }) {
-  // All hooks must be called at the top level, before any conditional logic
+// Separate component that uses auth context
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const { toast } = useToast();
   const { user, loading } = useAuth();
@@ -51,9 +50,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       
       {/* Main Content */}
       <div className="flex-1 md:ml-64">
-        <PageContainer>
-          {children}
-        </PageContainer>
+        {children}
       </div>
     </div>
   ), [children, handleOpenAuthDialog]);
@@ -93,9 +90,9 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <ClientLayoutContent>
+      <AuthenticatedLayout>
         {children}
-      </ClientLayoutContent>
+      </AuthenticatedLayout>
     </AuthProvider>
   )
 }

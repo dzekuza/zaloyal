@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from './auth-provider-wrapper'
 import { Mail, User, Lock, Eye, EyeOff } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/hooks/use-toast'
 
 interface AuthDialogProps {
   open: boolean
@@ -118,184 +118,186 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = 'signin' }
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'signin' | 'signup')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-[#181818] border-[#282828]">
-            <TabsTrigger value="signin" className="text-white">Sign In</TabsTrigger>
-            <TabsTrigger value="signup" className="text-white">Sign Up</TabsTrigger>
-          </TabsList>
+        <div className="px-6 pt-4 pb-6">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'signin' | 'signup')} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-[#181818] border-[#282828]">
+              <TabsTrigger value="signin" className="text-white">Sign In</TabsTrigger>
+              <TabsTrigger value="signup" className="text-white">Sign Up</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="signin" className="space-y-4 mt-4">
-            {/* X Sign In */}
-            <div className="space-y-4">
-              <Button 
-                onClick={handleXSignIn}
-                disabled={xLoading}
-                className="w-full bg-black hover:bg-gray-900 text-white border border-gray-600"
-              >
-                {xLoading ? "Connecting..." : "Continue with X"}
-              </Button>
-              
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-[#282828]" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-[#111111] px-2 text-gray-400">Or continue with email</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Email Sign In */}
-            <form onSubmit={handleEmailSignIn} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="signin-email" className="text-white">Email</Label>
+            <TabsContent value="signin" className="space-y-4 mt-4">
+              {/* X Sign In */}
+              <div className="space-y-4">
+                <Button 
+                  onClick={handleXSignIn}
+                  disabled={xLoading}
+                  className="w-full bg-black hover:bg-gray-900 text-white border border-gray-600"
+                >
+                  {xLoading ? "Connecting..." : "Continue with X"}
+                </Button>
+                
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="signin-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10"
-                    required
-                  />
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-[#282828]" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-[#111111] px-2 text-gray-400">Or continue with email</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="signin-password" className="text-white">Password</Label>
+              {/* Email Sign In */}
+              <form onSubmit={handleEmailSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signin-email" className="text-white">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signin-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signin-password" className="text-white">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signin-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10 pr-10"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  disabled={loading}
+                >
+                  {loading ? "Signing In..." : "Sign In"}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="signup" className="space-y-4 mt-4">
+              {/* X Sign Up */}
+              <div className="space-y-4">
+                <Button 
+                  onClick={handleXSignIn}
+                  disabled={xLoading}
+                  className="w-full bg-black hover:bg-gray-900 text-white border border-gray-600"
+                >
+                  {xLoading ? "Connecting..." : "Continue with X"}
+                </Button>
+                
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="signin-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10 pr-10"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
-                  </Button>
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-[#282828]" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-[#111111] px-2 text-gray-400">Or continue with email</span>
+                  </div>
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-                disabled={loading}
-              >
-                {loading ? "Signing In..." : "Sign In"}
-              </Button>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="signup" className="space-y-4 mt-4">
-            {/* X Sign Up */}
-            <div className="space-y-4">
-              <Button 
-                onClick={handleXSignIn}
-                disabled={xLoading}
-                className="w-full bg-black hover:bg-gray-900 text-white border border-gray-600"
-              >
-                {xLoading ? "Connecting..." : "Continue with X"}
-              </Button>
-              
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-[#282828]" />
+              {/* Email Sign Up */}
+              <form onSubmit={handleEmailSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-username" className="text-white">Username</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signup-username"
+                      type="text"
+                      placeholder="Choose a username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10"
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-[#111111] px-2 text-gray-400">Or continue with email</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Email Sign Up */}
-            <form onSubmit={handleEmailSignUp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="signup-username" className="text-white">Username</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="signup-username"
-                    type="text"
-                    placeholder="Choose a username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10"
-                    required
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email" className="text-white">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="signup-email" className="text-white">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10"
-                    required
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password" className="text-white">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signup-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10 pr-10"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="signup-password" className="text-white">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="signup-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400 pl-10 pr-10"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-                disabled={loading}
-              >
-                {loading ? "Creating Account..." : "Create Account"}
-              </Button>
-            </form>
-          </TabsContent>
-        </Tabs>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  disabled={loading}
+                >
+                  {loading ? "Creating Account..." : "Create Account"}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   )

@@ -1,7 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
+/supabase/migrations
 # dependencies
 /node_modules
+/database-schema
+/supabase/temp
 
 # next.js
 /.next/
@@ -25,3 +27,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+supabase/migrations/20250727185618_create_auth_trigger.sql
+supabase/migrations/20250724195215_fix_sync_wallet_trigger.sql

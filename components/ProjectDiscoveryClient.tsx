@@ -126,7 +126,7 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
   );
 
   return (
-    <div>
+    <div className="w-full">
       {/* Hero Section */}
       <div className="text-center space-y-6 py-12 md:py-16">
         <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white">
@@ -151,34 +151,39 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
         </div>
       </div>
 
-      {/* Search and Filter Section */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
-          <Input
-            placeholder="Search projects..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-gray-200 backdrop-blur-sm focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-full md:w-48 bg-white/10 border-white/20 text-white backdrop-blur-sm">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
-            <SelectItem value="all" className="text-white hover:bg-[#06351f]">
-              All Categories
-            </SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category.toLowerCase()} className="text-white hover:bg-[#06351f]">
-                {category}
+      {/* Search and Filter Section - Column Layout */}
+      <div className="flex flex-col gap-4 mb-8 w-full">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
+            <Input
+              placeholder="Search projects..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-gray-200 backdrop-blur-sm focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-full md:w-48 bg-white/10 border-white/20 text-white backdrop-blur-sm">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
+              <SelectItem value="all" className="text-white hover:bg-[#06351f]">
+                All Categories
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category.toLowerCase()} className="text-white hover:bg-[#06351f]">
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
+      {/* Projects Section - Column Layout */}
+      <div className="flex flex-col gap-8">
         {/* Featured Projects */}
         {featuredProjects.length > 0 && (
           <div>
@@ -195,19 +200,21 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
         )}
 
         {/* All Projects */}
-        <h2 className="text-2xl font-bold text-white my-6">All Projects</h2>
-        <ProjectGrid
-          projects={allProjects}
-          currentUserId={null}
-          onProjectDeleted={() => window.location.reload()}
-        />
-        
-        {filteredProjects.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-400 text-lg mb-2">No projects found</p>
-            <p className="text-gray-500">Try different search terms or filters</p>
-          </div>
-        )}
+        <div className="w-full">
+          <h2 className="text-2xl font-bold text-white mb-6">All Projects</h2>
+          <ProjectGrid
+            projects={allProjects}
+            currentUserId={null}
+            onProjectDeleted={() => window.location.reload()}
+          />
+          
+          {filteredProjects.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-400 text-lg mb-2">No projects found</p>
+              <p className="text-gray-500">Try different search terms or filters</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

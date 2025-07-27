@@ -510,9 +510,7 @@ export default function CreateQuest() {
         alert("User not found. Please sign in again.")
         return
       }
-      // Calculate total XP
-      const totalXP = questForm.tasks.reduce((sum, task) => sum + (task.xpReward || 100), 0)
-      // Create quest
+      // Create quest (total_xp will be calculated automatically from tasks)
       const { data: quest, error: questError } = await supabase
         .from("quests")
         .insert({
@@ -521,7 +519,7 @@ export default function CreateQuest() {
           project_id: selectedProjectId,
           // Removed creator_id and category_id as they don't exist in the database
           // Removed image_url as it doesn't exist in the database
-          total_xp: totalXP,
+          // total_xp is now calculated automatically from task XP rewards
           status: "active",
           featured: questForm.featured,
           time_limit_days: questForm.timeLimit ? Number.parseInt(questForm.timeLimit) : null,
@@ -1241,7 +1239,7 @@ export default function CreateQuest() {
                   />
                 </div>
                 <div>
-                  <Label className="text-white">XP Reward</Label>
+                  <Label className="text-white">XP Reward (Required)</Label>
                   <Input
                     type="number"
                     min={1}
@@ -1250,6 +1248,9 @@ export default function CreateQuest() {
                     placeholder="100"
                     className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Set the XP reward for completing this task. Quest total XP will be calculated automatically.
+                  </p>
                 </div>
                 <div>
                   <Label className="text-white">Task Type</Label>

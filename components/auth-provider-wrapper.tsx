@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 export interface AuthUser {
   id: string
@@ -25,6 +25,7 @@ interface AuthContextType {
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
   clearAuthState: () => Promise<void>
+  clearOAuthState: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -102,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             console.log('DEBUG: User authenticated, processing...')
             
-            // Ensure user exists in public.users and public.profiles tables
+            // Ensure user exists in public.users table
             const { error: userError } = await supabase
               .from('users')
               .upsert({
@@ -111,6 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 email: session.user.email,
                 username: session.user.user_metadata?.username || `user_${session.user.id.substring(0, 8)}`,
                 avatar_url: session.user.user_metadata?.avatar_url,
+                total_xp: 0,
+                level: 1,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }, {
@@ -121,27 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.error('Error ensuring user exists:', userError)
             }
 
-            // Ensure profile exists
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .upsert({
-                id: session.user.id,
-                user_id: session.user.id,
-                email: session.user.email,
-                username: session.user.user_metadata?.username || `user_${session.user.id.substring(0, 8)}`,
-                total_xp: 0,
-                level: 1,
-                completed_quests: 0,
-                role: 'user',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }, {
-                onConflict: 'id'
-              })
-
-            if (profileError) {
-              console.error('Error ensuring profile exists:', profileError)
-            }
+            // Note: profiles table was removed, user data is now managed in users table only
             
             // User signed in with email or OAuth
             const { data: profile } = await supabase
@@ -150,34 +133,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .eq('id', session.user.id)
               .single()
             
-            // Handle X authentication via Supabase Auth (not direct OAuth)
-            // Check for X authentication in multiple ways
-            const isXAuth = session.user.app_metadata?.provider === 'twitter' || 
-                           session.user.user_metadata?.provider === 'twitter' ||
-                           session.user.identities?.some((identity: any) => identity.provider === 'twitter');
+            // Handle Discord authentication via Supabase Auth
+            const isDiscordAuth = session.user.app_metadata?.provider === 'discord' || 
+                                 session.user.user_metadata?.provider === 'discord' ||
+                                 session.user.identities?.some((identity: any) => identity.provider === 'discord');
             
-            if (isXAuth) {
-              console.log('DEBUG: Processing X authentication...')
+            if (isDiscordAuth) {
+              console.log('DEBUG: Processing Discord authentication...')
               try {
-                // Get user identities to find X identity
+                // Get user identities to find Discord identity
                 const { data: identities } = await supabase.auth.getUserIdentities()
-                const twitterIdentity = identities?.identities?.find(
-                  (identity: any) => identity.provider === 'twitter'
+                const discordIdentity = identities?.identities?.find(
+                  (identity: any) => identity.provider === 'discord'
                 )
                 
-                if (twitterIdentity) {
-                  console.log('DEBUG: Found X identity, storing social account...')
+                if (discordIdentity) {
+                  console.log('DEBUG: Found Discord identity, storing social account...')
                   // Store or update social account via Supabase Auth
                   const { error: socialError } = await supabase
                     .from('social_accounts')
                     .upsert({
                       user_id: session.user.id,
-                      platform: 'x',
-                      account_id: twitterIdentity.identity_id,
-                      username: session.user.user_metadata?.username || session.user.user_metadata?.name || twitterIdentity.identity_data?.screen_name,
-                      access_token: '', // Will be updated via API calls
+                      platform: 'discord',
+                      platform_user_id: discordIdentity.identity_id,
+                      username: session.user.user_metadata?.username || session.user.user_metadata?.name || discordIdentity.identity_data?.username,
+                      access_token: '', // Will be updated via API calls if needed
                       refresh_token: null,
-                      expires_at: null,
+                      token_expires_at: null,
+                      profile_data: {
+                        id: discordIdentity.identity_id,
+                        username: session.user.user_metadata?.username || session.user.user_metadata?.name,
+                        name: session.user.user_metadata?.name,
+                        avatar_url: session.user.user_metadata?.avatar_url
+                      },
+                      verified: true,
                       created_at: new Date().toISOString(),
                       updated_at: new Date().toISOString()
                     }, {
@@ -185,18 +174,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     })
 
                   if (socialError) {
-                    console.error('Error storing social account:', socialError)
+                    console.error('Error storing Discord social account:', socialError)
                   } else {
-                    console.log('DEBUG: Social account stored successfully in auth provider')
+                    console.log('DEBUG: Discord social account stored successfully in auth provider')
                   }
                 } else {
-                  console.log('DEBUG: No X identity found in user identities')
+                  console.log('DEBUG: No Discord identity found in user identities')
                 }
               } catch (identityError) {
-                console.error('Error handling X identity in auth provider:', identityError)
+                console.error('Error handling Discord identity in auth provider:', identityError)
               }
             } else {
-              console.log('DEBUG: Not X authentication, provider:', session.user.app_metadata?.provider)
+              console.log('DEBUG: Not Discord authentication, provider:', session.user.app_metadata?.provider)
             }
             
             if (!isMounted) return // Don't update state if component unmounted
@@ -318,20 +307,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithX = async () => {
     try {
-      // Use Supabase Auth for X authentication (not direct OAuth)
+      // Clear any existing OAuth state to prevent token reuse issues
+      // This is especially important when switching between different X accounts
+      localStorage.removeItem('supabase.auth.token')
+      sessionStorage.removeItem('supabase.auth.token')
+      
+      // Generate a unique state parameter to prevent token reuse
+      const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      
+      // Use Supabase Auth for X authentication with fresh state
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'twitter',
         options: {
           redirectTo: `${window.location.origin}/auth/callback/supabase`,
-          scopes: 'tweet.read users.read follows.read offline.access'
+          scopes: 'tweet.read users.read follows.read offline.access',
+          queryParams: {
+            state: state // Add unique state parameter
+          }
         }
       })
       
       if (error) throw error
       
+      // Store the state for verification (optional)
+      sessionStorage.setItem('oauth_state', state)
+      
       // If we get here, the OAuth flow was initiated successfully
       // The user should be redirected to Twitter/X for authentication
-      console.log('DEBUG: OAuth initiated, redirecting to X...')
+      console.log('DEBUG: OAuth initiated with fresh state, redirecting to X...')
       
       toast({
         title: "Success",
@@ -420,6 +423,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const clearOAuthState = () => {
+    localStorage.removeItem('supabase.auth.token')
+    sessionStorage.removeItem('supabase.auth.token')
+    sessionStorage.removeItem('oauth_state')
+    console.log('OAuth state cleared')
+  }
+
   const value: AuthContextType = {
     user,
     loading,
@@ -428,7 +438,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithX,
     signOut,
     refreshUser,
-    clearAuthState
+    clearAuthState,
+    clearOAuthState
   }
 
   return (
