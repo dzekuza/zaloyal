@@ -76,49 +76,24 @@ export const useTwitterLink = () => {
   }, [toast]);
 
   const unlinkTwitter = useCallback(async () => {
-    setState(prev => ({ ...prev, isUnlinking: true, error: null }));
-    
     try {
-      // Ensure user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('You must be logged in to unlink your X (Twitter) account.');
+      setState(prev => ({ ...prev, isUnlinking: true, error: null }));
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
       }
 
-      // Clear Twitter data from user profile
-      try {
-        // Try RPC function first
-        const { error: rpcError } = await supabase.rpc('clear_user_twitter_profile', {
-          user_id: user.id
-        });
+      // Remove X account from social_accounts table
+      const { error: deleteError } = await supabase
+        .from('social_accounts')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('platform', 'x');
 
-        if (rpcError) {
-          console.warn('RPC function not available, using direct update');
-          // Fallback to direct table update
-          const { error: updateError } = await supabase.from('users').update({
-            x_id: null,
-            x_username: null,
-            x_avatar_url: null,
-          }).eq('id', user.id);
-
-          if (updateError) {
-            console.error('Profile update error:', updateError);
-            throw new Error('Failed to unlink X account');
-          }
-        }
-      } catch (err) {
-        console.warn('Database function not available, using direct update');
-        // Fallback to direct table update
-        const { error: updateError } = await supabase.from('users').update({
-          x_id: null,
-          x_username: null,
-          x_avatar_url: null,
-        }).eq('id', user.id);
-
-        if (updateError) {
-          console.error('Profile update error:', updateError);
-          throw new Error('Failed to unlink X account');
-        }
+      if (deleteError) {
+        console.error('Social account deletion error:', deleteError);
+        throw new Error('Failed to unlink X account');
       }
 
       setState(prev => ({ ...prev, isUnlinking: false, error: null }));
@@ -164,20 +139,21 @@ export const useTwitterLink = () => {
         };
       }
 
-      // Fallback: Check user profile for linked X account
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('x_id, x_username, x_avatar_url')
-        .eq('id', user.id)
+      // Fallback: Check social_accounts table for linked X account
+      const { data: socialAccount, error } = await supabase
+        .from('social_accounts')
+        .select('x_account_id, x_username, profile_data')
+        .eq('user_id', user.id)
+        .eq('platform', 'x')
         .single();
 
-      if (error || !profile?.x_id) return null;
+      if (error || !socialAccount?.x_account_id) return null;
 
       return {
-        id: profile.x_id,
-        user_name: profile.x_username,
-        avatar_url: profile.x_avatar_url,
-        profile_url: profile.x_username ? `https://x.com/${profile.x_username}` : undefined,
+        id: socialAccount.x_account_id,
+        user_name: socialAccount.x_username,
+        avatar_url: socialAccount.profile_data?.profile_image_url,
+        profile_url: socialAccount.x_username ? `https://x.com/${socialAccount.x_username}` : undefined,
       };
     } catch (error) {
       console.error('Get Twitter identity error:', error);

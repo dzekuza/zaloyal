@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/profile?error=credentials_not_configured', request.url));
   }
 
-  const supabase = await createServerClient();
+  const supabase = await createServerClient(request);
   const searchParams = request.nextUrl.searchParams;
   
   const code = searchParams.get('code');
@@ -123,35 +123,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/profile?error=storage_failed', request.url));
     }
 
-    // Update user profile with Discord information
-    const { error: profileError } = await supabase
-      .from('users')
-      .update({
-        discord_id: userData.id,
-        discord_username: userData.username,
-        discord_avatar_url: userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', user.id);
-
-    if (profileError) {
-      console.error('[Discord OAuth Callback] Error updating profile:', profileError);
-      // Don't fail the whole flow for profile update errors
-    }
+    console.log('[Discord OAuth Callback] Successfully connected Discord account:', {
+      userId: user.id,
+      userEmail: user.email,
+      discordId: userData.id,
+      discordUsername: userData.username
+    });
 
     // Clean up OAuth state
     await supabase
       .from('oauth_states')
       .delete()
-      .eq('user_id', user.id)
-      .eq('platform', 'discord')
-      .eq('state', state);
+      .eq('state', state)
+      .eq('platform', 'discord');
 
-    console.log('[Discord OAuth Callback] Successfully connected Discord account');
     return NextResponse.redirect(new URL('/profile?success=discord_connected', request.url));
 
   } catch (error) {
     console.error('[Discord OAuth Callback] Error:', error);
-    return NextResponse.redirect(new URL('/profile?error=oauth_callback_failed', request.url));
+    return NextResponse.redirect(new URL('/profile?error=internal_error', request.url));
   }
 } 

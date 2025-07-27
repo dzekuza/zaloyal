@@ -1,127 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
-import OAuth from 'oauth-1.0a';
-import crypto from 'crypto';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    console.log('DEBUG: Starting Supabase X OAuth flow');
+    console.log('DEBUG: Request cookies:', request.headers.get('cookie')?.substring(0, 100) + '...');
+    console.log('DEBUG: User ID header:', request.headers.get('x-user-id'));
     
-    // Get the current user session
+    const supabase = await createServerClient(request);
+    
+    // First try to get the session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('DEBUG: Session check:', session ? 'found' : 'not found', sessionError);
+    
+    // Then try to get the user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log('DEBUG: User check:', user ? 'found' : 'not found', userError);
     
-    if (userError || !user) {
+    let authenticatedUser = user || session?.user;
+    
+    // If no user from session, check if user ID was passed in header
+    if (!authenticatedUser) {
+      const userIdHeader = request.headers.get('x-user-id');
+      console.log('DEBUG: Checking user ID header:', userIdHeader);
+      
+      if (userIdHeader) {
+        // Create a minimal user object for OAuth flow
+        authenticatedUser = {
+          id: userIdHeader,
+          email: undefined,
+          app_metadata: {},
+          user_metadata: {}
+        } as any;
+        console.log('DEBUG: Using user ID from header:', userIdHeader);
+      } else {
+        console.log('DEBUG: No authenticated user found');
+        console.log('DEBUG: Session error:', sessionError);
+        console.log('DEBUG: User error:', userError);
+        
+        // Try to get user from cookies manually
+        const cookies = request.headers.get('cookie');
+        console.log('DEBUG: Raw cookies:', cookies);
+        
+        return NextResponse.json(
+          { error: 'User not authenticated. Please sign in first.' },
+          { status: 401 }
+        );
+      }
+    }
+
+    if (!authenticatedUser) {
       return NextResponse.json(
-        { error: 'User not authenticated' },
+        { error: 'User not authenticated. Please sign in first.' },
         { status: 401 }
       );
     }
 
-    // Check if we have Twitter API credentials
-    const twitterApiKey = process.env.TWITTER_API_KEY;
-    const twitterApiSecret = process.env.TWITTER_API_SECRET;
-    
-    if (!twitterApiKey || !twitterApiSecret) {
-      return NextResponse.json(
-        { error: 'Twitter API not configured. Please set TWITTER_API_KEY and TWITTER_API_SECRET environment variables.' },
-        { status: 500 }
-      );
-    }
+    console.log('DEBUG: User authenticated:', authenticatedUser.id, authenticatedUser.email);
 
-    // Create OAuth 1.0a instance
-    const oauth = new OAuth({
-      consumer: {
-        key: twitterApiKey,
-        secret: twitterApiSecret,
-      },
-      signature_method: 'HMAC-SHA1',
-      hash_function(base_string: string, key: string) {
-        return crypto
-          .createHmac('sha1', key)
-          .update(base_string)
-          .digest('base64');
-      },
+    // Use Supabase's native OAuth flow
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'twitter',
+      options: {
+        redirectTo: `${request.nextUrl.origin}/auth/callback/supabase`,
+        scopes: 'tweet.read users.read follows.read offline.access'
+      }
     });
 
-    // Generate state parameter for security
-    const state = crypto.randomBytes(32).toString('hex');
-    const timestamp = Date.now().toString();
-
-    // Request token data
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/twitter/callback`;
-    console.log('DEBUG: Callback URL:', callbackUrl);
-    
-    const requestTokenData = {
-      url: 'https://api.twitter.com/oauth/request_token',
-      method: 'POST',
-      data: {
-        oauth_callback: callbackUrl,
-      },
-    };
-
-    const requestTokenHeaders = oauth.toHeader(oauth.authorize(requestTokenData));
-
-    const tokenResponse = await fetch('https://api.twitter.com/oauth/request_token', {
-      method: 'POST',
-      headers: {
-        'Authorization': requestTokenHeaders['Authorization'],
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        oauth_callback: callbackUrl,
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error('Twitter OAuth error:', errorText);
+    if (error) {
+      console.error('DEBUG: Supabase OAuth error:', error);
       return NextResponse.json(
-        { error: 'Failed to get request token from Twitter' },
+        { error: error.message || 'Failed to initialize X OAuth' },
         { status: 500 }
       );
     }
 
-    const tokenData = await tokenResponse.text();
-    const params = new URLSearchParams(tokenData);
-    const oauthToken = params.get('oauth_token');
-    const oauthTokenSecret = params.get('oauth_token_secret');
-
-    if (!oauthToken || !oauthTokenSecret) {
-      console.error('Invalid token response:', tokenData);
-      return NextResponse.json(
-        { error: 'Invalid response from Twitter OAuth' },
-        { status: 500 }
-      );
-    }
-
-    // Store OAuth state
-    const { error: stateError } = await supabase.rpc('store_oauth_state', {
-      p_user_id: user.id,
-      p_state: state,
-      p_code_verifier: oauthTokenSecret,
-      p_platform: 'twitter'
-    });
-
-    if (stateError) {
-      console.error('Error storing OAuth state:', stateError);
-      return NextResponse.json(
-        { error: 'Failed to initialize OAuth flow' },
-        { status: 500 }
-      );
-    }
-
-    // Build authorization URL
-    const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}&state=${state}&timestamp=${timestamp}`;
+    console.log('DEBUG: Supabase OAuth URL generated:', data.url ? 'yes' : 'no');
 
     return NextResponse.json({
-      authUrl,
-      state,
-      oauthToken,
-      oauthTokenSecret
+      authUrl: data.url,
+      success: true
     });
 
   } catch (error) {
-    console.error('Twitter OAuth error:', error);
+    console.error('X OAuth error:', error);
     return NextResponse.json(
       { error: 'Internal server error during OAuth initialization' },
       { status: 500 }

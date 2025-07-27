@@ -46,10 +46,7 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          // Remove duplicate/conflicting classes
-          // Old: "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 bg-[#111111] rounded-lg px-4 py-4 sm:px-6 sm:py-6 shadow-lg duration-200 ... sm:max-w-lg w-full max-w-full h-full sm:h-auto overflow-y-auto",
-          // New:
-          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] border border-[#282828] bg-[#111111] shadow-lg duration-200 sm:rounded-lg sm:zoom-in-90 max-h-[80vh] overflow-y-auto dialog-scrollbar",
+          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] border border-[#282828] bg-[#111111] shadow-lg duration-200 sm:rounded-lg sm:zoom-in-90 max-h-[80vh] overflow-y-auto dialog-scrollbar font-body",
           className
         )}
         {...props}
@@ -76,7 +73,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
+      "flex flex-col space-y-1.5 text-center sm:text-left font-body",
       className
     )}
     {...props}
@@ -90,7 +87,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 font-body",
       className
     )}
     {...props}
@@ -105,7 +102,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight text-white",
+      "text-lg font-semibold leading-none tracking-tight text-white font-body",
       className
     )}
     {...props}
@@ -119,7 +116,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-gray-300", className)}
+    className={cn("text-sm text-gray-300 font-body", className)}
     {...props}
   />
 ))

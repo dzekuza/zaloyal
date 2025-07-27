@@ -79,6 +79,13 @@ export class StorageService {
         return null
       }
 
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.error("User not authenticated for upload")
+        return null
+      }
+
       const fileName = `projects/${projectId}/cover.${file.name.split(".").pop()?.toLowerCase()}`
 
       const { data, error } = await supabase.storage
@@ -110,6 +117,13 @@ export class StorageService {
       const validationError = this.validateFile(file, 2, ["image/jpeg", "image/png", "image/webp", "image/svg+xml"])
       if (validationError) {
         console.error("File validation error:", validationError)
+        return null
+      }
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.error("User not authenticated for upload")
         return null
       }
 

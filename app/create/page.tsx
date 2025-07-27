@@ -33,6 +33,7 @@ import type { Database } from "@/lib/supabase"
 import ImageUpload from "@/components/image-upload"
 import AuthRequired from "@/components/auth-required"
 import { extractTweetIdFromUrl, extractUsernameFromUrl } from "@/lib/twitter-utils"
+import { useAuth } from "@/components/auth-provider-wrapper"
 
 import PageContainer from "@/components/PageContainer"
 
@@ -87,8 +88,7 @@ interface QuestForm {
 }
 
 export default function CreateQuest() {
-  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
-  const [emailUser, setEmailUser] = useState<any>(null)
+  const { user, loading: authLoading } = useAuth()
   const [questCategories, setQuestCategories] = useState<{ id: string; name: string }[]>([])
   const [questForm, setQuestForm] = useState<QuestForm>({
     title: "",
@@ -104,11 +104,11 @@ export default function CreateQuest() {
     type: "social",
     title: "",
     description: "",
-    xpReward: 100,
+    xpReward: 10,
   })
-
-  const [showTaskDialog, setShowTaskDialog] = useState(false)
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null)
+  const [showTaskDialog, setShowTaskDialog] = useState(false)
+  const [projectOwnerSocialUsername, setProjectOwnerSocialUsername] = useState<string | null>(null)
   const [userProjects, setUserProjects] = useState<any[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState("")
 
@@ -137,7 +137,7 @@ export default function CreateQuest() {
   useEffect(() => {
     // Wallet user
     const unsubscribeWallet = walletAuth.onAuthStateChange(async (user) => {
-      setWalletUser(user)
+      // setWalletUser(user) // This line is removed as per the new_code
       if (user) {
         await fetchUserProjects(user, null)
       }
@@ -147,7 +147,7 @@ export default function CreateQuest() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-        setEmailUser({ ...user, profile })
+        // setEmailUser({ ...user, profile }) // This line is removed as per the new_code
         if (profile) {
           await fetchUserProjects(null, profile)
         }
@@ -158,7 +158,7 @@ export default function CreateQuest() {
       if (event === "SIGNED_IN" && session?.user) {
         checkEmailAuth()
       } else if (event === "SIGNED_OUT") {
-        setEmailUser(null)
+        // setEmailUser(null) // This line is removed as per the new_code
       }
     })
     return () => {
@@ -194,10 +194,10 @@ export default function CreateQuest() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ 
                 walletAddress,
-                username: walletUser?.username || emailUser?.profile?.username,
-                email: emailUser?.email,
-                avatar_url: emailUser?.profile?.avatar_url,
-                bio: emailUser?.profile?.bio,
+                username: user?.username || user?.profile?.username,
+                email: user?.email,
+                avatar_url: user?.avatar_url,
+                bio: user?.profile?.bio,
               }),
             })
             if (res.ok) {
@@ -213,12 +213,12 @@ export default function CreateQuest() {
         if (userDataWallet && !errorWallet) {
           userId = userDataWallet.id
           userData = userDataWallet
-        } else if (emailUser?.email) {
+        } else if (user?.email) {
           // Fallback to email lookup
           const { data: userDataEmail, error: errorEmail } = await supabase
             .from("users")
             .select("id,email")
-            .eq("email", emailUser.email.toLowerCase())
+            .eq("email", user.email.toLowerCase())
             .single()
           emailLookup = { userDataEmail, errorEmail }
           if (userDataEmail && !errorEmail) {
@@ -226,15 +226,15 @@ export default function CreateQuest() {
             userData = userDataEmail
           }
         }
-      } else if (emailProfile) {
-        userId = emailProfile.id
-        userData = emailProfile
+      } else if (user?.profile) {
+        userId = user.profile.id
+        userData = user.profile
       }
       if (!userId) {
         // Log all relevant info for debugging
         console.error("User not found for quest creation", {
           walletUser,
-          emailUser,
+          user, // Changed from emailUser to user
           walletLookup,
           emailLookup,
         })
@@ -265,13 +265,27 @@ export default function CreateQuest() {
   }, []);
   
   // Authentication check
-  if (!walletUser && !emailUser) {
+  if (!user && !authLoading) {
     return (
       <AuthRequired 
         title="Sign In Required"
         message="Please sign in with your email or wallet to create quests and projects."
         onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
       />
+    )
+  }
+
+  // Show loading while auth is being checked
+  if (authLoading) {
+    return (
+      <PageContainer>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-white text-lg">Loading...</p>
+          </div>
+        </div>
+      </PageContainer>
     )
   }
 
@@ -291,22 +305,40 @@ export default function CreateQuest() {
     setShowTaskDialog(true)
   };
 
-  const saveTask = () => {
+  const saveTask = async () => {
+    if (!currentTask.title.trim()) {
+      alert("Task title is required");
+      return;
+    }
+
     // Find the selected project object
     const selectedProject = userProjects.find((p) => p.id === selectedProjectId);
     
     // Helper: get project owner's linked social account username
-    const getProjectOwnerSocialUsername = (platform: string) => {
+    const getProjectOwnerSocialUsername = async (platform: string) => {
       if (!selectedProject) return null;
-      if (platform === 'twitter') return selectedProject.x_username;
-      return null;
+      
+      try {
+        const { data: socialAccount } = await supabase
+          .from('social_accounts')
+          .select('x_username')
+          .eq('user_id', selectedProject.owner_id)
+          .eq('platform', 'twitter')
+          .single();
+        
+        if (platform === 'twitter') return socialAccount?.x_username || null;
+        return null;
+      } catch (error) {
+        console.error('Error fetching project owner social account:', error);
+        return null;
+      }
     };
 
     // Helper: validate tweet URL is from the linked account
-    const validateTweetUrl = (url: string) => {
+    const validateTweetUrl = async (url: string) => {
       if (!url) return { isValid: false, error: 'Tweet URL is required' };
       
-      const projectOwnerUsername = getProjectOwnerSocialUsername('twitter');
+      const projectOwnerUsername = await getProjectOwnerSocialUsername('twitter');
       if (!projectOwnerUsername) {
         return { isValid: false, error: 'Project owner must have a linked Twitter account' };
       }
@@ -336,7 +368,7 @@ export default function CreateQuest() {
       };
 
       if (!currentTask.socialUrl && hasProjectSocial('twitter')) {
-        const username = getProjectOwnerSocialUsername('twitter');
+        const username = await getProjectOwnerSocialUsername('twitter');
         if (username) {
           taskToSave.socialUrl = `https://twitter.com/${username}`;
         }
@@ -346,7 +378,7 @@ export default function CreateQuest() {
     // Validate tweet URL for like/retweet tasks
     if (currentTask.type === "social" && currentTask.socialPlatform === "twitter" && 
         (currentTask.socialAction === "like" || currentTask.socialAction === "retweet")) {
-      const validation = validateTweetUrl(currentTask.socialUrl || '');
+      const validation = await validateTweetUrl(currentTask.socialUrl || '');
       if (!validation.isValid) {
         alert(validation.error);
         return;
@@ -400,58 +432,81 @@ export default function CreateQuest() {
   };
 
   const handlePublish = async () => {
-    const userObj = walletUser || (emailUser?.profile ? { ...emailUser.profile, email: emailUser.email } : null)
-    if (!userObj) {
+    if (!user) {
       alert("Please sign in first")
       return
     }
+    
     if (!questForm.title || !questForm.description || questForm.tasks.length === 0) {
       alert("Please fill in all required fields and add at least one task")
       return
     }
+    
     try {
+      // Ensure Supabase Auth session is present
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) {
+        alert("You must be signed in with Supabase Auth to submit a project application.")
+        return
+      }
+
       // Get user ID from database
       let userId = null
       let userData = null
-      let userError = null
-      let walletLookup = null
-      let emailLookup = null
-      if (walletUser) {
-        // Try wallet lookup
+      
+      // Try to get user by email first (for email auth users)
+      if (user.email) {
+        const { data: userDataEmail, error: errorEmail } = await supabase
+          .from("users")
+          .select("id,email")
+          .eq("email", user.email.toLowerCase())
+          .single()
+        
+        if (userDataEmail && !errorEmail) {
+          userId = userDataEmail.id
+          userData = userDataEmail
+        }
+      }
+      
+      // If not found by email, try by wallet address (for wallet auth users)
+      if (!userId && user.id) {
         const { data: userDataWallet, error: errorWallet } = await supabase
           .from("users")
           .select("id,email")
-          .eq("wallet_address", walletUser.walletAddress.toLowerCase())
+          .eq("wallet_address", user.id.toLowerCase())
           .single()
-        walletLookup = { userDataWallet, errorWallet }
+        
         if (userDataWallet && !errorWallet) {
           userId = userDataWallet.id
           userData = userDataWallet
-        } else if (emailUser?.email) {
-          // Fallback to email lookup
-          const { data: userDataEmail, error: errorEmail } = await supabase
-            .from("users")
-            .select("id,email")
-            .eq("email", emailUser.email.toLowerCase())
-            .single()
-          emailLookup = { userDataEmail, errorEmail }
-          if (userDataEmail && !errorEmail) {
-            userId = userDataEmail.id
-            userData = userDataEmail
-          }
         }
-      } else if (emailUser?.profile) {
-        userId = emailUser.profile.id
-        userData = emailUser.profile
       }
+      
+      // If still not found, try to create user via API
       if (!userId) {
-        // Log all relevant info for debugging
-        console.error("User not found for quest creation", {
-          walletUser,
-          emailUser,
-          walletLookup,
-          emailLookup,
-        })
+        try {
+          const res = await fetch("/api/users/upsert", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              email: user.email,
+              username: user.username,
+              avatar_url: user.avatar_url,
+              bio: user.bio,
+            }),
+          })
+          if (res.ok) {
+            const { user: newUser } = await res.json()
+            userId = newUser.id
+            userData = newUser
+          }
+        } catch (e) {
+          console.error("Error creating user:", e)
+        }
+      }
+      
+      if (!userId) {
+        console.error("User not found for quest creation", { user })
         alert("User not found. Please sign in again.")
         return
       }
@@ -526,21 +581,31 @@ export default function CreateQuest() {
     // Find the selected project object
     const selectedProject = userProjects.find((p) => p.id === selectedProjectId);
     
-    // Helper: does the project have the relevant social link?
-    const hasProjectSocial = (platform: string) => {
-      if (!selectedProject) return false;
-      if (platform === 'discord') return !!selectedProject.discord_url;
-      if (platform === 'twitter') return !!selectedProject.twitter_url;
-      if (platform === 'telegram') return !!selectedProject.telegram_url;
-      return false;
+    // Helper: get project owner's linked social account username
+    const getProjectOwnerSocialUsername = async (platform: string) => {
+      if (!selectedProject) return null;
+      
+      try {
+        const { data: socialAccount } = await supabase
+          .from('social_accounts')
+          .select('x_username')
+          .eq('user_id', selectedProject.owner_id)
+          .eq('platform', 'twitter')
+          .single();
+        
+        if (platform === 'twitter') return socialAccount?.x_username || null;
+        return null;
+      } catch (error) {
+        console.error('Error fetching project owner social account:', error);
+        return null;
+      }
     };
 
-    // Helper: get project owner's linked social account username
-    const getProjectOwnerSocialUsername = (platform: string) => {
-      if (!selectedProject) return null;
-      if (platform === 'twitter') return selectedProject.x_username;
-      // Add other platforms as needed
-      return null;
+    // Helper: check if project has social media links
+    const hasProjectSocial = (platform: string) => {
+      if (!selectedProject) return false;
+      if (platform === 'twitter') return !!selectedProject.twitter_url;
+      return false;
     };
 
     // Should we show the URL field?
@@ -561,29 +626,6 @@ export default function CreateQuest() {
       }
       // Default: show for other cases
       return true;
-    };
-
-    // Helper: validate tweet URL is from the linked account
-    const validateTweetUrl = (url: string) => {
-      if (!url) return { isValid: false, error: 'Tweet URL is required' };
-      
-      const projectOwnerUsername = getProjectOwnerSocialUsername('twitter');
-      if (!projectOwnerUsername) {
-        return { isValid: false, error: 'Project owner must have a linked Twitter account' };
-      }
-
-      // Extract username from tweet URL
-      const tweetUrlMatch = url.match(/twitter\.com\/([^\/]+)\/status\//);
-      if (!tweetUrlMatch) {
-        return { isValid: false, error: 'Invalid tweet URL format' };
-      }
-
-      const tweetUsername = tweetUrlMatch[1];
-      if (tweetUsername !== projectOwnerUsername) {
-        return { isValid: false, error: `Tweet must be from @${projectOwnerUsername} (project owner's linked account)` };
-      }
-
-      return { isValid: true, error: null };
     };
 
     switch (currentTask.type) {
@@ -634,7 +676,7 @@ export default function CreateQuest() {
             {currentTask.socialPlatform === 'twitter' && currentTask.socialAction === 'follow' && hasProjectSocial('twitter') && (
               <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
                 <p className="text-green-400 text-sm">
-                  ✅ Will use project owner's linked Twitter account (@{getProjectOwnerSocialUsername('twitter')}) for verification
+                  ✅ Will use project owner's linked Twitter account (@{projectOwnerSocialUsername || 'Loading...'}) for verification
                 </p>
               </div>
             )}
@@ -642,7 +684,7 @@ export default function CreateQuest() {
             {currentTask.socialPlatform === 'twitter' && (currentTask.socialAction === 'like' || currentTask.socialAction === 'retweet') && (
               <div className="p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
                 <p className="text-blue-400 text-sm">
-                  ℹ️ Tweet must be from project owner's linked account (@{getProjectOwnerSocialUsername('twitter') || 'Not linked'})
+                  ℹ️ Tweet must be from project owner's linked account (@{projectOwnerSocialUsername || 'Not linked'})
                 </p>
               </div>
             )}
@@ -666,11 +708,8 @@ export default function CreateQuest() {
                     
                     // Validate tweet URL for like/retweet tasks
                     if (currentTask.socialPlatform === 'twitter' && (currentTask.socialAction === 'like' || currentTask.socialAction === 'retweet')) {
-                      const validation = validateTweetUrl(url);
-                      if (!validation.isValid) {
-                        // You could add error state here
-                        console.warn('Tweet URL validation:', validation.error);
-                      }
+                      // Skip validation in render - it will be validated in saveTask
+                      console.log('Tweet URL validation will be done on save');
                     }
                   }}
                   placeholder={
@@ -881,7 +920,7 @@ export default function CreateQuest() {
     }
   }, [currentTask.socialPlatform, currentTask.socialAction, selectedProjectId, userProjects]);
 
-  if (!walletUser && !emailUser) {
+  if (!user && !authLoading) { // Changed from walletUser and emailUser to user and authLoading
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-900 flex items-center justify-center">
         <Card className="bg-[#0b4b34c4] border-white/20 backdrop-blur-sm p-8">

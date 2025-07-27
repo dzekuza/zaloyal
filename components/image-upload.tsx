@@ -169,7 +169,7 @@ export default function ImageUpload({
           setUploadProgress(0)
         }, 1000)
       } else {
-        setError("Upload failed. Please try again.")
+        setError("Upload failed. Please ensure you are signed in and try again.")
       }
     } catch (error) {
       console.error("Upload error:", error)

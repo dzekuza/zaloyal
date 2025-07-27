@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 
-  const supabase = await createServerClient();
+  const supabase = await createServerClient(request);
   
   try {
     // Check if user is authenticated
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 
-  const supabase = await createServerClient();
+  const supabase = await createServerClient(request);
   
   try {
     // Check if user is authenticated

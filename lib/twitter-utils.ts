@@ -65,4 +65,13 @@ export function extractUsernameFromUrl(url: string): string | null {
  */
 export function isValidTweetId(tweetId: string): boolean {
   return /^\d+$/.test(tweetId);
+}
+
+/**
+ * Generate a unique transaction ID for Twitter API calls
+ * This is required for the personalization ID header
+ * @returns string
+ */
+export function generateTwitterTransactionId(): string {
+  return `zaloyal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 } 

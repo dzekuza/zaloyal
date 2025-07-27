@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,21 +9,28 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import WalletConnect from "@/components/wallet-connect"
-import TelegramLoginWidget from "@/components/telegram-login-widget"
 import { useRouter, useSearchParams } from "next/navigation"
-import { LogOut, Copy, ExternalLink, User, Wallet, Link, AlertCircle } from "lucide-react"
-import { SiDiscord, SiX } from "react-icons/si"
+import { LogOut, Copy, ExternalLink, User, Link, AlertCircle } from "lucide-react"
 import AvatarUpload from "@/components/avatar-upload"
-import AuthRequired from "@/components/auth-required"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import PageContainer from "@/components/PageContainer";
+import { useAuth } from "@/components/auth-provider-wrapper"
+import AuthDialog from "@/components/auth-dialog"
 
-// React icons with proper typing for React 19
-const DiscordIcon = SiDiscord as any
-const XIcon = SiX as any
+// Simple icon components to avoid react-icons import issues
+const DiscordIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+  </svg>
+)
+
+const XIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+)
 
 interface LinkedIdentity {
   id: string;
@@ -42,18 +48,17 @@ interface LinkedIdentity {
 }
 
 export default function ProfilePage() {
-  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
-  const [emailUser, setEmailUser] = useState<any>(null)
+  const { user, loading: authLoading, signOut, clearAuthState } = useAuth()
   const [profile, setProfile] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
-  const [currentUser, setCurrentUser] = useState<any>(null)
   const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
   const [linkedIdentities, setLinkedIdentities] = useState<LinkedIdentity[]>([]);
   const [isLinking, setIsLinking] = useState<string | null>(null);
   const [isUnlinking, setIsUnlinking] = useState<string | null>(null);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   // Editable fields
   const [username, setUsername] = useState("")
@@ -64,35 +69,32 @@ export default function ProfilePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [supabaseUser, setSupabaseUser] = useState<any>(null)
   const [unlinkingDiscord, setUnlinkingDiscord] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  // 1. Always get the canonical user ID from Supabase Auth
-  const [authUserId, setAuthUserId] = useState<string | null>(null);
-
   const { toast } = useToast();
+
+
 
   // Main initialization useEffect
   useEffect(() => {
     const initializePage = async () => {
       console.log('Initializing profile page...');
       try {
-        // Check for wallet connection
-        console.log('Checking wallet connection...');
-        const walletUser = await walletAuth.getCurrentUser();
-        console.log('Wallet user:', walletUser);
-        setWalletUser(walletUser);
-
-        // Check for email authentication
-        console.log('Checking email auth...');
-        await checkEmailAuth();
-        console.log('Email auth checked');
-
-        // Set loading to false after initialization
-        console.log('Setting loading to false');
+        if (user) {
+          console.log('User authenticated:', user.id);
+          setProfile(user.profile);
+          setAvatarUrl(user.avatar_url || "");
+          setUsername(user.username || "");
+          setBio(user.bio || "");
+          setSocialLinks(user.social_links || {});
+          
+          // Immediately fetch social accounts
+          await fetchSocialAccounts();
+          await fetchLinkedIdentities();
+        }
         setLoading(false);
       } catch (error) {
         console.error('Error initializing page:', error);
@@ -100,58 +102,32 @@ export default function ProfilePage() {
       }
     };
 
-    // Add timeout to prevent infinite loading
-    const timeout = setTimeout(() => {
-      console.log('Initialization timeout reached, setting loading to false');
-      setLoading(false);
-    }, 10000); // 10 seconds timeout
+    if (!authLoading) {
+      initializePage();
+    }
+  }, [user, authLoading]);
 
-    initializePage();
-
-    return () => clearTimeout(timeout);
-  }, []);
-
+  // Fetch social accounts when user changes
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setSupabaseUser(data?.user);
-      setAuthUserId(data?.user?.id || null);
-    });
-  }, []);
+    if (user?.id) {
+      fetchSocialAccounts();
+      fetchLinkedIdentities();
+    }
+  }, [user?.id]);
 
-  // 2. Fetch user profile from users table using authUserId
-  useEffect(() => {
-    if (!authUserId) return;
-    const fetchProfileByAuthId = async () => {
-      const { data: userProfile } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", authUserId)
-        .single();
-      if (userProfile) {
-        setProfile(userProfile);
-        setAvatarUrl(userProfile.avatar_url || "");
-        setUsername(userProfile.username || "");
-        setBio(userProfile.bio || "");
-        setSocialLinks(userProfile.social_links || {});
-        setEmailUser((prev: any) => ({ ...prev, profile: userProfile }));
-      }
-    };
-    fetchProfileByAuthId();
-  }, [authUserId]);
-
-  // 3. Fetch social accounts using authUserId
+  // 3. Fetch social accounts using user ID
   const fetchSocialAccounts = async () => {
-    if (!authUserId) return;
-    const { data, error } = await supabase
-      .from('social_accounts')
-      .select('*')
-      .eq('user_id', authUserId);
-    if (!error && data) setSocialAccounts(data);
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('social_accounts')
+        .select('*')
+        .eq('user_id', user.id);
+      if (!error && data) setSocialAccounts(data);
+    } catch (error) {
+      console.error('Error fetching social accounts:', error);
+    }
   };
-
-  useEffect(() => {
-    fetchSocialAccounts();
-  }, [authUserId]);
 
   // Fetch linked identities from Supabase Auth
   const fetchLinkedIdentities = async () => {
@@ -159,9 +135,26 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: identities } = await supabase.auth.getUserIdentities();
-      if (identities?.identities) {
-        setLinkedIdentities(identities.identities as LinkedIdentity[]);
+      // For now, we'll use the social_accounts table instead of getUserIdentities
+      const { data: socialAccounts, error } = await supabase
+        .from('social_accounts')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (!error && socialAccounts) {
+        // Convert social accounts to linked identities format
+        const identities = socialAccounts.map(account => ({
+          id: account.id,
+          user_id: account.user_id,
+          identity_id: account.account_id,
+          provider: account.platform, // This will be 'x', 'discord', 'solana', etc.
+          identity_data: {
+            user_name: account.username,
+            screen_name: account.username,
+            name: account.username,
+          }
+        }));
+        setLinkedIdentities(identities);
       }
     } catch (error) {
       console.error('Error fetching linked identities:', error);
@@ -189,35 +182,37 @@ export default function ProfilePage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    // Fetch linked identities when user changes
-    if (emailUser || walletUser) {
-      fetchLinkedIdentities();
-    }
-  }, [emailUser, walletUser]);
-
-  const discordInfo = emailUser?.profile?.discord_id ? {
-    id: emailUser.profile.discord_id,
-    username: emailUser.profile.discord_username,
-    avatar: emailUser.profile.discord_avatar_url
+  const discordInfo = user?.profile?.discord_id ? {
+    id: user.profile.discord_id,
+    username: user.profile.discord_username,
+    avatar: user.profile.discord_avatar_url
   } : null;
 
-  const updateEmailUserWithIdentities = async () => {
+  const updateUserWithIdentities = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: identities } = await supabase.auth.getUserIdentities();
+      // Use social_accounts table instead of getUserIdentities
+      const { data: socialAccounts } = await supabase
+        .from('social_accounts')
+        .select('*')
+        .eq('user_id', user.id);
       
-      // Update emailUser with identities
-      setEmailUser((prev: any) => ({
-        ...prev,
-        identities: identities?.identities || []
-      }));
-
       // Update linked identities
-      if (identities?.identities) {
-        setLinkedIdentities(identities.identities as LinkedIdentity[]);
+      if (socialAccounts) {
+        const identities = socialAccounts.map(account => ({
+          id: account.id,
+          user_id: account.user_id,
+          identity_id: account.account_id,
+          provider: account.platform,
+          identity_data: {
+            user_name: account.username,
+            screen_name: account.username,
+            name: account.username,
+          }
+        }));
+        setLinkedIdentities(identities);
       }
     } catch (error) {
       console.error('Error updating user with identities:', error);
@@ -228,7 +223,6 @@ export default function ProfilePage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        setEmailUser(user);
         const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single();
         if (profile) {
           setProfile(profile);
@@ -236,7 +230,6 @@ export default function ProfilePage() {
           setUsername(profile.username || "");
           setBio(profile.bio || "");
           setSocialLinks(profile.social_links || {});
-          setEmailUser((prev: any) => ({ ...prev, profile }));
         }
       }
     } catch (error) {
@@ -244,10 +237,10 @@ export default function ProfilePage() {
     }
   };
 
-  const fetchProfile = async (walletUser: WalletUser | null, emailProfile: any | null) => {
+  const fetchProfile = async () => {
     try {
-      if (walletUser && walletUser.walletAddress) {
-        const { data } = await supabase.from("users").select("*").eq("wallet_address", walletUser.walletAddress.toLowerCase()).single();
+      if (user?.id) {
+        const { data } = await supabase.from("users").select("*").eq("id", user.id).single();
         if (data) {
           setProfile(data);
           setAvatarUrl(data.avatar_url || "");
@@ -255,12 +248,6 @@ export default function ProfilePage() {
           setBio(data.bio || "");
           setSocialLinks(data.social_links || {});
         }
-      } else if (emailProfile) {
-        setProfile(emailProfile);
-        setAvatarUrl(emailProfile.avatar_url || "");
-        setUsername(emailProfile.username || "");
-        setBio(emailProfile.bio || "");
-        setSocialLinks(emailProfile.social_links || {});
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -273,21 +260,19 @@ export default function ProfilePage() {
     setSuccess("");
 
     try {
-      let updateQuery = supabase.from("users").update({
-        username,
-        bio,
-        social_links: socialLinks,
-      });
-
-      if (walletUser && walletUser.walletAddress) {
-        updateQuery = updateQuery.eq("wallet_address", walletUser.walletAddress.toLowerCase());
-      } else if (emailUser?.profile && emailUser.profile.id) {
-        updateQuery = updateQuery.eq("id", emailUser.profile.id);
-      } else {
-        throw new Error("User not found");
+      if (!user?.id) {
+        throw new Error("User not authenticated");
       }
 
-      const { error: updateError } = await updateQuery;
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          username,
+          bio,
+          social_links: socialLinks,
+        })
+        .eq("id", user.id);
+
       if (updateError) {
         setError("Failed to update profile: " + updateError.message);
         return;
@@ -306,11 +291,7 @@ export default function ProfilePage() {
     setSocialLinks((prev: any) => ({ ...prev, [platform]: value }));
   };
 
-  const handleDisconnectWallet = async () => {
-    await walletAuth.disconnectWallet();
-    setWalletUser(null);
-    setProfile(null);
-  };
+
 
   // ===== SUPABASE AUTH ACCOUNT LINKING =====
 
@@ -318,31 +299,26 @@ export default function ProfilePage() {
   const handleLinkDiscord = async () => {
     setIsLinking('discord');
     try {
-      const { data, error } = await supabase.auth.linkIdentity({
-        provider: 'discord',
-        options: {
-          redirectTo: `${window.location.origin}/profile`,
+      // First check if the OAuth endpoint is available
+      const response = await fetch('/api/connect-discord', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
         },
       });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to initiate Discord OAuth');
       }
 
-      // If no redirect URL returned, show success
-      if (!data?.url) {
-        toast({
-          title: "Success",
-          description: "Discord account linked successfully!",
-        });
-        await fetchLinkedIdentities();
-      }
-      // If redirect URL returned, user will be redirected to Discord OAuth
+      // If successful, redirect to Discord OAuth
+      window.location.href = '/api/connect-discord';
     } catch (error) {
       console.error('Discord linking error:', error);
       toast({
         title: "Error",
-        description: "Failed to link Discord account. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to link Discord account. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -365,7 +341,17 @@ export default function ProfilePage() {
         throw new Error('Cannot unlink your last authentication method. Please add another account first.');
       }
 
-      const { error } = await supabase.auth.unlinkIdentity(discordIdentity as any);
+      // Add null check for user ID before delete operation
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      // Remove from social_accounts table
+      const { error } = await supabase
+        .from('social_accounts')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('platform', 'discord');
 
       if (error) {
         throw error;
@@ -392,37 +378,79 @@ export default function ProfilePage() {
 
   // Link X (Twitter) account using Supabase Auth
   const handleLinkX = async () => {
-    setIsLinking('x');
     try {
-      const { data, error } = await supabase.auth.linkIdentity({
+      console.log('DEBUG: Initiating X OAuth via Supabase Auth');
+
+      // Debug: Check authentication state
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      
+      console.log('DEBUG: Supabase user:', supabaseUser ? 'found' : 'not found');
+      console.log('DEBUG: Auth provider user:', user ? 'found' : 'not found');
+      console.log('DEBUG: User email:', supabaseUser?.email);
+      console.log('DEBUG: User ID:', supabaseUser?.id);
+      
+      // Check if user is authenticated via email or social
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in with your email first.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Try OAuth with additional parameters for basic access
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'twitter',
         options: {
-          redirectTo: `${window.location.origin}/profile`,
-        },
+          redirectTo: `${window.location.origin}/auth/callback/supabase`,
+          queryParams: {
+            // Add additional parameters that might help with basic access
+            force_login: 'true',
+            screen_name: user.email?.split('@')[0] || '',
+          }
+        }
       });
 
       if (error) {
-        throw error;
+        console.error('DEBUG: OAuth error:', error);
+        
+        // If OAuth fails, try alternative approach
+        if (error.message?.includes('Error creating identity') || error.message?.includes('server_error')) {
+          toast({
+            title: "Twitter App Access Issue",
+            description: "Your Twitter app may need elevated access. Please check the Twitter Developer Portal.",
+            variant: "destructive",
+          });
+          
+          // Open Twitter Developer Portal in new tab
+          window.open('https://developer.twitter.com/en/portal/dashboard', '_blank');
+          return;
+        }
+        
+        toast({
+          title: "OAuth Error",
+          description: error.message || "Failed to initiate OAuth",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // If no redirect URL returned, show success
-      if (!data?.url) {
-        toast({
-          title: "Success",
-          description: "X account linked successfully!",
-        });
-        await fetchLinkedIdentities();
+      console.log('DEBUG: OAuth initiated successfully:', data);
+      
+      // The redirect should happen automatically
+      // If not, manually redirect
+      if (data?.url) {
+        window.location.href = data.url;
       }
-      // If redirect URL returned, user will be redirected to X OAuth
+
     } catch (error) {
-      console.error('X linking error:', error);
+      console.error('DEBUG: Unexpected error in handleLinkX:', error);
       toast({
-        title: "Error",
-        description: "Failed to link X account. Please try again.",
+        title: "Unexpected Error",
+        description: "An unexpected error occurred while linking X account",
         variant: "destructive",
       });
-    } finally {
-      setIsLinking(null);
     }
   };
 
@@ -430,7 +458,7 @@ export default function ProfilePage() {
   const handleUnlinkX = async () => {
     setIsUnlinking('x');
     try {
-      const xIdentity = linkedIdentities.find(identity => identity.provider === 'twitter');
+      const xIdentity = linkedIdentities.find(identity => identity.provider === 'x');
       
       if (!xIdentity) {
         throw new Error('X account not found');
@@ -441,7 +469,19 @@ export default function ProfilePage() {
         throw new Error('Cannot unlink your last authentication method. Please add another account first.');
       }
 
-      const { error } = await supabase.auth.unlinkIdentity(xIdentity as any);
+      // Use Supabase Auth to unlink identity
+      const { error: unlinkError } = await supabase.auth.unlinkIdentity(xIdentity);
+      
+      if (unlinkError) {
+        throw unlinkError;
+      }
+
+      // Remove from social_accounts table
+      const { error } = await supabase
+        .from('social_accounts')
+        .delete()
+        .eq('user_id', user?.id || '')
+        .eq('platform', 'x');
 
       if (error) {
         throw error;
@@ -466,104 +506,40 @@ export default function ProfilePage() {
     }
   };
 
-  // ===== WALLET LINKING =====
 
-  // Link wallet using Web3
-  const handleLinkWallet = async () => {
-    setIsLinking('wallet');
-    try {
-      // Use the existing wallet connection logic
-      const walletAddress = await walletAuth.connectWallet();
-      
-      if (walletAddress) {
-        toast({
-          title: "Success",
-          description: "Wallet linked successfully!",
-        });
-        
-        // Refresh wallet user state
-        const currentWalletUser = await walletAuth.getCurrentUser();
-        setWalletUser(currentWalletUser);
-      }
-    } catch (error) {
-      console.error('Wallet linking error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to link wallet. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLinking(null);
-    }
-  };
-
-  // Unlink wallet
-  const handleUnlinkWallet = async () => {
-    setIsUnlinking('wallet');
-    try {
-      // Use the new unlink function that properly removes from both tables
-      await walletAuth.unlinkWalletFromCurrentUser();
-      setWalletUser(null);
-      setProfile(null);
-      
-      // Refresh social accounts to reflect the change
-      await fetchSocialAccounts();
-      
-      toast({
-        title: "Success",
-        description: "Wallet unlinked successfully",
-      });
-    } catch (error) {
-      console.error('Wallet unlinking error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to unlink wallet. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUnlinking(null);
-    }
-  };
 
   const handleAvatarUploaded = async (avatarUrl: string) => {
     setAvatarUrl(avatarUrl); // update local state for preview
     try {
-      let updateQuery = supabase.from("users").update({
-        avatar_url: avatarUrl, // full public URL
-      });
-      if (walletUser && walletUser.walletAddress) {
-        updateQuery = updateQuery.eq("wallet_address", walletUser.walletAddress.toLowerCase());
-      } else if (emailUser?.profile && emailUser.profile.id) {
-        updateQuery = updateQuery.eq("id", emailUser.profile.id);
-      } else {
-        throw new Error("User not found");
+      if (!user?.id) {
+        throw new Error("User not authenticated");
       }
-      const { error: updateError } = await updateQuery;
+
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          avatar_url: avatarUrl, // full public URL
+        })
+        .eq("id", user.id);
+
       if (updateError) {
         setError("Failed to update avatar in profile: " + updateError.message);
         return;
       }
 
       // Refetch the user profile and update local state
-      if (walletUser && walletUser.walletAddress) {
-        const { data } = await supabase.from("users").select("*").eq("wallet_address", walletUser.walletAddress.toLowerCase()).single();
-        if (data) {
-          setProfile(data);
-          setAvatarUrl(data.avatar_url || "");
-          setUsername(data.username || "");
-          setBio(data.bio || "");
-          setSocialLinks(data.social_links || {});
-        }
-      } else if (emailUser?.email) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", emailUser.email).single();
-        if (profile) {
-          setProfile(profile);
-          setAvatarUrl(profile.avatar_url || "");
-          setUsername(profile.username || "");
-          setBio(profile.bio || "");
-          setSocialLinks(profile.social_links || {});
-          setEmailUser((prev: any) => ({ ...prev, profile }));
-        }
+      const { data: profile } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setProfile(profile);
+        setAvatarUrl(profile.avatar_url || "");
+        setUsername(profile.username || "");
+        setBio(profile.bio || "");
+        setSocialLinks(profile.social_links || {});
       }
     } catch (e: any) {
       setError(e.message || "Failed to update avatar in profile");
@@ -572,18 +548,18 @@ export default function ProfilePage() {
 
   // Delete account handler
   const handleDeleteAccount = async () => {
-    if (!emailUser?.email) return;
+    if (!user?.email) return;
     setDeleting(true);
     try {
       // Delete all user data from 'users' table and related tables
       // 1. Delete from users
-      await supabase.from("users").delete().eq("email", emailUser.email);
+      await supabase.from("users").delete().eq("email", user.email);
       // 2. Optionally, delete from other tables (e.g., user_quest_progress, user_badges, etc.)
       // Add more delete queries here as needed
       // 3. Delete auth user
-      await supabase.auth.admin.deleteUser(emailUser.id);
+      await supabase.auth.admin.deleteUser(user.id);
       // 4. Sign out and redirect
-      await supabase.auth.signOut();
+      await signOut();
       window.location.href = "/";
     } catch (e) {
       alert("Failed to delete account. Please try again or contact support.");
@@ -592,11 +568,11 @@ export default function ProfilePage() {
     }
   };
 
-  // 4. When linking/unlinking social accounts, always use authUserId
+  // 4. When linking/unlinking social accounts, always use user ID
   const handleLinkSocialAccount = async (platform: string, accountData: any) => {
-    if (!authUserId) return;
+    if (!user?.id) return;
     await supabase.from('social_accounts').upsert({
-      user_id: authUserId,
+      user_id: user.id,
       platform,
       ...accountData,
     }, { onConflict: 'user_id,platform' });
@@ -604,18 +580,18 @@ export default function ProfilePage() {
     const { data } = await supabase
       .from('social_accounts')
       .select('*')
-      .eq('user_id', authUserId);
+      .eq('user_id', user.id);
     setSocialAccounts(data || []);
   };
 
   // 5. Remove direct social fields from UI (discord_id, x_id, etc.)
   //    Only show linked accounts from social_accounts and Supabase Auth identities
   const handleUnlinkSocial = async (platform: string) => {
-    if (!authUserId) return;
+    if (!user?.id) return;
     try {
-      await supabase.from('social_accounts').delete().eq('user_id', authUserId).eq('platform', platform);
+      await supabase.from('social_accounts').delete().eq('user_id', user.id).eq('platform', platform);
       // Remove any cached OAuth state for this platform
-      await supabase.from('oauth_states').delete().eq('user_id', authUserId).eq('platform', platform);
+      await supabase.from('oauth_states').delete().eq('user_id', user.id).eq('platform', platform);
       setSocialAccounts((prev) => prev.filter(a => a.platform !== platform));
       toast({
         title: "Success",
@@ -660,26 +636,61 @@ export default function ProfilePage() {
 
   // Helper function to check if user has verified email
   const hasVerifiedEmail = () => {
-    return emailUser?.email_confirmed_at || emailUser?.email_verified;
+    return user?.email_confirmed_at || user?.email_verified;
   };
 
-  if (loading) {
+  // Debug function to check authentication state
+  const debugAuthState = async () => {
+    try {
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      
+      console.log('=== DEBUG AUTH STATE ===');
+      console.log('Auth provider user:', user);
+      console.log('Supabase user:', supabaseUser);
+      console.log('Profile:', profile);
+      
+      const { data: socialAccounts } = await supabase
+        .from('social_accounts')
+        .select('*')
+        .eq('user_id', user?.id);
+      console.log('Social accounts:', socialAccounts);
+      
+      const { data: linkedIdentities } = await supabase.auth.getUserIdentities();
+      console.log('Linked identities:', linkedIdentities);
+      console.log('========================');
+      
+      toast({
+        title: "Debug Info",
+        description: `User: ${user?.email}, Social Accounts: ${socialAccounts?.length || 0}, Identities: ${linkedIdentities?.identities?.length || 0}`,
+      });
+    } catch (error) {
+      console.error('Debug error:', error);
+    }
+  };
+
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#181818]">
         <div className="text-white text-xl">Loading...</div>
-        <div className="text-gray-400 text-sm mt-2">Debug: {JSON.stringify({ walletUser: !!walletUser, emailUser: !!emailUser, supabaseUser: !!supabaseUser })}</div>
       </div>
     )
   }
 
   // If not signed in, show sign-in prompt
-  if (!walletUser && !emailUser) {
+  if (!user) {
     return (
-      <AuthRequired 
-        title="Sign In Required"
-        message="Please sign in with your email or wallet to access your profile and connect social accounts."
-        onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-      />
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-semibold text-white">Sign In Required</h2>
+          <p className="text-gray-400">Please sign in with your email to access your profile and connect social accounts.</p>
+          <Button 
+            onClick={() => setShowAuthDialog(true)}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            Sign In
+          </Button>
+        </div>
+      </div>
     )
   }
 
@@ -688,18 +699,34 @@ export default function ProfilePage() {
       <Card className="bg-[#111111] border-[#282828]">
         <CardHeader>
           <CardTitle className="text-white text-2xl">Profile Settings</CardTitle>
-          <CardDescription className="text-gray-300">Manage your profile, wallet, and connected accounts</CardDescription>
+          <CardDescription className="text-gray-300">Manage your profile and connected accounts</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Debug button - remove after testing */}
+          <div className="mb-4 flex gap-2">
+            <Button 
+              onClick={debugAuthState}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            >
+              Debug Auth State
+            </Button>
+            <Button 
+              onClick={clearAuthState}
+              variant="outline"
+              size="sm"
+              className="text-xs bg-red-600 hover:bg-red-700"
+            >
+              Clear Auth State
+            </Button>
+          </div>
+          
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-[#181818] border-[#282828]">
+            <TabsList className="grid w-full grid-cols-2 bg-[#181818] border-[#282828]">
               <TabsTrigger value="profile" className="flex items-center gap-2">
                 <User className="w-4 h-4" />
                 Profile
-              </TabsTrigger>
-              <TabsTrigger value="wallet" className="flex items-center gap-2">
-                <Wallet className="w-4 h-4" />
-                Wallet
               </TabsTrigger>
               <TabsTrigger value="accounts" className="flex items-center gap-2">
                 <Link className="w-4 h-4" />
@@ -711,7 +738,7 @@ export default function ProfilePage() {
             <TabsContent value="profile" className="space-y-6 mt-6">
               <div className="space-y-6">
                 {/* Email Verification Warning */}
-                {emailUser && !hasVerifiedEmail() && (
+                {user?.email && !hasVerifiedEmail() && (
                   <Alert className="bg-yellow-500/20 border-yellow-500/30">
                     <AlertCircle className="h-4 w-4 text-yellow-400" />
                     <AlertDescription className="text-yellow-400">
@@ -725,7 +752,7 @@ export default function ProfilePage() {
                   <AvatarUpload
                     currentAvatar={avatarUrl}
                     onAvatarUploaded={handleAvatarUploaded}
-                    userId={walletUser ? walletUser.walletAddress.toLowerCase() : emailUser?.profile?.id}
+                    userId={user?.id}
                     size="lg"
                   />
                 </div>
@@ -777,7 +804,7 @@ export default function ProfilePage() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
-                    <div className="text-gray-300 text-sm">Current email: <span className="font-mono text-white">{emailUser?.email}</span></div>
+                    <div className="text-gray-300 text-sm">Current email: <span className="font-mono text-white">{user?.email}</span></div>
                     <Input
                       type="email"
                       placeholder="Re-enter your email to confirm"
@@ -792,7 +819,7 @@ export default function ProfilePage() {
                     <Button
                       variant="destructive"
                       onClick={handleDeleteAccount}
-                      disabled={deleting || deleteEmailInput !== emailUser?.email}
+                      disabled={deleting || deleteEmailInput !== user?.email}
                     >
                       {deleting ? "Deleting..." : "Confirm Delete Account"}
                     </Button>
@@ -801,58 +828,7 @@ export default function ProfilePage() {
               </Dialog>
             </TabsContent>
 
-            {/* Wallet Tab */}
-            <TabsContent value="wallet" className="space-y-6 mt-6">
-              <div className="space-y-6">
-                {/* Current Account Info */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">Current Account</h3>
-                  <div className="space-y-3">
-                    {emailUser && (
-                      <div className="flex items-center justify-between p-4 bg-[#181818] rounded-lg border border-[#282828]">
-                        <div>
-                          <div className="text-sm text-gray-300">Email Account</div>
-                          <div className="text-white font-medium">{emailUser.email}</div>
-                          {!hasVerifiedEmail() && (
-                            <div className="text-xs text-yellow-400 mt-1">Email not verified</div>
-                          )}
-                        </div>
-                        <Badge variant="secondary" className="bg-green-600 text-white">Active</Badge>
-                      </div>
-                    )}
-                    {walletUser && (
-                      <div className="flex items-center justify-between p-4 bg-[#181818] rounded-lg border border-[#282828]">
-                        <div>
-                          <div className="text-sm text-gray-300">Wallet Address</div>
-                          <div className="text-white font-medium flex items-center gap-2">
-                            {walletUser.walletAddress.slice(0, 8)}...{walletUser.walletAddress.slice(-12)}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                navigator.clipboard.writeText(walletUser.walletAddress)
-                              }}
-                              className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <Badge variant="secondary" className="bg-green-600 text-white">Connected</Badge>
-                      </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Wallet Connection */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">Connect Wallet</h3>
-                  <div className="p-4 bg-[#181818] rounded-lg border border-[#282828]">
-                    <WalletConnect />
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
 
             {/* Linked Accounts Tab */}
             <TabsContent value="accounts" className="space-y-6 mt-6">
@@ -860,7 +836,7 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-semibold text-white">Connected Social Accounts</h3>
                 
                 {/* Email Verification Warning */}
-                {emailUser && !hasVerifiedEmail() && (
+                {user?.email && !hasVerifiedEmail() && (
                   <Alert className="bg-yellow-500/20 border-yellow-500/30">
                     <AlertCircle className="h-4 w-4 text-yellow-400" />
                     <AlertDescription className="text-yellow-400">
@@ -874,14 +850,14 @@ export default function ProfilePage() {
                   <h4 className="text-md font-medium text-white">Authentication Methods</h4>
                   
                   {/* Email Account */}
-                  {emailUser && (
+                  {user?.email && (
                     <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                           <User className="w-4 h-4 text-white" />
                         </div>
                         <div>
-                          <div className="text-white font-medium">{emailUser.email}</div>
+                          <div className="text-white font-medium">{user.email}</div>
                           <div className="text-sm text-gray-400">Email & Password</div>
                         </div>
                       </div>
@@ -931,13 +907,13 @@ export default function ProfilePage() {
                   )}
 
                   {/* X (Twitter) Account */}
-                  {linkedIdentities.find(id => id.provider === 'twitter') ? (
+                  {linkedIdentities.find(id => id.provider === 'x') ? (
                     <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
                       <div className="flex items-center gap-3">
                         <XIcon className="w-8 h-8 text-white" />
                         <div>
                           <div className="text-white font-medium">
-                            {getIdentityDisplayName(linkedIdentities.find(id => id.provider === 'twitter')!)}
+                            {getIdentityDisplayName(linkedIdentities.find(id => id.provider === 'x')!)}
                           </div>
                           <div className="text-sm text-gray-400">X (Twitter)</div>
                         </div>
@@ -970,45 +946,7 @@ export default function ProfilePage() {
                     </div>
                   )}
 
-                  {/* Wallet Account */}
-                  {walletUser ? (
-                    <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
-                      <div className="flex items-center gap-3">
-                        <Wallet className="w-8 h-8 text-green-500" />
-                        <div>
-                          <div className="text-white font-medium">
-                            {walletUser.walletAddress.slice(0, 8)}...{walletUser.walletAddress.slice(-12)}
-                          </div>
-                          <div className="text-sm text-gray-400">Web3 Wallet</div>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={handleUnlinkWallet}
-                        disabled={isUnlinking === 'wallet'}
-                      >
-                        {isUnlinking === 'wallet' ? 'Unlinking...' : 'Unlink'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
-                      <div className="flex items-center gap-3">
-                        <Wallet className="w-8 h-8 text-green-500" />
-                        <div>
-                          <div className="text-white font-medium">Web3 Wallet</div>
-                          <div className="text-sm text-gray-400">Not connected</div>
-                        </div>
-                      </div>
-                      <Button 
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                        onClick={handleLinkWallet}
-                        disabled={isLinking === 'wallet'}
-                      >
-                        {isLinking === 'wallet' ? 'Linking...' : 'Connect Wallet'}
-                      </Button>
-                    </div>
-                  )}
+
                 </div>
 
                 {/* Legacy Social Accounts (from social_accounts table) */}
@@ -1031,6 +969,13 @@ export default function ProfilePage() {
           </Tabs>
         </CardContent>
       </Card>
+      
+      {/* Auth Dialog */}
+      <AuthDialog 
+        open={showAuthDialog} 
+        onOpenChange={setShowAuthDialog}
+        defaultTab="signin"
+      />
     </PageContainer>
   )
 } 

@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase-server';
 
 interface UserData {
-  wallet_address: string;
   username?: string;
   email?: string;
   avatar_url?: string;
@@ -17,10 +16,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Prepare user data
-    const userData: UserData = { 
-      wallet_address: walletAddress.toLowerCase(),
-    };
+    const supabase = await createServerClient(request);
+    
+    // Get the current user session
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    // Prepare user data (without wallet_address since it's now in social_accounts)
+    const userData: UserData = {};
 
     // Add optional fields if provided
     if (username) userData.username = username;
@@ -28,24 +34,21 @@ export async function POST(request: NextRequest) {
     if (avatar_url) userData.avatar_url = avatar_url;
     if (bio) userData.bio = bio;
 
-    // Upsert user by wallet address
-    const { data, error } = await supabase
-      .from("users")
-      .upsert(userData, {
-        onConflict: "wallet_address",
-        ignoreDuplicates: false
-      })
-      .select()
-      .single();
+    // Use a single transaction to update user profile and link wallet atomically
+    const { data, error } = await supabase.rpc('update_user_and_link_wallet', {
+      p_user_id: user.id,
+      p_user_data: userData,
+      p_wallet_address: walletAddress.toLowerCase()
+    });
 
     if (error) {
-      console.error("User upsert error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("User update and wallet linking error:", error);
+      return NextResponse.json({ error: "An unexpected error occurred while updating your profile" }, { status: 500 });
     }
 
     return NextResponse.json({ user: data });
   } catch (error) {
     console.error("Unexpected error in user upsert:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
 }

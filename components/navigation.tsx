@@ -19,7 +19,7 @@ import Image from "next/image";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import OnboardingAlertBar from "@/components/onboarding-alert-bar";
-import { useAuth } from "@/components/auth-context";
+import { useAuth } from "@/components/auth-provider-wrapper";
 import LoadingSpinner from "@/components/loading-spinner";
 
 interface NavigationProps {
@@ -32,19 +32,16 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
   const router = useRouter()
   const pathname = usePathname();
   const { toast } = useToast();
-  const { user, emailUser, isLoading } = useAuth();
+  const { user, loading } = useAuth();
 
   const handleSignOut = async () => {
     if (user) {
-      await walletAuth.disconnectWallet()
-    }
-    if (emailUser) {
       await supabase.auth.signOut()
     }
     window.location.reload()
   }
 
-  const displayName = user?.username || emailUser?.profile?.username || "User"
+  const displayName = user?.username || "User"
 
   const handleCopyAddress = async (address: string, e?: React.MouseEvent | React.KeyboardEvent) => {
     if (e) {
@@ -65,21 +62,7 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
     }
   }
 
-  // Show loading state while auth is being checked
-  if (isLoading) {
-    return (
-      <nav className="bg-[#111111] border-b border-[#282828] px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="animate-pulse bg-gray-600 h-8 w-32 rounded"></div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <LoadingSpinner size="sm" text="" />
-          </div>
-        </div>
-      </nav>
-    )
-  }
+
 
   // Only render sign-in/profile button after loading is false
   return (
@@ -105,11 +88,10 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
           </button>
         </nav>
         <div className="px-4 pb-6">
-          {user || emailUser ? (
+          {user ? (
             <ProfileDropdown
               displayName={displayName}
               user={user}
-              emailUser={emailUser}
               handleSignOut={handleSignOut}
               copied={copied}
               onCopyAddress={handleCopyAddress}
@@ -138,28 +120,26 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
 function ProfileDropdown({
   displayName,
   user,
-  emailUser,
   handleSignOut,
   copied,
   onCopyAddress,
 }: {
   displayName: string;
-  user: WalletUser | null;
-  emailUser: { email: string; profile: any } | null;
+  user: any;
   handleSignOut: () => void;
   copied: boolean;
   onCopyAddress: (address: string, e?: React.MouseEvent | React.KeyboardEvent) => void;
 }) {
   const displayAddress = user?.walletAddress
     ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-    : emailUser?.email
+    : user?.email
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="flex items-center space-x-2 hover:bg-white/10 py-2 h-10 md:py-3 md:h-14">
           <Avatar className="w-6 h-6 md:w-8 md:h-8">
-            <AvatarImage src={emailUser?.profile?.avatar_url || ""} />
+            <AvatarImage src={user?.avatar_url || ""} />
             <AvatarFallback className="bg-[#111111] border border-[#282828] text-white text-xs md:text-sm">
               {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>

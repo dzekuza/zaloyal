@@ -26,12 +26,13 @@ export const useXAuth = () => {
   
   const { toast } = useToast();
 
-  // Initialize OAuth flow
+  // Initialize OAuth flow using Supabase
   const connectX = useCallback(async () => {
     setState(prev => ({ ...prev, isConnecting: true, error: null }));
     
     try {
-      const response = await fetch('/api/connect-x', {
+      // Call our API to get the Supabase OAuth URL
+      const response = await fetch('/api/auth/twitter/authorize', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -44,8 +45,17 @@ export const useXAuth = () => {
       }
 
       const { authUrl } = await response.json();
-      
-      // Redirect to X OAuth
+
+      if (!authUrl) {
+        throw new Error('No authorization URL received');
+      }
+
+      toast({
+        title: "Success",
+        description: "Redirecting to X for authentication...",
+      });
+
+      // Redirect to Supabase's OAuth URL
       window.location.href = authUrl;
       
     } catch (error) {
@@ -68,13 +78,35 @@ export const useXAuth = () => {
     setState(prev => ({ ...prev, isConnecting: true, error: null }));
     
     try {
-      const { error } = await supabase
+      // Get user identities
+      const { data: identities, error: identitiesError } = await supabase.auth.getUserIdentities();
+      
+      if (identitiesError) {
+        throw identitiesError;
+      }
+      
+      // Find X identity
+      const xIdentity = identities?.identities?.find(
+        (identity: any) => identity.provider === 'twitter'
+      );
+      
+      if (xIdentity) {
+        // Unlink X identity
+        const { error: unlinkError } = await supabase.auth.unlinkIdentity(xIdentity);
+        
+        if (unlinkError) {
+          throw unlinkError;
+        }
+      }
+      
+      // Remove from social_accounts table
+      const { error: deleteError } = await supabase
         .from('social_accounts')
         .delete()
         .eq('platform', 'x');
 
-      if (error) {
-        throw error;
+      if (deleteError) {
+        console.error('Error deleting social account:', deleteError);
       }
 
       setState(prev => ({ 
@@ -106,25 +138,50 @@ export const useXAuth = () => {
   // Get X account info
   const getXAccount = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('social_accounts')
-        .select('account_id, username')
-        .eq('platform', 'x')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      // First check if user has X identity
+      const { data: identities, error: identitiesError } = await supabase.auth.getUserIdentities();
+      
+      if (identitiesError) {
+        throw identitiesError;
       }
+      
+      const xIdentity = identities?.identities?.find(
+        (identity: any) => identity.provider === 'twitter'
+      );
+      
+      if (xIdentity) {
+        // Get social account data
+        const { data: socialAccount, error: socialError } = await supabase
+          .from('social_accounts')
+          .select('x_account_id, x_username, profile_data')
+          .eq('platform', 'x')
+          .single();
 
-      if (data) {
-        setState(prev => ({ 
-          ...prev, 
-          account: {
-            id: data.account_id,
-            username: data.username,
-            platform: 'x' as const
-          }
-        }));
+        if (socialError && socialError.code !== 'PGRST116') {
+          throw socialError;
+        }
+
+        if (socialAccount) {
+          setState(prev => ({ 
+            ...prev, 
+            account: {
+              id: socialAccount.x_account_id || xIdentity.identity_id,
+              username: socialAccount.x_username || xIdentity.identity_id,
+              name: socialAccount.profile_data?.name,
+              platform: 'x' as const
+            }
+          }));
+        } else {
+          // Fallback to identity data
+          setState(prev => ({ 
+            ...prev, 
+            account: {
+              id: xIdentity.identity_id,
+              username: xIdentity.identity_id,
+              platform: 'x' as const
+            }
+          }));
+        }
       } else {
         setState(prev => ({ ...prev, account: null }));
       }

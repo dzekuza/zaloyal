@@ -9,6 +9,7 @@ import { Users } from "lucide-react"
 import ProjectCard from "@/components/ProjectCard"
 import EditProjectForm from "@/components/edit-project-form"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { useAuth } from "@/components/auth-provider-wrapper"
 
 import AuthRequired from '@/components/auth-required';
 import PageContainer from "@/components/PageContainer";
@@ -36,16 +37,16 @@ interface Project {
 }
 
 export default function MyProjectsPage() {
+  const { user, loading: authLoading } = useAuth()
   const [myProjects, setMyProjects] = useState<Project[]>([])
   const [allProjects, setAllProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const checkSessionAndFetch = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setMyProjects([]);
         setAllProjects([]);
@@ -98,9 +99,9 @@ export default function MyProjectsPage() {
       setLoading(false);
     };
     checkSessionAndFetch();
-  }, []);
+  }, [user]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-white text-xl">Loading your projects...</p>

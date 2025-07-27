@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { generateTwitterTransactionId } from '@/lib/twitter-utils';
 
 const TWITTER_BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
@@ -8,9 +9,13 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const supabaseAdmin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 async function verifyTwitterFollow(userTwitterId: string, targetAccountId: string) {
-  const url = `https://api.twitter.com/2/users/${userTwitterId}/following`;
+  const url = `https://api.x.com/2/users/${userTwitterId}/following`;
+  const transactionId = generateTwitterTransactionId();
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${TWITTER_BEARER_TOKEN}` },
+    headers: { 
+      Authorization: `Bearer ${TWITTER_BEARER_TOKEN}`,
+      'x-twitter-client-transaction-id': transactionId,
+    },
   });
   if (!res.ok) return false;
   const data = await res.json();
@@ -18,9 +23,13 @@ async function verifyTwitterFollow(userTwitterId: string, targetAccountId: strin
 }
 
 async function verifyTwitterLike(userTwitterId: string, tweetId: string) {
-  const url = `https://api.twitter.com/2/users/${userTwitterId}/liked_tweets`;
+  const url = `https://api.x.com/2/users/${userTwitterId}/liked_tweets`;
+  const transactionId = generateTwitterTransactionId();
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${TWITTER_BEARER_TOKEN}` },
+    headers: { 
+      Authorization: `Bearer ${TWITTER_BEARER_TOKEN}`,
+      'x-twitter-client-transaction-id': transactionId,
+    },
   });
   if (!res.ok) return false;
   const data = await res.json();
@@ -28,9 +37,13 @@ async function verifyTwitterLike(userTwitterId: string, tweetId: string) {
 }
 
 async function verifyTwitterRetweet(userTwitterId: string, tweetId: string) {
-  const url = `https://api.twitter.com/2/users/${userTwitterId}/retweeted_tweets`;
+  const url = `https://api.x.com/2/users/${userTwitterId}/retweets`;
+  const transactionId = generateTwitterTransactionId();
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${TWITTER_BEARER_TOKEN}` },
+    headers: { 
+      Authorization: `Bearer ${TWITTER_BEARER_TOKEN}`,
+      'x-twitter-client-transaction-id': transactionId,
+    },
   });
   if (!res.ok) return false;
   const data = await res.json();

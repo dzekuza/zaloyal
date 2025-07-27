@@ -1,17 +1,27 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase-server';
 
-const CLIENT_ID = process.env.DISCORD_CLIENT_ID!;
-const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET!;
-const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI!;
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL + '/api/verify/discord-join';
+
+// Validate environment variables
+if (!CLIENT_ID || !CLIENT_SECRET) {
+  throw new Error('DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET environment variables are required');
+}
+
+// After validation, we know these are defined
+const validatedClientId = CLIENT_ID;
+const validatedClientSecret = CLIENT_SECRET;
 
 interface Guild {
   id: string;
   name: string;
-  icon?: string;
-  owner?: boolean;
-  permissions?: number;
-  [key: string]: unknown;
+  icon: string | null;
+  owner: boolean;
+  permissions: string;
+  features: string[];
+  permissions_new: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -23,8 +33,8 @@ export async function POST(req: NextRequest) {
 
     // 1. Exchange code for access token
     const params = new URLSearchParams();
-    params.append("client_id", CLIENT_ID);
-    params.append("client_secret", CLIENT_SECRET);
+    params.append("client_id", validatedClientId);
+    params.append("client_secret", validatedClientSecret);
     params.append("grant_type", "authorization_code");
     params.append("code", code);
     params.append("redirect_uri", REDIRECT_URI);
@@ -66,7 +76,9 @@ export async function POST(req: NextRequest) {
     
     // If this is a task verification, update the task submission
     if (taskId && isMember) {
-      // Get user from the session or token
+      const supabase = await createServerClient(req);
+      
+      // Get user from the session
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         // Get task details
@@ -84,9 +96,9 @@ export async function POST(req: NextRequest) {
             verified_at: new Date().toISOString(),
           });
 
-          // Update user XP
+          // Update user XP using email as identifier
           await supabase.rpc("increment_user_xp", {
-            user_wallet: user.email, // Use email as identifier
+            user_email: user.email, // Use email as identifier
             xp_amount: task.xp_reward,
           });
         }

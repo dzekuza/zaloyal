@@ -5,19 +5,20 @@ import { supabase } from "@/lib/supabase";
 import DashboardClient from "@/components/DashboardClient";
 import AuthRequired from "@/components/auth-required";
 import PageContainer from "@/components/PageContainer";
+import { useAuth } from "@/components/auth-provider-wrapper";
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth()
   // Fix useState types
   const [profile, setProfile] = useState<any>(null);
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [completedQuests, setCompletedQuests] = useState<any[]>([]);
   const [badges, setBadges] = useState<any[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);
         return;
@@ -47,16 +48,16 @@ export default function DashboardPage() {
       setLoading(false);
     }
     fetchData();
-  }, []);
+  }, [user]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#181818]">
         <p className="text-white text-xl">Loading your dashboard...</p>
       </div>
     );
   }
-  if (!profile) {
+  if (!user || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#181818]">
         <AuthRequired 

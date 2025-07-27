@@ -1,13 +1,10 @@
 "use client"
 
-import { supabase } from './supabase'
+import { supabase } from "@/lib/supabase"
 
 export interface WalletUser {
   walletAddress: string
   username?: string
-  totalXP?: number
-  level?: number
-  rank?: string
 }
 
 class WalletAuth {
@@ -27,29 +24,30 @@ class WalletAuth {
       : 'http://localhost:3000/terms'
   }
 
-  // Link wallet to the current authenticated user (email/social)
+  // Link wallet to the current authenticated user (email/social) using web3 payments
   async linkWalletToCurrentUser(): Promise<string> {
-    const provider = (window as any).solana;
-    if (!provider) throw new Error('No Solana wallet found');
-    
     // Get the current authenticated user first
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
     if (userError || !currentUser) {
-      throw new Error('You must be logged in to link a wallet');
+      throw new Error('You must be logged in with email or social account to link a wallet');
     }
     
-    // Connect to wallet
+    // Use web3 payments integration for wallet connection
+    const provider = (window as any).solana;
+    if (!provider) throw new Error('No Solana wallet found');
+    
+    // Connect to wallet using web3 payments
     await provider.connect();
     const walletAddress = provider.publicKey.toString();
     
-    console.log('[Wallet Auth] Linking wallet:', {
+    console.log('[Wallet Auth] Linking wallet via web3 payments:', {
       userId: currentUser.id,
       walletAddress: walletAddress.substring(0, 10) + '...',
       platform: 'solana'
     });
     
     try {
-      // Use the new database function to handle wallet linking with uniqueness check
+      // Use the database function to handle wallet linking with web3 payments integration
       const { data, error } = await supabase.rpc('link_wallet_to_user', {
         p_user_id: currentUser.id,
         p_wallet_address: walletAddress
@@ -60,7 +58,7 @@ class WalletAuth {
         throw new Error(error.message || 'Failed to link wallet');
       }
       
-      console.log('[Wallet Auth] Successfully linked wallet');
+      console.log('[Wallet Auth] Successfully linked wallet via web3 payments');
       
       this.currentUser = { walletAddress } as WalletUser;
       this.notifyListeners();
@@ -71,6 +69,39 @@ class WalletAuth {
       console.error('Wallet linking error:', error);
       throw error;
     }
+  }
+
+  // Sign in with wallet using web3 payments (for wallet-only users)
+  async signInWithSolanaWallet(): Promise<string> {
+    const provider = (window as any).solana;
+    if (!provider) throw new Error('No Solana wallet found');
+    await provider.connect();
+    
+    // Use Supabase web3 authentication with web3 payments integration
+    const { data, error } = await supabase.auth.signInWithWeb3({
+      chain: 'solana',
+      statement: `I accept the Terms of Service at ${this.getWalletAuthUri()}`,
+      wallet: provider,
+    });
+    if (error) throw error;
+    
+    const walletAddress = provider.publicKey.toString();
+    this.currentUser = { walletAddress } as WalletUser;
+    this.notifyListeners();
+    localStorage.setItem("wallet_user", JSON.stringify({ walletAddress }));
+    return walletAddress;
+  }
+
+  // Disconnect wallet
+  async disconnectWallet(): Promise<void> {
+    const provider = (window as any).solana
+    if (provider && provider.isPhantom) {
+      await provider.disconnect()
+    }
+    this.currentUser = null
+    this.notifyListeners()
+    localStorage.removeItem("wallet_user")
+    await supabase.auth.signOut();
   }
 
   // Unlink wallet from current user
@@ -102,70 +133,30 @@ class WalletAuth {
     }
   }
 
-  // For backward compatibility, connectWallet calls linkWalletToCurrentUser
-  async connectWallet(): Promise<string> {
-    return this.linkWalletToCurrentUser();
-  }
-
-  async signInWithSolanaWallet(): Promise<string> {
-    // For wallet-only login (not linking)
-    const provider = (window as any).solana;
-    if (!provider) throw new Error('No Solana wallet found');
-    await provider.connect();
-    
-    const { data, error } = await supabase.auth.signInWithWeb3({
-      chain: 'solana',
-      statement: `I accept the Terms of Service at ${this.getWalletAuthUri()}`,
-      wallet: provider,
-    });
-    if (error) throw error;
-    
-    const walletAddress = provider.publicKey.toString();
-    this.currentUser = { walletAddress } as WalletUser;
-    this.notifyListeners();
-    localStorage.setItem("wallet_user", JSON.stringify({ walletAddress }));
-    return walletAddress;
-  }
-
-  async disconnectWallet(): Promise<void> {
-    const provider = (window as any).solana
-    if (provider && provider.isPhantom) {
-      await provider.disconnect()
-    }
-    this.currentUser = null
-    this.notifyListeners()
-    localStorage.removeItem("wallet_user")
-    await supabase.auth.signOut();
-  }
-
-  private notifyListeners() {
-    this.listeners.forEach(listener => listener(this.currentUser))
-  }
-
+  // Get current user with web3 payments integration
   async getCurrentUser(): Promise<WalletUser | null> {
     if (typeof window !== 'undefined') {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // First try to get wallet from users table
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('wallet_address, username, total_xp, level')
-          .eq('id', user.id)
+        // Get wallet from social_accounts table (web3 payments integration)
+        const { data: socialAccount, error: socialError } = await supabase
+          .from('social_accounts')
+          .select('wallet_address, username')
+          .eq('user_id', user.id)
+          .eq('platform', 'solana')
           .single();
         
-        if (!userError && userData?.wallet_address) {
+        if (!socialError && socialAccount?.wallet_address) {
           const walletUser: WalletUser = {
-            walletAddress: userData.wallet_address,
-            username: userData.username || undefined,
-            totalXP: userData.total_xp || undefined,
-            level: userData.level || undefined,
+            walletAddress: socialAccount.wallet_address,
+            username: socialAccount.username || undefined,
           };
           this.currentUser = walletUser;
           localStorage.setItem("wallet_user", JSON.stringify(walletUser));
           return walletUser;
         }
         
-        // Fallback: Extract wallet address from user identity data (Solana public key)
+        // Fallback: Extract wallet address from user identity data (web3 payments)
         const solanaIdentity = user.identities?.find(
           (id: any) => id.provider === 'web3' && id.identity_data?.public_key
         );
@@ -197,21 +188,23 @@ class WalletAuth {
     return null
   }
 
-  onAuthStateChange(callback: (user: WalletUser | null) => void): () => void {
-    // Always restore from Supabase/localStorage before subscribing
-    if (!this.isInitialized) {
-      this.isInitialized = true
-      this.getCurrentUser().then(() => {
-        this.listeners.push(callback)
-        callback(this.currentUser)
-      })
-    } else {
-      this.listeners.push(callback)
-      callback(this.currentUser)
-    }
+  // Initialize wallet auth with web3 payments
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return
+    this.isInitialized = true
+    await this.getCurrentUser()
+  }
+
+  // Listen for auth state changes
+  onAuthStateChange(listener: (user: WalletUser | null) => void): () => void {
+    this.listeners.push(listener)
     return () => {
-      this.listeners = this.listeners.filter((listener) => listener !== callback)
+      this.listeners = this.listeners.filter(l => l !== listener)
     }
+  }
+
+  private notifyListeners(): void {
+    this.listeners.forEach(listener => listener(this.currentUser))
   }
 }
 

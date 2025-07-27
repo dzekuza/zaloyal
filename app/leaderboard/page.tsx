@@ -9,6 +9,7 @@ import Link from "next/link";
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth";
 import { supabase } from "@/lib/supabase";
 import PageContainer from "@/components/PageContainer";
+import { useAuth } from "@/components/auth-provider-wrapper";
 
 function getPeriodRange(period: string) {
   const now = new Date();
@@ -32,9 +33,8 @@ function getPeriodRange(period: string) {
 }
 
 export default function Leaderboard() {
+  const { user, loading: authLoading } = useAuth()
   const [mounted, setMounted] = useState(false);
-  const [walletUser, setWalletUser] = useState<WalletUser | null>(null);
-  const [emailUser, setEmailUser] = useState<any>(null);
   const [selectedPeriod, setSelectedPeriod] = useState("all-time");
   const [selectedQuest, setSelectedQuest] = useState("all");
   const [users, setUsers] = useState<any[]>([]);
@@ -43,22 +43,6 @@ export default function Leaderboard() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  // Hydration-safe user detection
-  useEffect(() => {
-    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
-      setWalletUser(user);
-    });
-    const checkEmailAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single();
-        setEmailUser({ ...user, profile });
-      }
-    };
-    checkEmailAuth();
-    return () => unsubscribeWallet();
   }, []);
 
   // Fetch all quests for filter dropdown
@@ -127,7 +111,7 @@ export default function Leaderboard() {
     fetchLeaderboard();
   }, [selectedPeriod, selectedQuest]);
 
-  const currentUser = walletUser?.walletAddress || emailUser?.profile?.wallet_address;
+  const currentUser = user?.id || user?.email;
 
   const getRankIcon = (rank: number) => {
     switch (rank) {

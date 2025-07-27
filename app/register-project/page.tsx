@@ -28,11 +28,12 @@ import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import ImageUpload from "@/components/image-upload"
 import WalletConnect from "@/components/wallet-connect"
 import { useRouter } from "next/navigation"
-import BackgroundWrapper from "@/components/BackgroundWrapper";
+
 import AuthRequired from "@/components/auth-required";
 import PageContainer from "@/components/PageContainer";
 import { toast } from 'sonner';
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/components/auth-provider-wrapper";
 
 interface ProjectForm {
   // Step 1: Basic Info
@@ -92,9 +93,8 @@ const steps = [
 ]
 
 export default function RegisterProject() {
+  const { user, loading: authLoading } = useAuth()
   const [isClient, setIsClient] = useState(false);
-  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
-  const [emailUser, setEmailUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -118,21 +118,18 @@ export default function RegisterProject() {
   })
   const router = useRouter()
   const [unlinkingDiscord, setUnlinkingDiscord] = useState(false)
-  const discordInfo = emailUser?.profile?.discord_id ? {
-    id: emailUser.profile.discord_id,
-    username: emailUser.profile.discord_username,
-    avatar: emailUser.profile.discord_avatar_url,
+  const discordInfo = user?.profile?.discord_id ? {
+    id: user.profile.discord_id,
+    username: user.profile.discord_username,
+    avatar: user.profile.discord_avatar_url,
   } : null
 
-  const currentUser = walletUser || emailUser
-
-  console.log('walletUser:', walletUser);
-  console.log('walletAuth.getCurrentUser():', walletAuth.getCurrentUser());
+  const currentUser = user
 
   useEffect(() => {
     setIsClient(true);
     const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
-      setWalletUser(user)
+      // setWalletUser(user) // This line is no longer needed as user is managed by useAuth
       setLoading(false)
     })
 
@@ -141,7 +138,7 @@ export default function RegisterProject() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-        setEmailUser({ ...user, profile })
+        // setEmailUser({ ...user, profile }) // This line is no longer needed as user is managed by useAuth
       }
       setLoading(false)
     }
@@ -151,15 +148,25 @@ export default function RegisterProject() {
   }, [])
   
   // Authentication check
-  if (!loading && !walletUser && !emailUser) {
+  if (!loading && !user) {
     return (
-      <BackgroundWrapper>
-        <AuthRequired 
-          title="Sign In Required"
-          message="Please sign in with your email or wallet to register your project."
-          onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-        />
-      </BackgroundWrapper>
+      <AuthRequired 
+        title="Sign In Required"
+        message="Please sign in with your email or wallet to register your project."
+        onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+      />
+    )
+  }
+
+  // Show loading while auth is being checked
+  if (loading || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading...</p>
+        </div>
+      </div>
     )
   }
 
@@ -195,9 +202,8 @@ export default function RegisterProject() {
   }
 
   const handleSubmit = async () => {
-    // Ensure user is authenticated (wallet or email)
-    if (!currentUser) {
-      alert("Please connect your wallet or sign in with email first");
+    if (!user) {
+      alert("Please sign in first");
       return;
     }
 
@@ -205,7 +211,6 @@ export default function RegisterProject() {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
       alert("You must be signed in with Supabase Auth to submit a project application.");
-      setSubmitting(false);
       return;
     }
 
@@ -213,48 +218,72 @@ export default function RegisterProject() {
 
     try {
       let userId: string | null = null;
-      let walletAddress: string | null = null;
-      let email: string | null = null;
       let userData = null;
-      let userError = null;
 
-      if (walletUser) {
-        // Wallet user: get wallet address from JWT or walletUser
-        const { data: { user } } = await supabase.auth.getUser();
-        walletAddress = authUser?.user_metadata?.wallet_address || walletUser.walletAddress;
-        if (walletAddress) {
-          // Query with both sides lowercased
-          const result = await supabase
-            .from("users")
-            .select("id,email")
-            .ilike("wallet_address", walletAddress)
-            .single();
-          userData = result.data;
-          userError = result.error;
-          // If not found by wallet, try by email
-          if ((!userData || userError) && authUser?.email) {
-            const emailResult = await supabase
-              .from("users")
-              .select("id")
-              .eq("email", authUser.email.toLowerCase())
-              .single();
-            userData = emailResult.data;
-            userError = emailResult.error;
-          }
+      // Try to get user by email first (for email auth users)
+      if (user.email) {
+        const { data: userDataEmail, error: errorEmail } = await supabase
+          .from("users")
+          .select("id,email")
+          .eq("email", user.email.toLowerCase())
+          .single()
+        
+        if (userDataEmail && !errorEmail) {
+          userId = userDataEmail.id
+          userData = userDataEmail
         }
       }
-      if (!userData || userError) {
+      
+      // If not found by email, try by wallet address (for wallet auth users)
+      if (!userId && user.id) {
+        const { data: userDataWallet, error: errorWallet } = await supabase
+          .from("users")
+          .select("id,email")
+          .eq("wallet_address", user.id.toLowerCase())
+          .single()
+        
+        if (userDataWallet && !errorWallet) {
+          userId = userDataWallet.id
+          userData = userDataWallet
+        }
+      }
+      
+      // If still not found, try to create user via API
+      if (!userId) {
+        try {
+          const res = await fetch("/api/users/upsert", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              email: user.email,
+              username: user.username,
+              avatar_url: user.avatar_url,
+              bio: user.bio,
+            }),
+          })
+          if (res.ok) {
+            const { user: newUser } = await res.json()
+            userId = newUser.id
+            userData = newUser
+          }
+        } catch (e) {
+          console.error("Error creating user:", e)
+        }
+      }
+      
+      if (!userId) {
         throw new Error("User not found");
       }
-      userId = userData.id;
 
       // Fetch the current user's X fields
-      let x_username = null, x_id = null, x_avatar_url = null;
-      if (emailUser?.profile) {
-        x_username = emailUser.profile.x_username || null;
-        x_id = emailUser.profile.x_id || null;
-        x_avatar_url = emailUser.profile.x_avatar_url || null;
-      } else if (walletUser) {
+      let x_username: string | null = null, x_id: string | null = null, x_avatar_url: string | null = null;
+      if (user?.profile) {
+        // Note: X-specific fields were removed from users table in migrations
+        // These fields are now stored in social_accounts table
+        x_username = null; // Will be fetched from social_accounts if needed
+        x_id = null; // Will be fetched from social_accounts if needed
+        x_avatar_url = null; // Will be fetched from social_accounts if needed
+      } else if (user) {
         // If wallet users can have X, add logic here
       }
       // Create the project with X fields
@@ -274,15 +303,12 @@ export default function RegisterProject() {
         medium_url: formData.mediumUrl || null,
         category: formData.category,
         status: 'approved', // Make project live immediately
-        x_username: x_username || null,
-        x_id: x_id || null,
-        x_avatar_url: x_avatar_url || null,
       };
 
       console.log('Creating project with data:', {
         ...projectData,
-        x_username: x_username ? `${x_username.substring(0, 3)}...` : null,
-        x_id: x_id ? `${x_id.substring(0, 3)}...` : null
+        x_username: x_username,
+        x_id: x_id
       });
 
       const { data: insertedProjects, error: projectError } = await supabase
@@ -332,7 +358,7 @@ export default function RegisterProject() {
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
             const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-            setEmailUser({ ...user, profile })
+            // setEmailUser({ ...user, profile }) // This line is no longer needed as user is managed by useAuth
           }
         }
       }
@@ -347,73 +373,66 @@ export default function RegisterProject() {
 
   if (loading) {
     return (
-      <BackgroundWrapper>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-white text-xl">Loading...</div>
-        </div>
-      </BackgroundWrapper>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
     )
   }
 
-  if (!loading && !walletUser) {
+  if (!loading && !user) {
     return (
-      <BackgroundWrapper>
-        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md mx-auto">
-          <div className="text-center">
-            <Building2 className="w-16 h-16 mx-auto text-green-400 mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-4">Wallet Required</h2>
-            <p className="text-gray-300 mb-6">You need to link your wallet in your profile before you can register a project.</p>
-            <Link href="/profile">
-              <Button className="bg-green-600 hover:bg-green-700 text-white border-0">
-                Go to Profile
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      </BackgroundWrapper>
+      <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md mx-auto">
+        <div className="text-center">
+          <Building2 className="w-16 h-16 mx-auto text-green-400 mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-4">Wallet Required</h2>
+          <p className="text-gray-300 mb-6">You need to link your wallet in your profile before you can register a project.</p>
+          <Link href="/profile">
+            <Button className="bg-green-600 hover:bg-green-700 text-white border-0">
+              Go to Profile
+            </Button>
+          </Link>
+        </div>
+      </Card>
     )
   }
 
   if (submitted) {
     return (
-      <BackgroundWrapper>
-        <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md mx-auto">
-          <div className="text-center">
-            <CheckCircle className="w-16 h-16 mx-auto text-green-400 mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-4">Application Submitted!</h2>
-            <p className="text-gray-300 mb-6">
-              Your project application has been submitted for review. You'll be notified once it's approved.
-            </p>
-            <div className="flex flex-col gap-2">
-              {createdProjectId ? (
-                <Link href={`/project/${createdProjectId}`}>
-                  <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
-                    View My Project
-                  </Button>
-                </Link>
-              ) : null}
-              <Link href="/dashboard">
-                <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
-                  Go to Dashboard
+      <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm p-8 max-w-md mx-auto">
+        <div className="text-center">
+          <CheckCircle className="w-16 h-16 mx-auto text-green-400 mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-4">Application Submitted!</h2>
+          <p className="text-gray-300 mb-6">
+            Your project application has been submitted for review. You'll be notified once it's approved.
+          </p>
+          <div className="flex flex-col gap-2">
+            {createdProjectId ? (
+              <Link href={`/project/${createdProjectId}`}>
+                <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0">
+                  View My Project
                 </Button>
               </Link>
-              <Link href="/">
-                <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
-                  Back to Home
-                </Button>
-              </Link>
-            </div>
+            ) : null}
+            <Link href="/dashboard">
+              <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
+                Go to Dashboard
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
+                Back to Home
+              </Button>
+            </Link>
           </div>
-        </Card>
-      </BackgroundWrapper>
+        </div>
+      </Card>
     )
   }
 
   const progress = (currentStep / 4) * 100
 
   return (
-    <BackgroundWrapper>
-      <PageContainer className="pb-20">
+    <PageContainer className="pb-20">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/" className="text-gray-400 hover:text-white transition-colors">
@@ -765,6 +784,5 @@ export default function RegisterProject() {
           </Card>
         </div>
       </PageContainer>
-    </BackgroundWrapper>
   )
 }

@@ -59,6 +59,7 @@ type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   participant_count?: string | null
   featured?: boolean | null
   image_url?: string | null
+  total_xp?: number | null
 }
 
 // Memoized quest header component to prevent unnecessary re-renders
@@ -147,6 +148,9 @@ const QuestStats = React.memo(({ quest, tasks }: { quest: Quest, tasks: Task[] }
   const totalTasks = tasks.length
   const completedTasks = tasks.filter(task => task.status === 'completed').length
   const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+  
+  // Calculate total XP from tasks if not available on quest
+  const totalXP = quest.total_xp || tasks.reduce((sum, task) => sum + (task.xp_reward || 0), 0)
 
   return (
     <Card className="mb-6 bg-[#111111] border-[#282828]">
@@ -161,7 +165,7 @@ const QuestStats = React.memo(({ quest, tasks }: { quest: Quest, tasks: Task[] }
             <div className="text-sm text-gray-400">Completed</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-white">{quest.total_xp || 0}</div>
+            <div className="text-2xl font-bold text-white">{totalXP}</div>
             <div className="text-sm text-gray-400">Total XP</div>
           </div>
         </div>
@@ -205,23 +209,32 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     title: "",
     description: "",
     xp_reward: 100,
-    socialAction: "",
-    socialPlatform: "",
-    socialUrl: "",
-    socialUsername: "",
-    socialPostId: "",
-    // Quiz fields
-    quizHeadline: "",
-    quizDescription: "",
-    quizAnswers: ["", "", "", ""],
-    quizCorrectAnswers: [],
-    quizMultiSelect: false,
-    // ... other fields as needed
+    // Social task fields
+    social_platform: "",
+    social_action: "",
+    social_url: "",
+    social_username: "",
+    social_post_id: "",
+    // Quiz task fields
+    learn_content: "",
+    learn_questions: null,
+    learn_passing_score: 70,
+    // URL view task fields
+    visit_url: "",
+    visit_title: "",
+    visit_description: "",
+    visit_duration_seconds: 30,
   })
 
   // Add new state for project data
   const [projectData, setProjectData] = useState<any>(null)
-  const [projectOwner, setProjectOwner] = useState<any>(null)
+
+  // Debug logging
+  useEffect(() => {
+    console.log('QuestDetailClient - Quest:', quest)
+    console.log('QuestDetailClient - Initial Tasks:', initialTasks)
+    console.log('QuestDetailClient - Tasks State:', tasks)
+  }, [quest, initialTasks, tasks])
 
   // Memoized auth check function
   const checkAuth = useCallback(async () => {
@@ -258,15 +271,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
       if (!error && project) {
         setProjectData(project)
-        // Fetch project owner separately if needed
-        if (project.owner_id) {
-          const { data: owner } = await supabase
-            .from('users')
-            .select('id, username, avatar_url')
-            .eq('id', project.owner_id)
-            .single()
-          setProjectOwner(owner)
-        }
+        // Remove the project owner fetch since it's causing 406 errors
+        // The owner_id is already available in quest.projects?.owner_id
       }
     } catch (error) {
       console.error('Error fetching project data:', error)
@@ -276,22 +282,212 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   // Memoized isAdminOrCreator function
   const isAdminOrCreator = useCallback(() => {
     if (!currentUserUUID) return false
-    return currentUserUUID === quest.creator_id || currentUserUUID === projectOwner?.id
-  }, [currentUserUUID, quest.creator_id, projectOwner?.id])
+    return currentUserUUID === quest.creator_id || currentUserUUID === quest.projects?.owner_id
+  }, [currentUserUUID, quest.creator_id, quest.projects?.owner_id])
 
   // Memoized task verification handler
   const handleTaskVerification = useCallback(async (task: Task) => {
+    if (!currentUserUUID) {
+      toast.error('Please sign in to verify tasks')
+      return
+    }
+
+    // Check if user is authenticated
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    console.log('DEBUG: Session check:', { 
+      hasSession: !!session, 
+      sessionError, 
+      currentUserUUID 
+    })
+
+    if (!session) {
+      toast.error('Please sign in to verify tasks')
+      return
+    }
+
     setVerifyingTask(task.id)
     try {
-      // Implementation here
-      toast.success('Task verified successfully!')
+      // Get user's social accounts for verification
+      const { data: userSocialAccounts, error: socialError } = await supabase
+        .from('social_accounts')
+        .select('platform, platform_username, access_token')
+        .eq('user_id', currentUserUUID)
+
+      if (socialError) {
+        console.error('Error fetching user social accounts:', socialError)
+        toast.error('Failed to fetch social accounts')
+        return
+      }
+
+      let verified = false
+      let message = ""
+
+      // Verify based on task type
+      switch (task.type) {
+        case 'social':
+          if (task.social_platform === 'twitter') {
+            console.log('DEBUG: Starting Twitter verification for task:', task.id)
+            // Use the existing X API verification endpoint
+            const response = await fetch('/api/verify/twitter-follow-real', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                // Include authentication headers
+                'Authorization': `Bearer ${session?.access_token || ''}`
+              },
+              credentials: 'include', // Include cookies for session
+              body: JSON.stringify({
+                taskId: task.id,
+                userId: currentUserUUID // Pass the user ID for wallet auth
+              })
+            })
+
+            console.log('DEBUG: Twitter verification response status:', response.status)
+            const result = await response.json()
+            console.log('DEBUG: Twitter verification result:', result)
+            
+            if (response.status === 400 && result.action === 'connect_twitter') {
+              // User needs to connect Twitter account
+              toast.error(result.message || 'Please connect your Twitter account first')
+              // Show a toast with a link to profile page
+              toast.error('Please connect your Twitter account to verify tasks. Go to your profile to connect your account.', {
+                action: {
+                  label: 'Go to Profile',
+                  onClick: () => window.location.href = '/profile'
+                }
+              })
+              return
+            }
+            
+            verified = result.verified
+            message = result.message || (verified ? 'Task verified!' : 'Verification failed')
+          } else if (task.social_platform === 'discord') {
+            // For Discord, redirect to OAuth flow
+            const guildId = task.social_url?.match(/discord\.gg\/([a-zA-Z0-9]+)/)?.[1] || 
+                           task.social_url?.match(/discord\.com\/invite\/([a-zA-Z0-9]+)/)?.[1]
+            
+            if (guildId) {
+              // Redirect to Discord OAuth with state containing task info
+              const state = `${guildId}:${task.id}`
+              const discordClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
+              if (!discordClientId) {
+                toast.error('Discord integration not configured')
+                return
+              }
+              const authUrl = `https://discord.com/oauth2/authorize?client_id=${discordClientId}&response_type=code&redirect_uri=${encodeURIComponent(window.location.origin + '/discord-callback')}&scope=identify%20guilds.members.read&state=${state}`
+              window.location.href = authUrl
+              return // Don't show toast since we're redirecting
+            } else {
+              message = 'Invalid Discord server URL'
+            }
+          } else if (task.social_platform === 'telegram') {
+            console.log('DEBUG: Starting Telegram verification for task:', task.id)
+            // For Telegram, use the existing verification endpoint
+            const response = await fetch('/api/verify/telegram-join-real', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                // Include authentication headers
+                'Authorization': `Bearer ${session?.access_token || ''}`
+              },
+              credentials: 'include', // Include cookies for session
+              body: JSON.stringify({
+                taskId: task.id,
+                userId: currentUserUUID, // Pass the user ID for wallet auth
+                channelId: task.social_url?.match(/t\.me\/([a-zA-Z0-9_]+)/)?.[1] || task.social_username
+              })
+            })
+
+            console.log('DEBUG: Telegram verification response status:', response.status)
+            const result = await response.json()
+            console.log('DEBUG: Telegram verification result:', result)
+            
+            if (response.status === 400 && result.action === 'connect_telegram') {
+              // User needs to connect Telegram account
+              toast.error(result.message || 'Please connect your Telegram account first')
+              // Show a toast with a link to profile page
+              toast.error('Please connect your Telegram account to verify tasks. Go to your profile to connect your account.', {
+                action: {
+                  label: 'Go to Profile',
+                  onClick: () => window.location.href = '/profile'
+                }
+              })
+              return
+            }
+            
+            verified = result.verified
+            message = result.message || (verified ? 'Task verified!' : 'Verification failed')
+          }
+          break
+
+        case 'learn':
+          // For quiz tasks, we'll implement quiz verification later
+          message = 'Quiz verification not implemented yet'
+          break
+
+        case 'visit':
+          // For visit tasks, we'll implement visit tracking later
+          message = 'Visit verification not implemented yet'
+          break
+
+        default:
+          message = 'Unsupported task type'
+      }
+
+      if (verified) {
+        // Create task submission record
+        const submissionData = {
+          user_id: currentUserUUID,
+          task_id: task.id,
+          quest_id: quest.id,
+          status: 'verified',
+          submitted_at: new Date().toISOString(),
+          verified_at: new Date().toISOString(),
+          submission_data: {
+            task_type: task.type,
+            social_platform: task.social_platform,
+            social_action: task.social_action,
+            social_url: task.social_url,
+            visit_url: task.visit_url,
+            learn_content: task.learn_content
+          },
+          verification_data: {
+            method: 'api_verification',
+            verified: true
+          },
+          xp_earned: task.xp_reward,
+          xp_awarded: task.xp_reward
+        }
+
+        const { error: submissionError } = await supabase
+          .from('user_task_submissions')
+          .insert(submissionData)
+
+        if (submissionError) {
+          console.error('Error creating submission:', submissionError)
+          toast.error('Failed to record task completion')
+          return
+        }
+
+        // Update the task status in the UI
+        setTasks(prev => prev.map(t => 
+          t.id === task.id 
+            ? { ...t, user_task_submissions: submissionData }
+            : t
+        ))
+
+        toast.success(`Task verified! You earned ${task.xp_reward} XP`)
+      } else {
+        toast.error(message || 'Verification failed')
+      }
+
     } catch (error) {
       console.error('Error verifying task:', error)
       toast.error('Failed to verify task')
     } finally {
       setVerifyingTask(null)
     }
-  }, [])
+  }, [currentUserUUID, quest.id, emailUser?.email, walletUser?.walletAddress])
 
   // Memoized task deletion handler
   const handleDeleteTask = useCallback(async (taskId: string) => {
@@ -313,8 +509,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
   // Memoized task creation handler
   const handleCreateTask = useCallback(async () => {
-    if (!newTask.title || !newTask.type) {
-      setCreateTaskError('Please fill in all required fields')
+    if (!newTask.type) {
+      setCreateTaskError('Please select a task type')
       return
     }
 
@@ -322,16 +518,122 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     setCreateTaskError("")
 
     try {
+      // Prepare task data based on type
+      const taskData: any = {
+        quest_id: quest.id,
+        xp_reward: newTask.xp_reward,
+        type: newTask.type,
+      }
+
+      // Generate dynamic title and description based on task type
+      switch (newTask.type) {
+        case 'social':
+          if (!newTask.social_platform || !newTask.social_action) {
+            setCreateTaskError('Please select both social network and action')
+            setCreatingTask(false)
+            return
+          }
+
+          // Generate dynamic title and description
+          const platformNames: Record<string, string> = {
+            twitter: 'X',
+            discord: 'Discord',
+            telegram: 'Telegram'
+          }
+          
+          const actionNames: Record<string, string> = {
+            follow: 'Follow',
+            like: 'Like post',
+            retweet: 'Retweet post',
+            join: 'Join channel'
+          }
+
+          taskData.title = `${platformNames[newTask.social_platform]}`
+          taskData.description = `${actionNames[newTask.social_action]}`
+          
+          // Add social media specific fields
+          taskData.social_platform = newTask.social_platform
+          taskData.social_action = newTask.social_action
+          
+          // For follow actions, automatically fetch admin's social account
+          if (newTask.social_action === 'follow') {
+            try {
+              // Get the project owner's social account for the platform
+              const { data: socialAccount, error: socialError } = await supabase
+                .from('social_accounts')
+                .select('username, account_id, platform')
+                .eq('platform', newTask.social_platform)
+                .eq('user_id', quest.projects?.owner_id)
+                .single()
+
+              if (socialAccount && !socialError) {
+                // Generate the appropriate URL based on platform
+                let socialUrl = ''
+                switch (newTask.social_platform) {
+                  case 'twitter':
+                    socialUrl = `https://x.com/${socialAccount.username}`
+                    break
+                  case 'discord':
+                    // For Discord, we need the server invite URL
+                    // TODO: Admins should update this with real invite URL in project settings
+                    socialUrl = '' // Empty string - admin needs to configure Discord invite URL
+                    break
+                  case 'telegram':
+                    socialUrl = `https://t.me/${socialAccount.username}`
+                    break
+                }
+                taskData.social_url = socialUrl
+                taskData.social_username = socialAccount.username
+              } else {
+                console.warn('No social account found for admin on platform:', newTask.social_platform)
+              }
+            } catch (error) {
+              console.error('Error fetching admin social account:', error)
+            }
+          }
+          
+          // Only add URL for actions that require it (like/retweet)
+          if ((newTask.social_platform === 'twitter' && (newTask.social_action === 'like' || newTask.social_action === 'retweet'))) {
+            if (!newTask.social_url) {
+              setCreateTaskError('Please provide the post URL')
+              setCreatingTask(false)
+              return
+            }
+            taskData.social_url = newTask.social_url
+          }
+          break
+
+        case 'learn':
+          if (!newTask.learn_content) {
+            setCreateTaskError('Please provide quiz content')
+            setCreatingTask(false)
+            return
+          }
+          
+          taskData.title = 'Quiz'
+          taskData.description = 'Complete the quiz'
+          taskData.learn_content = newTask.learn_content
+          taskData.learn_passing_score = newTask.learn_passing_score
+          taskData.learn_questions = newTask.learn_questions
+          break
+
+        case 'visit':
+          if (!newTask.visit_url) {
+            setCreateTaskError('Please provide the URL to visit')
+            setCreatingTask(false)
+            return
+          }
+          
+          taskData.title = 'Visit URL'
+          taskData.description = 'Visit the specified URL'
+          taskData.visit_url = newTask.visit_url
+          taskData.visit_duration_seconds = newTask.visit_duration_seconds
+          break
+      }
+
       const { data, error } = await supabase
         .from('tasks')
-        .insert({
-          quest_id: quest.id,
-          title: newTask.title,
-          description: newTask.description,
-          type: newTask.type,
-          xp_reward: newTask.xp_reward,
-          // Add other fields based on task type
-        })
+        .insert(taskData)
         .select()
         .single()
 
@@ -344,7 +646,21 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         title: "",
         description: "",
         xp_reward: 100,
-        // Reset other fields
+        // Social task fields
+        social_platform: "",
+        social_action: "",
+        social_url: "",
+        social_username: "",
+        social_post_id: "",
+        // Quiz task fields
+        learn_content: "",
+        learn_questions: null,
+        learn_passing_score: 70,
+        // URL view task fields
+        visit_url: "",
+        visit_title: "",
+        visit_description: "",
+        visit_duration_seconds: 30,
       })
       toast.success('Task created successfully!')
     } catch (error) {
@@ -353,7 +669,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     } finally {
       setCreatingTask(false)
     }
-  }, [newTask, quest.id])
+  }, [newTask, quest.id, quest.projects?.owner_id])
 
   // Memoized task update handler
   const handleEditTask = useCallback(async () => {
@@ -413,6 +729,34 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     }
   }, [currentUserUUID])
 
+  // Memoized user task submissions fetch
+  const fetchUserTaskSubmissions = useCallback(async () => {
+    if (!currentUserUUID || !quest.id) return
+
+    try {
+      const { data: submissions, error } = await supabase
+        .from('user_task_submissions')
+        .select('*')
+        .eq('user_id', currentUserUUID)
+        .eq('quest_id', quest.id)
+
+      if (error) {
+        console.error('Error fetching user task submissions:', error)
+        return
+      }
+
+      // Update tasks with submission data
+      if (submissions) {
+        setTasks(prev => prev.map(task => {
+          const submission = submissions.find(s => s.task_id === task.id)
+          return submission ? { ...task, user_task_submissions: submission } : task
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching user task submissions:', error)
+    }
+  }, [currentUserUUID, quest.id])
+
   // Memoized user social username getter
   const getUserSocialUsername = useCallback((platform: string) => {
     // Implementation here
@@ -467,6 +811,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Debug info */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded text-yellow-300 text-xs">
+                <p>Debug: {tasks.length} tasks loaded</p>
+                <p>Quest ID: {quest.id}</p>
+                <p>Quest Title: {quest.title}</p>
+              </div>
+            )}
+            
             <TaskList
               tasks={tasks}
               verifyingTask={verifyingTask}
@@ -514,9 +867,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           </Card>
         )}
 
-                {/* Add Task Dialog */}
+        {/* Add Task Dialog */}
         <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
-          <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Task</DialogTitle>
               <DialogDescription>
@@ -532,32 +885,13 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                   </SelectTrigger>
                   <SelectContent className="bg-[#111111] border-[#282828]">
                     <SelectItem value="social">Social Media</SelectItem>
-                    <SelectItem value="learn">Learning</SelectItem>
-                    <SelectItem value="submit">Submission</SelectItem>
+                    <SelectItem value="learn">Quiz</SelectItem>
+                    <SelectItem value="visit">URL View</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
-              <div>
-                <label className="text-sm font-medium text-white">Title</label>
-                <Input 
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                  className="bg-[#111111] border-[#282828] text-white"
-                  placeholder="Enter task title"
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-white">Description</label>
-                <Textarea 
-                  value={newTask.description}
-                  onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                  className="bg-[#111111] border-[#282828] text-white"
-                  placeholder="Enter task description"
-                />
-              </div>
-              
+
+              {/* XP Reward - Always shown */}
               <div>
                 <label className="text-sm font-medium text-white">XP Reward</label>
                 <Input 
@@ -568,6 +902,114 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
                   placeholder="Enter XP reward"
                 />
               </div>
+
+              {/* Social Media Task Fields */}
+              {newTask.type === 'social' && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-white">Social Network</label>
+                    <Select value={newTask.social_platform} onValueChange={(value) => setNewTask({...newTask, social_platform: value})}>
+                      <SelectTrigger className="bg-[#111111] border-[#282828] text-white">
+                        <SelectValue placeholder="Select social network" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#111111] border-[#282828]">
+                        <SelectItem value="twitter">X (Twitter)</SelectItem>
+                        <SelectItem value="discord">Discord</SelectItem>
+                        <SelectItem value="telegram">Telegram</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-white">Action</label>
+                    <Select value={newTask.social_action} onValueChange={(value) => setNewTask({...newTask, social_action: value})}>
+                      <SelectTrigger className="bg-[#111111] border-[#282828] text-white">
+                        <SelectValue placeholder="Select action" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#111111] border-[#282828]">
+                        {newTask.social_platform === 'twitter' && (
+                          <>
+                            <SelectItem value="follow">Follow</SelectItem>
+                            <SelectItem value="like">Like post</SelectItem>
+                            <SelectItem value="retweet">Retweet post</SelectItem>
+                          </>
+                        )}
+                        {newTask.social_platform === 'discord' && (
+                          <SelectItem value="join">Join channel</SelectItem>
+                        )}
+                        {newTask.social_platform === 'telegram' && (
+                          <SelectItem value="join">Join channel</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Show URL field only for X actions that require it */}
+                  {(newTask.social_platform === 'twitter' && (newTask.social_action === 'like' || newTask.social_action === 'retweet')) && (
+                    <div>
+                      <label className="text-sm font-medium text-white">Post URL</label>
+                      <Input 
+                        value={newTask.social_url}
+                        onChange={(e) => setNewTask({...newTask, social_url: e.target.value})}
+                        className="bg-[#111111] border-[#282828] text-white"
+                        placeholder="Enter post URL to like/retweet"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Quiz Task Fields */}
+              {newTask.type === 'learn' && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-white">Quiz Content</label>
+                    <Textarea 
+                      value={newTask.learn_content}
+                      onChange={(e) => setNewTask({...newTask, learn_content: e.target.value})}
+                      className="bg-[#111111] border-[#282828] text-white"
+                      placeholder="Enter quiz content or instructions"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-white">Passing Score (%)</label>
+                    <Input 
+                      type="number"
+                      value={newTask.learn_passing_score}
+                      onChange={(e) => setNewTask({...newTask, learn_passing_score: parseInt(e.target.value) || 70})}
+                      className="bg-[#111111] border-[#282828] text-white"
+                      placeholder="Enter passing score"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* URL View Task Fields */}
+              {newTask.type === 'visit' && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-white">URL to Visit</label>
+                    <Input 
+                      value={newTask.visit_url}
+                      onChange={(e) => setNewTask({...newTask, visit_url: e.target.value})}
+                      className="bg-[#111111] border-[#282828] text-white"
+                      placeholder="Enter URL to visit"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-white">Visit Duration (seconds)</label>
+                    <Input 
+                      type="number"
+                      value={newTask.visit_duration_seconds}
+                      onChange={(e) => setNewTask({...newTask, visit_duration_seconds: parseInt(e.target.value) || 30})}
+                      className="bg-[#111111] border-[#282828] text-white"
+                      placeholder="Enter minimum visit duration"
+                    />
+                  </div>
+                </>
+              )}
               
               {createTaskError && (
                 <p className="text-red-400 text-sm">{createTaskError}</p>
@@ -649,8 +1091,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   useEffect(() => {
     if (mounted && quest.project_id && currentUserUUID) {
       fetchCurrentUserSocialAccounts()
+      fetchUserTaskSubmissions()
     }
-  }, [mounted, quest.project_id, currentUserUUID, fetchCurrentUserSocialAccounts])
+  }, [mounted, quest.project_id, currentUserUUID, fetchCurrentUserSocialAccounts, fetchUserTaskSubmissions])
 
   // Show loading state while auth is being checked
   if (!mounted) {

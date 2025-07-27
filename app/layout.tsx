@@ -31,34 +31,6 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning className="font-sans">
         <ClientLayout>{children}</ClientLayout>
-        {/* StagewiseToolbar will be loaded client-side only */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if (typeof window !== 'undefined') {
-                // Only load in development mode
-                const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                if (isDevelopment) {
-                  import('@stagewise/toolbar-next').then(({ StagewiseToolbar }) => {
-                    import('@stagewise-plugins/react').then((ReactPlugin) => {
-                      const { createRoot } = require('react-dom/client');
-                      const container = document.createElement('div');
-                      document.body.appendChild(container);
-                      const root = createRoot(container);
-                      root.render(React.createElement(StagewiseToolbar, {
-                        config: {
-                          plugins: [ReactPlugin.default]
-                        }
-                      }));
-                    });
-                  }).catch(error => {
-                    console.log('Stagewise toolbar not available:', error);
-                  });
-                }
-              }
-            `,
-          }}
-        />
       </body>
     </html>
   )

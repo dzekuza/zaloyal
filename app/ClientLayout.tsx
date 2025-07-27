@@ -1,22 +1,15 @@
 "use client"
 
-import React from "react"
-
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import EmailAuth from "@/components/email-auth"
-import { Toaster } from "@/components/ui/sonner"
-import OnboardingAlertBar from "@/components/onboarding-alert-bar"
-import { walletAuth } from "@/lib/wallet-auth"
-import { supabase } from "@/lib/supabase"
-import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/components/auth-context";
-import LoadingSpinner from "@/components/loading-spinner";
-import { AuthProvider } from "@/components/auth-context";
-import Navigation from "@/components/navigation";
-import PageContainer from "@/components/PageContainer";
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import { Inter } from 'next/font/google'
+import Navigation from '@/components/navigation'
+import PageContainer from '@/components/PageContainer'
+import LoadingSpinner from '@/components/loading-spinner'
+import { useAuth, AuthProvider } from '@/components/auth-provider-wrapper'
+import { useToast } from '@/components/ui/use-toast'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import AuthDialog from '@/components/auth-dialog'
+import { supabase } from '@/lib/supabase'
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -25,7 +18,7 @@ const inter = Inter({
   fallback: ['system-ui', 'arial']
 })
 
-// Memoized loading component to prevent unnecessary re-renders
+// Memoized loading screen to prevent re-renders
 const LoadingScreen = React.memo(() => (
   <div className="min-h-screen bg-[#111111] flex items-center justify-center">
     <LoadingSpinner size="lg" text="Loading..." />
@@ -33,44 +26,11 @@ const LoadingScreen = React.memo(() => (
 ))
 LoadingScreen.displayName = 'LoadingScreen'
 
-// Memoized auth dialog to prevent re-renders
-const AuthDialog = React.memo(({ 
-  showAuthDialog, 
-  setShowAuthDialog, 
-  handleEmailAuthSuccess, 
-  handleEmailAuthError 
-}: {
-  showAuthDialog: boolean
-  setShowAuthDialog: (show: boolean) => void
-  handleEmailAuthSuccess: (authUser: unknown) => void
-  handleEmailAuthError: (errorMessage: string) => void
-}) => (
-  <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Sign In</DialogTitle>
-        <DialogDescription>
-          Choose your preferred authentication method
-        </DialogDescription>
-      </DialogHeader>
-      <div className="p-4">
-        <EmailAuth
-          onSuccess={handleEmailAuthSuccess}
-          onError={handleEmailAuthError}
-          onNavigate={() => window.location.href = '/dashboard'}
-        />
-      </div>
-    </DialogContent>
-  </Dialog>
-))
-AuthDialog.displayName = 'AuthDialog'
-
 function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   // All hooks must be called at the top level, before any conditional logic
   const [showAuthDialog, setShowAuthDialog] = useState(false)
-  const [authError, setAuthError] = useState("")
   const { toast } = useToast();
-  const { user, emailUser, isLoading } = useAuth();
+  const { user, loading } = useAuth();
 
   // Memoized auth state change handlers to prevent unnecessary re-renders
   const handleAuthStateChange = useCallback((event: string, session: any) => {
@@ -81,17 +41,6 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
 
   const handleOpenAuthDialog = useCallback(() => {
     setShowAuthDialog(true);
-  }, []);
-
-  const handleEmailAuthSuccess = useCallback((authUser: unknown) => {
-    console.log("Email auth success:", authUser)
-    setShowAuthDialog(false)
-    setAuthError("")
-    window.location.reload()
-  }, []);
-
-  const handleEmailAuthError = useCallback((errorMessage: string) => {
-    setAuthError(errorMessage)
   }, []);
 
   // Memoized main content to prevent unnecessary re-renders
@@ -126,44 +75,27 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const themeProviderContent = useMemo(() => (
     <>
       {mainContent}
-
-      {/* Auth Dialog */}
-      <AuthDialog 
-        showAuthDialog={showAuthDialog}
-        setShowAuthDialog={setShowAuthDialog}
-        handleEmailAuthSuccess={handleEmailAuthSuccess}
-        handleEmailAuthError={handleEmailAuthError}
+      <AuthDialog
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
       />
-
-      {/* Onboarding Alert */}
-      <OnboardingAlertBar />
-
-      {/* Toast Notifications */}
-      <Toaster />
     </>
-  ), [mainContent, showAuthDialog, handleEmailAuthSuccess, handleEmailAuthError]);
+  ), [mainContent, showAuthDialog]);
 
-  // Show loading state while auth is being checked
-  if (isLoading) {
+  // Show loading screen while auth is loading
+  if (loading) {
     return <LoadingScreen />
   }
 
-  return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem
-      disableTransitionOnChange
-    >
-      {themeProviderContent}
-    </ThemeProvider>
-  )
+  return themeProviderContent
 }
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <ClientLayoutContent>{children}</ClientLayoutContent>
+      <ClientLayoutContent>
+        {children}
+      </ClientLayoutContent>
     </AuthProvider>
   )
 }

@@ -1,178 +1,200 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Wallet, LogOut } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
+import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { supabase } from "@/lib/supabase"
-import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/auth-provider-wrapper"
+import EmailAuth from "@/components/email-auth"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle, Copy, Check, ExternalLink, Wallet, LogOut } from "lucide-react"
 
-// Modal UI for wallet selection
-function WalletSelectModal({ onSelect, onClose }: { onSelect: (wallet: string) => void, onClose: () => void }) {
-  // Detect available wallets
-  const [wallets, setWallets] = useState<string[]>([]);
-  useEffect(() => {
-    const available: string[] = [];
-    if ((window as any).solana && (window as any).solana.isPhantom) available.push('Phantom');
-    if ((window as any).ethereum && (window as any).ethereum.isMetaMask) available.push('MetaMask');
-    setWallets(available);
-  }, []);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-[#181818] rounded-lg p-6 min-w-[300px]">
-        <h2 className="text-white text-lg mb-4">Select Wallet</h2>
-        {wallets.length === 0 && <div className="text-red-400 mb-4">No supported wallets found.</div>}
-        <div className="flex flex-col gap-2">
-          {wallets.map(wallet => (
-            <Button key={wallet} className="w-full" onClick={() => onSelect(wallet)}>{wallet}</Button>
-          ))}
-        </div>
-        <Button variant="outline" className="w-full mt-4" onClick={onClose}>Cancel</Button>
-      </div>
-    </div>
-  );
-}
+// Simple icon components to avoid react-icons import issues
+const DiscordIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+  </svg>
+)
 
-export default function WalletConnect({ onLinked }: { onLinked?: () => void } = {}) {
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
-  const [isLinking, setIsLinking] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
+const XIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+)
+
+export default function WalletConnect() {
+  const [user, setUser] = useState<WalletUser | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [showModal, setShowModal] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [authError, setAuthError] = useState("")
 
   useEffect(() => {
-    // Optionally, fetch the linked wallet address from the user profile
-    const fetchWallet = async () => {
+    const unsubscribe = walletAuth.onAuthStateChange(setUser)
+    const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setIsAuthenticated(!!user)
-      if (user) {
-        const { data: profile } = await supabase.from("users").select("wallet_address").eq("id", user.id).single()
-        setWalletAddress(profile?.wallet_address || null)
-      }
     }
-    fetchWallet()
+    checkAuth()
+    return unsubscribe
   }, [])
 
-  // Handle wallet linking for Phantom (Solana) and MetaMask (EVM)
-  const handleWalletLink = async (wallet: string) => {
-    setIsLinking(true)
-    setError(null)
+  const connectWallet = async () => {
+    setIsConnecting(true)
     try {
-      let walletAddress = '';
-      let signature = '';
-      let challenge = '';
-      if (wallet === 'Phantom') {
-        const provider = (window as any).solana;
-        if (!provider || !provider.isPhantom) throw new Error('Phantom Wallet not found');
-        await provider.connect();
-        walletAddress = provider.publicKey.toString();
-        challenge = `Link this wallet to your account: ${walletAddress}`;
-        const encodedMessage = new TextEncoder().encode(challenge);
-        const signedMessage = await provider.signMessage(encodedMessage, 'utf8');
-        signature = Buffer.from(signedMessage.signature).toString('base64');
-      } else if (wallet === 'MetaMask') {
-        const { ethers } = await import('ethers');
-        if (!(window as any).ethereum) throw new Error('MetaMask not found');
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        const signer = await provider.getSigner();
-        walletAddress = await signer.getAddress();
-        challenge = `Link this wallet to your account: ${walletAddress}`;
-        signature = await signer.signMessage(challenge);
-      } else {
-        throw new Error('Unsupported wallet');
-      }
-      // Get userId from Supabase Auth
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id;
-      if (!userId) throw new Error('User not authenticated');
-      // Send to backend for verification and linking
-      const res = await fetch('/api/link-wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress, signature, challenge, userId }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setWalletAddress(walletAddress);
-      setShowModal(false);
-      if (onLinked) onLinked();
-    } catch (e: any) {
-      setError(e.message || 'Failed to link wallet');
+      // Use web3 payments integration for wallet connection
+      await walletAuth.linkWalletToCurrentUser()
+    } catch (error: any) {
+      setAuthError(error.message)
     } finally {
-      setIsLinking(false);
+      setIsConnecting(false)
+    }
+  }
+
+  const disconnectWallet = async () => {
+    await walletAuth.disconnectWallet()
+  }
+
+  const handleTwitterLogin = async () => {
+    try {
+      // Use Supabase Auth for X authentication (not direct OAuth)
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'twitter',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback/supabase`,
+          scopes: 'tweet.read users.read follows.read offline.access'
+        }
+      });
+      
+      if (error) {
+        console.error('X linking error:', error);
+        setAuthError(error.message);
+        return;
+      }
+
+      // The redirect will handle the OAuth flow
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        setAuthError('No OAuth URL received from Supabase');
+      }
+    } catch (error: any) {
+      console.error('X linking error:', error);
+      setAuthError(error.message || 'Failed to initiate X authentication');
     }
   };
 
-  const handleDisconnectWallet = async () => {
-    setWalletAddress(null)
-    if (onLinked) onLinked()
-  }
-
-  if (isAuthenticated === false) {
-    return (
-      <Card className="bg-[#111111] rounded-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-white flex items-center justify-center gap-2">
-            <Wallet className="w-5 h-5" />
-            Wallet Linking
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center">
-            <p className="text-red-400 mb-4">You must be signed in to link your wallet.</p>
-            <Button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
-            >
-              Sign In
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <Card className="bg-[#111111] rounded-lg">
-      <CardHeader className="text-center">
-        <CardTitle className="text-white flex items-center justify-center gap-2">
-          <Wallet className="w-5 h-5" />
-          Wallet Linking
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {walletAddress ? (
-          <div className="text-center">
-            <p className="text-gray-300 mb-2">Linked Wallet Address:</p>
-            <p className="text-white font-mono mb-2">{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</p>
-            <Badge className="bg-green-600 text-white text-xs">Linked</Badge>
-            <Button
-              onClick={handleDisconnectWallet}
-              className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white"
-            >
-              <LogOut className="w-4 h-4 mr-1" /> Disconnect Wallet
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="w-full">
+          <Wallet className="mr-2 h-4 w-4" />
+          Connect Wallet
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Connect Your Account</DialogTitle>
+          <DialogDescription>
+            Choose your preferred authentication method. Email accounts can link wallets for additional functionality.
+          </DialogDescription>
+        </DialogHeader>
+        <Tabs defaultValue="email" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="email">Email & Social</TabsTrigger>
+            <TabsTrigger value="wallet">Wallet Only</TabsTrigger>
+          </TabsList>
+          <TabsContent value="email" className="space-y-4">
+            <div className="space-y-4">
+              <EmailAuth 
+                onSuccess={(user) => {
+                  // Handle successful email authentication
+                  setAuthError("");
+                  console.log('Email auth success:', user);
+                }}
+                onError={(error) => {
+                  setAuthError(error);
+                }}
+              />
+              <div className="flex flex-col space-y-2">
+                <Button 
+                  onClick={handleTwitterLogin}
+                  variant="outline" 
+                  className="w-full"
+                >
+                  <XIcon className="mr-2 h-4 w-4" />
+                  Continue with X (Twitter)
+                </Button>
+                <Button 
+                  onClick={() => window.location.href = '/api/connect-discord'}
+                  variant="outline" 
+                  className="w-full"
+                >
+                  <DiscordIcon className="mr-2 h-4 w-4" />
+                  Continue with Discord
+                </Button>
+              </div>
+              {isAuthenticated && (
+                <div className="pt-4">
+                  <Button 
+                    onClick={connectWallet}
+                    disabled={isConnecting}
+                    className="w-full"
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    {isConnecting ? "Connecting..." : "Link Wallet"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          <TabsContent value="wallet" className="space-y-4">
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Sign in with your wallet using web3 payments integration.
+              </div>
+              <Button 
+                onClick={async () => {
+                  setIsConnecting(true)
+                  try {
+                    await walletAuth.signInWithSolanaWallet()
+                  } catch (error: any) {
+                    setAuthError(error.message)
+                  } finally {
+                    setIsConnecting(false)
+                  }
+                }}
+                disabled={isConnecting}
+                className="w-full"
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                {isConnecting ? "Connecting..." : "Sign in with Wallet"}
+              </Button>
+              {authError && (
+                <div className="text-sm text-red-500">{authError}</div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+        {user && (
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="flex items-center space-x-2">
+              <Wallet className="h-4 w-4" />
+              <span className="text-sm">
+                {user.walletAddress.substring(0, 6)}...{user.walletAddress.substring(-4)}
+              </span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={disconnectWallet}>
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
-        ) : (
-          <Button
-            onClick={() => setShowModal(true)}
-            disabled={isLinking}
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isLinking ? "Linking..." : "Link Wallet"}
-          </Button>
         )}
-        {error && (
-          <div className="p-2 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-xs">{error}</div>
-        )}
-        {showModal && (
-          <WalletSelectModal
-            onSelect={handleWalletLink}
-            onClose={() => setShowModal(false)}
-          />
-        )}
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   )
 }

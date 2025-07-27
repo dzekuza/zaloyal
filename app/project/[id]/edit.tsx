@@ -75,7 +75,7 @@ export default function EditProjectPage() {
     }
   }
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>
+
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>
   if (!project) return <div className="p-8 text-center">Project not found.</div>
 

@@ -68,11 +68,52 @@ const nextConfig = {
   compress: true,
   // Optimize bundle size
   webpack: (config, { dev, isServer }) => {
-    // Optimize for development
+    // Optimize for development - reduce polling frequency significantly
     if (dev) {
       config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
+        poll: 5000, // Increased from 2000ms to 5000ms
+        aggregateTimeout: 1000, // Increased from 500ms to 1000ms
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/database-schema/**',
+          '**/*.sql',
+          '**/*.md',
+          '**/*.txt',
+          '**/*.json',
+          '**/*.cpuprofile',
+          '**/*.tsbuildinfo',
+          '**/.next/**',
+          '**/dist/**',
+          '**/build/**',
+          '**/coverage/**',
+          '**/.env*',
+          '**/package-lock.json',
+          '**/yarn.lock',
+          '**/pnpm-lock.yaml',
+          '**/turbo.json',
+          '**/jest.config.*',
+          '**/tsconfig.*.json',
+          '**/.eslintrc.*',
+          '**/.prettierrc.*',
+          '**/tailwind.config.*',
+          '**/postcss.config.*',
+          '**/next.config.*',
+          '**/vercel.json',
+          '**/netlify.toml',
+          '**/README.md',
+          '**/CHANGELOG.md',
+          '**/LICENSE',
+          '**/.gitignore',
+          '**/.gitattributes',
+          '**/.editorconfig',
+          '**/.vscode/**',
+          '**/.idea/**',
+          '**/testsprite_tests/**',
+          '**/__tests__/**',
+          '**/*.test.*',
+          '**/*.spec.*'
+        ]
       }
     }
     

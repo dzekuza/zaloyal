@@ -124,14 +124,9 @@ export default async function ProjectDiscovery() {
     ]
 
     return (
-      <>
-        {/* Header - no padding */}
-        <header className="relative overflow-hidden">
-          {/* ... header content here if any ... */}
-        </header>
-        {/* Main content */}
+      <PageContainer>
         <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
-      </>
+      </PageContainer>
     )
   } catch (error) {
     console.error("❌ Error in ProjectDiscovery:", error);
