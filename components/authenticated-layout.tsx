@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google'
 import Navigation from '@/components/navigation'
 import MobileNavigation from '@/components/mobile-navigation'
 import LoadingSpinner from '@/components/loading-spinner'
+import OnboardingAlertBar from '@/components/onboarding-alert-bar'
 import { useAuth } from '@/components/auth-provider-wrapper'
 import { useToast } from '@/hooks/use-toast'
 import AuthDialog from '@/components/auth-dialog'
@@ -58,6 +59,9 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
       
       {/* Mobile Navigation */}
       <MobileNavigation />
+      
+      {/* Onboarding Alert Bar */}
+      <OnboardingAlertBar />
     </div>
   ), [children]);
 

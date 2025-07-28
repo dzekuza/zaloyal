@@ -174,22 +174,84 @@ function ProfileContent() {
   // 🔥 BEST PRACTICE: Fetch linked identities from Supabase Auth ONLY
   const fetchLinkedIdentities = async () => {
     try {
+      // Get Auth identities first
       const { data: identities, error } = await supabase.auth.getUserIdentities();
       
       if (error) {
         console.error('Error fetching identities:', error);
-        return;
       }
 
+      const linkedIdentities: LinkedIdentity[] = [];
+
+      // Process Auth identities
       if (identities?.identities) {
-        setLinkedIdentities(identities.identities.map((identity: any) => ({
-          id: identity.identity_id,
-          user_id: user?.id || '',
-          identity_id: identity.identity_id,
-          provider: identity.provider,
-          identity_data: identity.identity_data
-        })));
+        identities.identities.forEach((identity: any) => {
+          if (identity.provider === 'discord') {
+            linkedIdentities.push({
+              id: identity.identity_id,
+              user_id: user?.id || '',
+              identity_id: identity.identity_id,
+              provider: 'discord',
+              identity_data: {
+                user_name: identity.identity_data?.username || identity.identity_data?.name,
+                screen_name: identity.identity_data?.username || identity.identity_data?.name,
+                name: identity.identity_data?.name || identity.identity_data?.full_name,
+                avatar_url: identity.identity_data?.avatar_url || identity.identity_data?.picture,
+              }
+            });
+          } else if (identity.provider === 'twitter') {
+            linkedIdentities.push({
+              id: identity.identity_id,
+              user_id: user?.id || '',
+              identity_id: identity.identity_id,
+              provider: 'x', // Map twitter to 'x' for UI consistency
+              identity_data: {
+                user_name: identity.identity_data?.user_name || identity.identity_data?.screen_name,
+                screen_name: identity.identity_data?.screen_name || identity.identity_data?.user_name,
+                name: identity.identity_data?.name || identity.identity_data?.screen_name,
+                avatar_url: identity.identity_data?.avatar_url || identity.identity_data?.profile_image_url,
+              }
+            });
+          }
+        });
       }
+
+      // Also check social_accounts table for additional linked accounts
+      if (user?.id) {
+        const { data: socialAccounts, error: socialError } = await supabase
+          .from('social_accounts')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (socialError) {
+          console.error('Error fetching social accounts:', socialError);
+        } else if (socialAccounts) {
+          socialAccounts.forEach((account) => {
+            // Check if this account is already in linkedIdentities
+            const existingIdentity = linkedIdentities.find(
+              identity => identity.provider === account.platform
+            );
+
+            if (!existingIdentity) {
+              // Add account from social_accounts table
+              linkedIdentities.push({
+                id: account.id,
+                user_id: account.user_id,
+                identity_id: account.account_id,
+                provider: account.platform,
+                identity_data: {
+                  user_name: account.username || account.account_id,
+                  screen_name: account.username || account.account_id,
+                  name: account.username || account.account_id,
+                  avatar_url: account.profile_data?.avatar_url,
+                }
+              });
+            }
+          });
+        }
+      }
+
+      setLinkedIdentities(linkedIdentities);
     } catch (error) {
       console.error('Error fetching linked identities:', error);
     }

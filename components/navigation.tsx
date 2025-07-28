@@ -145,12 +145,14 @@ export default function Navigation() {
           <DialogHeader>
             <DialogTitle className="text-white">Setup Guide</DialogTitle>
           </DialogHeader>
-          <div className="text-gray-300 text-center py-4">
+          <div className="text-gray-300 text-left px-6 pb-6">
             Follow the steps in the onboarding bar at the bottom right to get started.
           </div>
-          <Button className="mx-auto mt-2 bg-green-600 hover:bg-green-700" onClick={() => setShowOnboarding(false)}>
-            Got it
-          </Button>
+          <div className="px-6 pb-6">
+            <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => setShowOnboarding(false)}>
+              Got it
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

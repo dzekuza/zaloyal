@@ -5,6 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
     if (!supabaseUrl || !supabaseAnonKey) {
       return NextResponse.json({
@@ -14,21 +15,94 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
-    // Get the current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // Read request body once and store it
+    const requestBody = await request.json();
+    const { walletAddress, userEmail } = requestBody;
     
-    if (sessionError || !session) {
+    console.log('Wallet linking request:', {
+      walletAddress: walletAddress ? walletAddress.substring(0, 10) + '...' : 'missing',
+      userEmail: userEmail || 'missing'
+    });
+    
+    // Get the current user - try multiple authentication methods
+    let user = null;
+    let authError = null;
+    
+    // Method 1: Try to get session
+    try {
+      const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+      if (session && session.user) {
+        user = session.user;
+        console.log('Found user via session:', user.email);
+      } else {
+        console.log('No session found, sessionErr:', sessionErr);
+      }
+    } catch (error) {
+      console.log('Session check failed:', error);
+    }
+    
+    // Method 2: If no session, try to get user directly
+    if (!user) {
+      try {
+        const { data: { user: currentUser }, error: userErr } = await supabase.auth.getUser();
+        if (currentUser) {
+          user = currentUser;
+          console.log('Found user via getUser:', user.email);
+        } else {
+          authError = userErr;
+          console.log('No user found via getUser, userErr:', userErr);
+        }
+      } catch (error) {
+        console.log('getUser check failed:', error);
+        authError = error;
+      }
+    }
+    
+    // Method 3: If still no user, check if we have an email in the request body
+    if (!user && userEmail) {
+      console.log('Attempting email-based authentication for:', userEmail);
+      
+      // Use service role key to access auth.users table
+      if (!supabaseServiceKey) {
+        console.error('Missing service role key for admin operations');
+        return NextResponse.json({
+          error: 'Missing service role key for admin operations'
+        }, { status: 500 });
+      }
+      
+      const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+      
+      try {
+        // Query auth.users table directly by email
+        const { data: authUsers, error: authUsersError } = await adminClient.auth.admin.listUsers();
+        
+        if (authUsersError) {
+          console.error('Error fetching auth users:', authUsersError);
+        } else {
+          console.log('Found', authUsers.users.length, 'users in auth system');
+          const foundUser = authUsers.users.find(u => u.email === userEmail);
+          if (foundUser) {
+            user = foundUser;
+            console.log('Found user via email lookup:', user.email);
+          } else {
+            console.log('User not found in auth system for email:', userEmail);
+            console.log('Available users:', authUsers.users.map(u => u.email));
+          }
+        }
+      } catch (error) {
+        console.error('Error in admin user lookup:', error);
+      }
+    }
+    
+    if (!user) {
+      console.error('Authentication failed. No user found via any method.');
+      console.error('Request body:', { walletAddress: !!walletAddress, userEmail });
       return NextResponse.json(
-        { error: 'User not authenticated' },
+        { error: 'User not authenticated. Please log in first.' },
         { status: 401 }
       );
     }
 
-    const user = session.user;
-
-    // Get the wallet address from the request body
-    const { walletAddress } = await request.json();
-    
     if (!walletAddress) {
       return NextResponse.json(
         { error: 'Wallet address is required' },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -51,7 +51,6 @@ import type { Database } from "@/lib/supabase"
 import { Textarea } from "@/components/ui/textarea"
 import type { Task } from '@/components/quest-detail/types'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import React from 'react'
 
 type UserTaskSubmission = Database["public"]["Tables"]["user_task_submissions"]["Row"] & {
   users: (Database["public"]["Tables"]["users"]["Row"] & {
@@ -512,22 +511,164 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                 </div>
               )}
               
-              {/* Raw Submission Data for Debugging */}
-              {Object.keys(submissionData).length > 0 && 
-               !submissionData.answers && 
-               !submissionData.score && 
-               !submissionData.visit_url && 
-               !submissionData.download_url && 
-               !submissionData.form_url && 
-               !submissionData.social_platform && 
-               !submissionData.social_username && 
-               !submissionData.question && 
-               !submissionData.quiz_answers && (
+              {/* Formatted Submission Data */}
+              {Object.keys(submissionData).length > 0 && (
                 <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
-                  <span className="text-gray-400 block mb-2">Raw Submission Data:</span>
-                  <pre className="text-white text-xs overflow-auto">
-                    {JSON.stringify(submissionData, null, 2)}
-                  </pre>
+                  <span className="text-gray-400 block mb-2">Submission Details:</span>
+                  <div className="space-y-2 text-sm">
+                    {/* URL-based submissions */}
+                    {submissionData.url && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">URL:</span>
+                        <a 
+                          href={submissionData.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 flex items-center gap-1 break-all"
+                        >
+                          {submissionData.url}
+                          <ExternalLinkIcon className="w-3 h-3 flex-shrink-0" />
+                        </a>
+                      </div>
+                    )}
+                    
+                    {/* Action type */}
+                    {submissionData.action && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Action:</span>
+                        <span className="text-white capitalize">{submissionData.action}</span>
+                      </div>
+                    )}
+                    
+                    {/* Task type */}
+                    {submissionData.task_type && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Task Type:</span>
+                        <span className="text-white capitalize">{submissionData.task_type}</span>
+                      </div>
+                    )}
+                    
+                    {/* Duration for visit tasks */}
+                    {submissionData.duration_seconds && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Duration:</span>
+                        <span className="text-white">{submissionData.duration_seconds} seconds</span>
+                      </div>
+                    )}
+                    
+                    {/* Social platform details */}
+                    {submissionData.social_platform && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Platform:</span>
+                        <span className="text-white capitalize">{submissionData.social_platform}</span>
+                      </div>
+                    )}
+                    
+                    {/* Social action */}
+                    {submissionData.social_action && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Action:</span>
+                        <span className="text-white capitalize">{submissionData.social_action}</span>
+                      </div>
+                    )}
+                    
+                    {/* Discord specific data */}
+                    {submissionData.discord_user_id && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Discord User ID:</span>
+                        <span className="text-white">{submissionData.discord_user_id}</span>
+                      </div>
+                    )}
+                    
+                    {submissionData.guild_id && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Server ID:</span>
+                        <span className="text-white">{submissionData.guild_id}</span>
+                      </div>
+                    )}
+                    
+                    {/* Telegram specific data */}
+                    {submissionData.telegram_user_id && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Telegram User ID:</span>
+                        <span className="text-white">{submissionData.telegram_user_id}</span>
+                      </div>
+                    )}
+                    
+                    {submissionData.telegram_username && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Telegram Username:</span>
+                        <span className="text-white">@{submissionData.telegram_username}</span>
+                      </div>
+                    )}
+                    
+                    {submissionData.channel_id && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Channel ID:</span>
+                        <span className="text-white">{submissionData.channel_id}</span>
+                      </div>
+                    )}
+                    
+                    {/* Quiz specific data */}
+                    {submissionData.score && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Quiz Score:</span>
+                        <span className="text-white font-semibold">{submissionData.score}%</span>
+                      </div>
+                    )}
+                    
+                    {submissionData.correct_answers && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Correct Answers:</span>
+                        <span className="text-white">{submissionData.correct_answers}</span>
+                      </div>
+                    )}
+                    
+                    {submissionData.total_questions && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Total Questions:</span>
+                        <span className="text-white">{submissionData.total_questions}</span>
+                      </div>
+                    )}
+                    
+                    {/* Form specific data */}
+                    {submissionData.form_data && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Form Data:</span>
+                        <span className="text-white">{JSON.stringify(submissionData.form_data)}</span>
+                      </div>
+                    )}
+                    
+                    {/* Download specific data */}
+                    {submissionData.download_path && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Download Path:</span>
+                        <span className="text-white">{submissionData.download_path}</span>
+                      </div>
+                    )}
+                    
+                    {/* Verification timestamp */}
+                    {submissionData.verified_at && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Verified At:</span>
+                        <span className="text-white">{formatDate(submissionData.verified_at)}</span>
+                      </div>
+                    )}
+                    
+                    {/* Any other fields that aren't covered above */}
+                    {Object.entries(submissionData).filter(([key, value]) => 
+                      value && 
+                      !['url', 'action', 'task_type', 'duration_seconds', 'social_platform', 
+                        'social_action', 'discord_user_id', 'guild_id', 'telegram_user_id', 
+                        'telegram_username', 'channel_id', 'score', 'correct_answers', 
+                        'total_questions', 'form_data', 'download_path', 'verified_at'].includes(key)
+                    ).map(([key, value]) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}:</span>
+                        <span className="text-white">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               
@@ -825,118 +966,133 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                 <Table>
                   <TableHeader>
                     <TableRow className="border-[#282828] hover:bg-[#181818]">
-                      <TableHead className="text-gray-400 text-xs sm:text-sm">User</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm">Task</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm">Type</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm">Task XP</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm">Date</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm">Actions</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">User</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[140px] sm:min-w-[180px]">Task</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[80px] sm:min-w-[100px]">Type</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">Status</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">Task XP</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">Date</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {submissions.map((submission) => (
-                      <TableRow key={submission.id} className="border-[#282828] hover:bg-[#181818]">
-                        <TableCell className="text-xs sm:text-sm">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-6 h-6 sm:w-8 sm:h-8">
-                              <AvatarImage src={submission.users?.avatar_url || undefined} />
-                              <AvatarFallback className="text-xs">
-                                {submission.users?.username?.charAt(0) || submission.users?.email?.charAt(0) || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-white font-medium truncate">
-                                {submission.users?.username || submission.users?.email || 'Unknown User'}
-                              </div>
-                              <div className="text-gray-400 text-xs truncate">
-                                {submission.users?.email ? (
-                                  <span className="flex items-center gap-1">
-                                    <Mail className="w-3 h-3" />
-                                    {submission.users.email}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-500">No email</span>
-                                )}
+                      <React.Fragment key={submission.id}>
+                        <TableRow className="border-[#282828] hover:bg-[#181818]">
+                          <TableCell className="text-xs sm:text-sm">
+                            <div className="flex items-center gap-2 min-w-[120px] sm:min-w-[150px]">
+                              <Avatar className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
+                                <AvatarImage src={submission.users?.avatar_url || undefined} />
+                                <AvatarFallback className="text-xs">
+                                  {submission.users?.username?.charAt(0) || submission.users?.email?.charAt(0) || 'U'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-white font-medium break-words leading-tight">
+                                  {submission.users?.username || submission.users?.email || 'Unknown User'}
+                                </div>
+                                <div className="text-gray-400 text-xs break-words leading-tight mt-1">
+                                  {submission.users?.email ? (
+                                    <span className="flex items-center gap-1">
+                                      <Mail className="w-3 h-3 flex-shrink-0" />
+                                      <span className="truncate">{submission.users.email}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-500">No email</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm">
-                          <div className="max-w-[120px] sm:max-w-[200px]">
-                            <div className="text-white font-medium truncate">
-                              {submission.tasks?.title || 'Unknown Task'}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
+                            <div className="min-w-[140px] sm:min-w-[180px] max-w-[200px] lg:max-w-[250px]">
+                              <div className="text-white font-medium break-words leading-tight">
+                                {submission.tasks?.title || 'Unknown Task'}
+                              </div>
+                              <div className="text-gray-400 text-xs break-words leading-tight mt-1">
+                                <div className="flex items-center gap-1">
+                                  {submission.tasks && getTaskIcon(submission.tasks as Task)}
+                                  <span className="capitalize">{submission.tasks?.type || 'Unknown'}</span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-gray-400 text-xs truncate">
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
+                            <div className="flex items-center gap-1 min-w-[80px] sm:min-w-[100px]">
                               {submission.tasks && getTaskIcon(submission.tasks as Task)}
-                              {submission.tasks?.type || 'Unknown'}
+                              <span className="capitalize font-medium text-white">{submission.tasks?.type || 'Unknown'}</span>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm">
-                          <div className="flex items-center gap-1">
-                            {submission.tasks && getTaskIcon(submission.tasks as Task)}
-                            <span className="capitalize">{submission.tasks?.type || 'Unknown'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm">
-                          {getStatusBadge(submission)}
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm">
-                          <div className="text-center">
-                            <div className="text-white font-medium">
-                              {submission.xp_earned || 0} XP
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
+                            <div className="min-w-[80px] sm:min-w-[100px]">
+                              {getStatusBadge(submission)}
                             </div>
-                            {submission.xp_removed && (
-                              <div className="text-red-400 text-xs">
-                                -{submission.xp_removed} XP
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
+                            <div className="text-center min-w-[80px] sm:min-w-[100px]">
+                              <div className="text-white font-medium">
+                                {submission.tasks?.xp_reward || 0} XP
                               </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm">
-                          <div className="text-gray-300">
-                            {formatDate(submission.created_at)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => toggleRowExpansion(submission.id)}
-                              className="h-6 w-6 p-0"
-                            >
-                              {expandedRows.has(submission.id) ? (
-                                <ChevronUp className="w-3 h-3" />
-                              ) : (
-                                <ChevronDown className="w-3 h-3" />
+                              {submission.xp_removed && (
+                                <div className="text-red-400 text-xs">
+                                  -{submission.xp_removed} XP
+                                </div>
                               )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedUser(submission.users?.id || null)
-                                setShowUserModal(true)
-                              }}
-                              className="h-6 w-6 p-0"
-                            >
-                              <User className="w-3 h-3" />
-                            </Button>
-                            {submission.status === 'verified' && (
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
+                            <div className="text-gray-300 min-w-[100px] sm:min-w-[120px]">
+                              {formatDate(submission.created_at)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
+                            <div className="flex items-center gap-1">
                               <Button
                                 size="sm"
-                                variant="destructive"
-                                onClick={() => setShowRemoveXPDialog(submission.id)}
+                                variant="outline"
+                                onClick={() => toggleRowExpansion(submission.id)}
                                 className="h-6 w-6 p-0"
                               >
-                                <Trash className="w-3 h-3" />
+                                {expandedRows.has(submission.id) ? (
+                                  <ChevronUp className="w-3 h-3" />
+                                ) : (
+                                  <ChevronDown className="w-3 h-3" />
+                                )}
                               </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedUser(submission.users?.id || null)
+                                  setShowUserModal(true)
+                                }}
+                                className="h-6 w-6 p-0"
+                              >
+                                <User className="w-3 h-3" />
+                              </Button>
+                              {submission.status === 'verified' && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setShowRemoveXPDialog(submission.id)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Trash className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        
+                        {/* Expanded Row Details */}
+                        {expandedRows.has(submission.id) && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="p-0">
+                              {renderSubmissionDetails(submission)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
                     ))}
                   </TableBody>
                 </Table>

@@ -86,127 +86,141 @@ export default function MobileNavigation() {
 
   const navItems = [
     { href: '/', icon: Home, label: 'Home', active: pathname === '/' },
-    { href: '/quest', icon: Trophy, label: 'Quests', active: pathname.startsWith('/quest') },
-    { href: '/leaderboard', icon: BarChart3, label: 'Leaderboard', active: pathname === '/leaderboard' },
-    { href: '/project', icon: Building2, label: 'Projects', active: pathname.startsWith('/project') },
+    { href: '/project', icon: Users, label: 'My Projects', active: pathname.startsWith('/project') },
+    { href: '/dashboard', icon: BarChart3, label: 'Dashboard', active: pathname === '/dashboard' },
+    { href: '/leaderboard', icon: Trophy, label: 'Leaderboard', active: pathname === '/leaderboard' },
   ]
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#111111]/90 backdrop-blur-md border-t border-[#282828] z-50">
-      <div className="flex items-center justify-between px-4 py-2">
-        {/* Navigation Items */}
-        <div className="flex items-center space-x-6">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-                  item.active
-                    ? 'text-green-400 bg-green-400/10'
-                    : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="text-xs font-medium">{item.label}</span>
-              </Link>
-            )
-          })}
-        </div>
-
-        {/* Profile Section */}
-        <div className="flex items-center space-x-2">
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-10 w-10 rounded-full p-0">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar_url} alt={displayName} />
-                    <AvatarFallback className="bg-[#1a1a1a] text-white text-sm">
-                      {displayName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-[#111111] border-[#282828]">
-                <DropdownMenuLabel className="text-white font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{displayName}</p>
-                    <p className="text-xs text-gray-400">{user.email}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-[#282828]" />
-                
-                {/* Wallet Address */}
-                {user.profile?.wallet_address && (
-                  <>
-                    <DropdownMenuItem className="text-gray-300 hover:bg-[#1a1a1a] hover:text-white cursor-pointer">
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-xs">Wallet</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleCopyAddress(user.profile.wallet_address, e)}
-                          className="h-6 px-2 text-xs"
-                        >
-                          {copied ? (
-                            <>
-                              <Check className="h-3 w-3 mr-1" />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3 w-3 mr-1" />
-                              Copy
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-xs text-gray-500 font-mono break-all">
-                      {user.profile.wallet_address}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-[#282828]" />
-                  </>
-                )}
-
-                <DropdownMenuItem asChild className="text-gray-300 hover:bg-[#1a1a1a] hover:text-white">
-                  <Link href="/profile" className="flex items-center">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                
-                <DropdownMenuItem asChild className="text-gray-300 hover:bg-[#1a1a1a] hover:text-white">
-                  <Link href="/settings" className="flex items-center">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                
-                <DropdownMenuSeparator className="bg-[#282828]" />
-                
-                <DropdownMenuItem 
-                  onClick={handleSignOut}
-                  className="text-red-400 hover:bg-red-400/10 hover:text-red-300 cursor-pointer"
+    <>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#111111]/90 backdrop-blur-md border-t border-[#282828] z-50">
+        <div className="flex items-center justify-between px-4 py-2">
+          {/* Navigation Items */}
+          <div className="flex items-center space-x-4">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
+                    item.active
+                      ? 'text-green-400 bg-green-400/10'
+                      : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
+                  }`}
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button 
-              size="sm" 
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-            >
-              Sign In
-            </Button>
-          )}
+                  <Icon className="h-5 w-5" />
+                  <span className="text-xs font-medium">{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+
+          {/* Profile Section */}
+          <div className="flex items-center space-x-2">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-10 w-10 rounded-full p-0">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.avatar_url} alt={displayName} />
+                      <AvatarFallback className="bg-[#1a1a1a] text-white text-sm">
+                        {displayName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-[#111111] border-[#282828]">
+                  <DropdownMenuLabel className="text-white font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{displayName}</p>
+                      <p className="text-xs text-gray-400">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-[#282828]" />
+                  
+                  {/* Wallet Address */}
+                  {user.profile?.wallet_address && (
+                    <>
+                      <DropdownMenuItem className="text-gray-300 hover:bg-[#1a1a1a] hover:text-white cursor-pointer">
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-xs">Wallet</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => handleCopyAddress(user.profile.wallet_address, e)}
+                            className="h-6 px-2 text-xs"
+                          >
+                            {copied ? (
+                              <>
+                                <Check className="h-3 w-3 mr-1" />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3 mr-1" />
+                                Copy
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-xs text-gray-500 font-mono break-all">
+                        {user.profile.wallet_address}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-[#282828]" />
+                    </>
+                  )}
+
+                  <DropdownMenuItem asChild className="text-gray-300 hover:bg-[#1a1a1a] hover:text-white">
+                    <Link href="/profile" className="flex items-center">
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem asChild className="text-gray-300 hover:bg-[#1a1a1a] hover:text-white">
+                    <Link href="/settings" className="flex items-center">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator className="bg-[#282828]" />
+                  
+                  <DropdownMenuItem 
+                    onClick={handleSignOut}
+                    className="text-red-400 hover:bg-red-400/10 hover:text-red-300 cursor-pointer"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button 
+                size="sm" 
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+              >
+                Sign In
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      
+      {/* Setup Guide Button for Mobile */}
+      <button
+        className="md:hidden fixed bottom-20 right-4 z-50 w-12 h-12 rounded-full bg-[#111111] border border-[#282828] shadow-lg flex items-center justify-center hover:bg-[#181818] transition-colors"
+        onClick={() => {
+          // Show setup guide modal or navigate to setup guide
+          window.dispatchEvent(new CustomEvent('show-setup-guide'))
+        }}
+        aria-label="Show setup guide"
+      >
+        <Info className="w-6 h-6 text-green-400" />
+      </button>
+    </>
   )
 } 

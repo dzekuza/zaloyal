@@ -1,14 +1,34 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import Link from "next/link";
-import { Search, Filter, Users, Zap, Trophy, Star } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import ProjectCard from "@/components/ProjectCard";
-import { useAuth } from "@/components/auth-provider-wrapper";
+import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "./auth-provider-wrapper";
 import { supabase } from "@/lib/supabase";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Search, Filter, Users, Zap, Trophy, Star } from "lucide-react";
+import Link from "next/link";
+import ProjectCard from "./ProjectCard";
+
+// Reusable error fallback component
+function ErrorFallback({ message }: { message: string }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+      <div className="text-center space-y-4">
+        <h2 className="text-2xl font-bold text-white">Something went wrong</h2>
+        <p className="text-gray-300">{message}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface Project {
   id: string;
@@ -39,35 +59,15 @@ interface ProjectGridProps {
 }
 
 function ProjectGrid({ projects, currentUserId, onProjectDeleted }: ProjectGridProps) {
-  if (!projects || !projects.length) return null;
-
   async function handleDeleteProject(projectId: string) {
-    if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) return;
-    onProjectDeleted(); // fallback for now
+    try {
+      const { error } = await supabase.from("projects").delete().eq("id", projectId);
+      if (error) throw error;
+      onProjectDeleted();
+    } catch (error) {
+      console.error("Error deleting project:", error);
+    }
   }
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-      {projects.map((project) => (
-        <ProjectCard
-          key={project.id}
-          project={project}
-          currentUserId={currentUserId || undefined}
-          onDelete={currentUserId && project.owner_id === currentUserId ? () => handleDeleteProject(project.id) : undefined}
-          xpToCollect={project.xpToCollect}
-        >
-          <Link href={`/project/${project.id}`}>
-            <Button
-              size="sm"
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
-            >
-              {currentUserId && project.owner_id === currentUserId ? "View My Project" : "Explore Project"}
-            </Button>
-          </Link>
-        </ProjectCard>
-      ))}
-    </div>
-  );
 }
 
 interface ProjectDiscoveryClientProps {
@@ -75,23 +75,76 @@ interface ProjectDiscoveryClientProps {
   categories: string[];
 }
 
-export default function ProjectDiscoveryClient({ projects, categories }: ProjectDiscoveryClientProps) {
-  const { user } = useAuth();
+// Wrapper component to handle auth context safely
+function ProjectDiscoveryClientWithAuth({ projects, categories }: ProjectDiscoveryClientProps) {
+  let auth: ReturnType<typeof useAuth> | undefined;
+  try {
+    auth = useAuth();
+  } catch (error) {
+    console.error("Auth context not available:", error);
+    return <ErrorFallback message="Authentication Error" />;
+  }
+
+  const { user, loading } = auth;
   const [userProjectXp, setUserProjectXp] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+  // Add debugging information
+  console.log("ProjectDiscoveryClient auth state:", { user: !!user, loading, userId: user?.id });
+
+  // Timeout mechanism to prevent infinite loading
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.log("ProjectDiscoveryClient: Loading timeout reached, forcing continue");
+        setLoadingTimeout(true);
+      }, 10000); // 10 second timeout
+
+      return () => clearTimeout(timeout);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [loading]);
+
+  // Show loading state while auth is initializing (with timeout fallback)
+  if (loading && !loadingTimeout) {
+    console.log("ProjectDiscoveryClient: Showing loading state");
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
+        <div className="text-center space-y-4">
+          <div className="text-white text-lg">Loading authentication...</div>
+          <div className="text-gray-400 text-sm">Please wait while we verify your session</div>
+        </div>
+      </div>
+    );
+  }
+
+  // If loading timeout reached, show a message but continue
+  if (loadingTimeout) {
+    console.log("ProjectDiscoveryClient: Loading timeout reached, continuing with limited functionality");
+  }
+
+  console.log("ProjectDiscoveryClient: Auth loaded, user:", user?.email || "No user");
 
   // Calculate user XP for each project
   useEffect(() => {
     const calculateUserProjectXp = async () => {
       if (!user?.id) {
+        console.log("ProjectDiscoveryClient: No user ID, clearing XP");
         setUserProjectXp({});
         return;
       }
 
+      console.log("ProjectDiscoveryClient: Calculating XP for user:", user.id);
+
       try {
         const projectIds = projects.map(p => p.id);
-        if (projectIds.length === 0) return;
+        if (projectIds.length === 0) {
+          console.log("ProjectDiscoveryClient: No projects to calculate XP for");
+          return;
+        }
 
         // Get all quest IDs for these projects
         const { data: quests, error: questsError } = await supabase
@@ -99,36 +152,97 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
           .select("id, project_id")
           .in("project_id", projectIds);
 
-        if (questsError || !quests) return;
+        if (questsError) {
+          console.error("ProjectDiscoveryClient: Error fetching quests:", questsError);
+          setUserProjectXp({});
+          return;
+        }
+
+        if (!quests || quests.length === 0) {
+          console.log("ProjectDiscoveryClient: No quests found for projects");
+          setUserProjectXp({});
+          return;
+        }
 
         const questIds = quests.map(q => q.id);
-        if (questIds.length === 0) return;
+        console.log("ProjectDiscoveryClient: Found quest IDs:", questIds);
 
         // Get user's verified submissions for these projects' quests
         const { data: submissions, error: submissionsError } = await supabase
           .from("user_task_submissions")
-          .select("xp_earned, quest_id")
+          .select("task_id, quest_id")
           .in("quest_id", questIds)
           .eq("user_id", user.id)
           .eq("status", "verified");
 
-        if (submissionsError || !submissions) return;
+        if (submissionsError) {
+          console.error("ProjectDiscoveryClient: Error fetching submissions:", submissionsError);
+          // Log more details about the error
+          if (submissionsError.message) {
+            console.error("ProjectDiscoveryClient: Submission error message:", submissionsError.message);
+          }
+          if (submissionsError.details) {
+            console.error("ProjectDiscoveryClient: Submission error details:", submissionsError.details);
+          }
+          if (submissionsError.hint) {
+            console.error("ProjectDiscoveryClient: Submission error hint:", submissionsError.hint);
+          }
+          setUserProjectXp({});
+          return;
+        }
+
+        console.log("ProjectDiscoveryClient: Found submissions:", submissions?.length || 0);
+
+        if (!submissions || submissions.length === 0) {
+          console.log("ProjectDiscoveryClient: No verified submissions found");
+          setUserProjectXp({});
+          return;
+        }
+
+        // Get task IDs from submissions
+        const taskIds = submissions.map(s => s.task_id);
+        console.log("ProjectDiscoveryClient: Task IDs from submissions:", taskIds);
+
+        // Get tasks with their XP rewards
+        const { data: tasks, error: tasksError } = await supabase
+          .from("tasks")
+          .select("id, quest_id, xp_reward")
+          .in("id", taskIds);
+
+        if (tasksError) {
+          console.error("ProjectDiscoveryClient: Error fetching tasks:", tasksError);
+          setUserProjectXp({});
+          return;
+        }
+
+        console.log("ProjectDiscoveryClient: Found tasks:", tasks?.length || 0);
 
         // Create a map of quest_id to project_id
         const questToProject = new Map(quests.map(q => [q.id, q.project_id]));
+        
+        // Create a map of task_id to xp_reward
+        const taskToXp = new Map(tasks?.map(t => [t.id, t.xp_reward]) || []);
 
         // Sum XP per project
         const projectXp: Record<string, number> = {};
         submissions.forEach(submission => {
           const projectId = questToProject.get(submission.quest_id);
+          const taskXp = taskToXp.get(submission.task_id) || 0;
+          
           if (projectId) {
-            projectXp[projectId] = (projectXp[projectId] || 0) + (submission.xp_earned || 0);
+            projectXp[projectId] = (projectXp[projectId] || 0) + taskXp;
           }
         });
 
+        console.log("ProjectDiscoveryClient: Calculated XP:", projectXp);
         setUserProjectXp(projectXp);
       } catch (error) {
-        console.error("Error calculating user project XP:", error);
+        console.error("ProjectDiscoveryClient: Error calculating user project XP:", error);
+        // Log more details about the caught error
+        if (error instanceof Error) {
+          console.error("ProjectDiscoveryClient: Error message:", error.message);
+          console.error("ProjectDiscoveryClient: Error stack:", error.stack);
+        }
         setUserProjectXp({});
       }
     };
@@ -188,6 +302,16 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
 
     return (
       <div className="w-full">
+        {/* Loading timeout warning */}
+        {loadingTimeout && (
+          <div className="mb-4 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+            <div className="flex items-center gap-2 text-yellow-300">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+              <span className="text-sm">Authentication is taking longer than expected. Some features may be limited.</span>
+            </div>
+          </div>
+        )}
+
         {/* Hero Section */}
         <div className="text-center space-y-6 py-12 md:py-16">
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white">
@@ -303,18 +427,13 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
   } catch (error) {
     console.error("Error in ProjectDiscoveryClient:", error);
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-emerald-800 to-green-900">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-white">Something went wrong</h2>
-          <p className="text-gray-300">Please try refreshing the page</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
+      <ErrorFallback message="Something went wrong" />
     );
   }
+}
+
+export default function ProjectDiscoveryClient({ projects, categories }: ProjectDiscoveryClientProps) {
+  return (
+    <ProjectDiscoveryClientWithAuth projects={projects} categories={categories} />
+  );
 }

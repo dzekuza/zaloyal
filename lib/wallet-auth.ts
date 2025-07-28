@@ -42,6 +42,7 @@ class WalletAuth {
     
     console.log('[Wallet Auth] Linking wallet via web3 payments:', {
       userId: currentUser.id,
+      userEmail: currentUser.email,
       walletAddress: walletAddress.substring(0, 10) + '...',
       platform: 'solana'
     });
@@ -54,7 +55,8 @@ class WalletAuth {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          walletAddress: walletAddress
+          walletAddress: walletAddress,
+          userEmail: currentUser.email // Send email for authentication
         })
       });
 

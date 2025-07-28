@@ -42,7 +42,7 @@ interface ProjectCardProps {
 
 function PlaceholderCover({ name, logoUrl }: { name: string; logoUrl?: string }) {
   return (
-    <div className="h-40 sm:h-48 md:h-56 w-full bg-gradient-to-br from-[#1a1a1a] via-[#0f0f0f] to-[#1a1a1a] flex items-center justify-center relative overflow-hidden">
+    <div className="w-full h-full bg-gradient-to-br from-[#1a1a1a] via-[#0f0f0f] to-[#1a1a1a] flex items-center justify-center relative overflow-hidden">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-10 quest-placeholder-bg"></div>
       {/* Logo or fallback */}
@@ -109,19 +109,21 @@ export default function ProjectCard({
       {/* Cover Image */}
       <div className="relative overflow-hidden">
         {project.cover_image_url ? (
-          <Image
-            src={project.cover_image_url}
-            alt={project.name || 'Project'}
-            width={800}
-            height={224}
-            loading="lazy"
-            decoding="async"
-            className="h-40 sm:h-48 md:h-56 w-full object-cover group-hover:scale-105 transition-transform duration-300"
-            style={{ color: "transparent" }}
-            unoptimized
-          />
+          <div className="aspect-video w-full">
+            <Image
+              src={project.cover_image_url}
+              alt={project.name || 'Project'}
+              width={800}
+              height={450}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              style={{ color: "transparent" }}
+              unoptimized
+            />
+          </div>
         ) : (
-          <div className="h-40 sm:h-48 md:h-56 w-full">
+          <div className="aspect-video w-full">
             <PlaceholderCover name={project.name || 'Project'} logoUrl={project.logo_url || undefined} />
           </div>
         )}

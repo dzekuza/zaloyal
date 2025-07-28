@@ -87,8 +87,8 @@ function MyProjectsContent() {
         
         console.log('All projects fetched successfully:', allData?.length || 0, 'projects');
         
-        // For each project, fetch all quests and sum total_xp
-        const addXP = async (projects: Project[]) => Promise.all(
+        // For each project, fetch all quests and sum total_xp, and count quests
+        const addXPAndQuestCount = async (projects: Project[]) => Promise.all(
           (projects || []).map(async (project) => {
             console.log('Fetching quests for project:', project.id);
             const { data: quests, error: questsError } = await supabase
@@ -105,12 +105,13 @@ function MyProjectsContent() {
             }
             
             const xpToCollect = (quests || []).reduce((sum, q) => sum + (q.total_xp || 0), 0);
-            return { ...project, xpToCollect };
+            const quest_count = quests?.length || 0;
+            return { ...project, xpToCollect, quest_count };
           })
         );
         
-        setMyProjects(await addXP(myData || []));
-        setAllProjects(await addXP((allData || []).filter((p) => p.owner_id !== user.id)));
+        setMyProjects(await addXPAndQuestCount(myData || []));
+        setAllProjects(await addXPAndQuestCount((allData || []).filter((p) => p.owner_id !== user.id)));
         setLoading(false);
         
         console.log('Projects loaded successfully');

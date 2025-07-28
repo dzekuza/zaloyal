@@ -1,8 +1,15 @@
-import { supabase } from "@/lib/supabase"
-import ProjectDiscoveryClient from "@/components/ProjectDiscoveryClient";
-import PageContainer from "@/components/PageContainer";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import { cache } from "react"
+import { cache } from 'react'
+import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+import ProjectDiscoveryClient from '@/components/ProjectDiscoveryClient'
+import PageContainer from '@/components/PageContainer'
+import ErrorBoundary from '@/components/ErrorBoundary'
+
+// Create admin client for server-side operations
+const adminClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 interface Project {
   id: string;
@@ -26,13 +33,12 @@ interface Project {
   xpToCollect?: number;
 }
 
-// Cache the database queries with cache busting
 const getProjects = cache(async () => {
   console.log("🔍 Fetching projects from database...");
   try {
     const { data: projects, error } = await supabase
       .from("projects")
-      .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured')
+      .select("*")
       .eq("status", "approved")
       .order("created_at", { ascending: false })
     
@@ -68,14 +74,18 @@ const getProjectParticipants = cache(async (projectIds: string[]) => {
       return {};
     }
     
+    console.log(`📋 Found ${quests?.length || 0} quests for participants calculation`);
+    
     const questIds = quests?.map(q => q.id) || []
     if (questIds.length === 0) {
       console.log("📋 No quests found for participants calculation");
       return {};
     }
     
-    // Count unique users per project
-    const { data: submissions, error: submissionsError } = await supabase
+    console.log(`📋 Quest IDs for participants:`, questIds);
+    
+    // Count unique users per project using admin client
+    const { data: submissions, error: submissionsError } = await adminClient
       .from("user_task_submissions")
       .select("user_id, quest_id")
       .in("quest_id", questIds)
@@ -85,6 +95,8 @@ const getProjectParticipants = cache(async (projectIds: string[]) => {
       console.error("❌ Error fetching submissions for participants:", submissionsError);
       return {};
     }
+    
+    console.log(`📋 Found ${submissions?.length || 0} verified submissions for participants`);
     
     // Create a map of quest_id to project_id
     const questToProject = new Map(quests?.map(q => [q.id, q.project_id]) || [])
@@ -181,7 +193,7 @@ const getQuests = cache(async (projectIds: string[]) => {
   try {
     const { data: quests, error } = await supabase
       .from("quests")
-      .select("id, project_id, total_xp")
+      .select("id, project_id, title, description, total_xp")
       .in("project_id", projectIds)
       .eq("status", "active")
     
@@ -191,12 +203,18 @@ const getQuests = cache(async (projectIds: string[]) => {
     }
     
     console.log(`✅ Found ${quests?.length || 0} active quests`);
+    console.log(`📋 Quest details:`, quests?.map(q => ({ id: q.id, project_id: q.project_id, title: q.title })));
     
     const result = (quests || []).reduce((acc: Record<string, any[]>, q) => {
       acc[q.project_id] = acc[q.project_id] || []
       acc[q.project_id].push(q)
       return acc
     }, {} as Record<string, any[]>)
+    
+    console.log(`📊 Quests grouped by project:`, Object.keys(result).map(projectId => ({
+      projectId,
+      questCount: result[projectId].length
+    })));
     
     return result;
   } catch (error) {

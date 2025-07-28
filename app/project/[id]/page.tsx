@@ -1,6 +1,13 @@
 import { cache } from "react"
 import { supabase } from "@/lib/supabase"
+import { createClient } from '@supabase/supabase-js'
 import ProjectDetailClient from "./ProjectDetailClient"
+
+// Create admin client for server-side operations
+const adminClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 interface Project {
   id: string;
@@ -62,11 +69,11 @@ const getQuests = cache(async (projectId: string) => {
   
   if (error) throw error
   
-  // Calculate participant count for each quest
+  // Calculate participant count for each quest using admin client
   const questsWithParticipants = await Promise.all(
     (quests || []).map(async (quest) => {
       try {
-        const { data: submissions, error: submissionsError } = await supabase
+        const { data: submissions, error: submissionsError } = await adminClient
           .from("user_task_submissions")
           .select("user_id")
           .eq("quest_id", quest.id)
@@ -108,8 +115,8 @@ const getProjectParticipants = cache(async (projectId: string) => {
     const questIds = quests.map(q => q.id)
     if (questIds.length === 0) return 0
     
-    // Count unique users who have submitted tasks for any quest in this project
-    const { data: submissions, error: submissionsError } = await supabase
+    // Count unique users who have submitted tasks for any quest in this project using admin client
+    const { data: submissions, error: submissionsError } = await adminClient
       .from("user_task_submissions")
       .select("user_id")
       .in("quest_id", questIds)
@@ -141,18 +148,39 @@ const getUserProjectXp = cache(async (projectId: string, userId?: string) => {
     const questIds = quests.map(q => q.id)
     if (questIds.length === 0) return 0
     
-    // Get user's verified submissions for this project's quests
-    const { data: submissions, error: submissionsError } = await supabase
+    // Get user's verified submissions for this project's quests using admin client
+    const { data: submissions, error: submissionsError } = await adminClient
       .from("user_task_submissions")
-      .select("xp_earned")
+      .select("quest_id")
       .in("quest_id", questIds)
       .eq("user_id", userId)
       .eq("status", "verified")
     
     if (submissionsError || !submissions) return 0
     
-    // Sum up all XP earned
-    const totalXp = submissions.reduce((sum, submission) => sum + (submission.xp_earned || 0), 0)
+    // Get task rewards for the quests to calculate XP
+    const { data: tasks, error: tasksError } = await supabase
+      .from("tasks")
+      .select("quest_id, xp_reward")
+      .in("quest_id", questIds)
+    
+    if (tasksError || !tasks) return 0
+    
+    // Create a map of quest_id to xp_reward
+    const questXpMap = new Map()
+    tasks.forEach(task => {
+      if (!questXpMap.has(task.quest_id)) {
+        questXpMap.set(task.quest_id, 0)
+      }
+      questXpMap.set(task.quest_id, questXpMap.get(task.quest_id) + (task.xp_reward || 0))
+    })
+    
+    // Calculate total XP earned
+    const totalXp = submissions.reduce((sum, submission) => {
+      const questXp = questXpMap.get(submission.quest_id) || 0
+      return sum + questXp
+    }, 0)
+    
     return totalXp
   } catch (error) {
     console.error("Error calculating user project XP:", error)

@@ -91,13 +91,7 @@ function QuestContent() {
                 <Trophy className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No Quests Available</h3>
-              <p className="text-gray-400 text-sm sm:text-base mb-4">Check back later for new quests or create your own</p>
-              <Link href="/create">
-                <Button className="bg-green-600 hover:bg-green-700 text-white">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Your First Quest
-                </Button>
-              </Link>
+              <p className="text-gray-400 text-sm sm:text-base">Check back later for new quests or create your own using the button above</p>
             </div>
           </div>
         ) : (

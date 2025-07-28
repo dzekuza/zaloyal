@@ -56,6 +56,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (error) {
           console.error('Error getting session:', error)
+          // Handle refresh token errors gracefully
+          if (error.message?.includes('Refresh Token') || error.message?.includes('Invalid Refresh Token')) {
+            console.log('Refresh token error detected, clearing auth state')
+            if (isMounted) {
+              setUser(null)
+              setLoading(false)
+            }
+            return
+          }
           if (isMounted) {
             setLoading(false)
           }
@@ -65,27 +74,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           console.log('Found authenticated user:', session.user.email)
           
-          // Get user profile from database
-          const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
+          try {
+            // Get user profile from database
+            const { data: profile, error: profileError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
 
-          if (isMounted) {
-            const authUser: AuthUser = {
-              id: session.user.id,
-              email: session.user.email || null,
-              username: profile?.username || session.user.user_metadata?.username,
-              avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url,
-              bio: profile?.bio,
-              social_links: profile?.social_links,
-              email_confirmed_at: session.user.email_confirmed_at,
-              email_verified: session.user.email_confirmed_at ? true : false,
-              profile
+            if (profileError) {
+              console.error('Error fetching user profile:', profileError)
+              // Continue without profile data
             }
-            setUser(authUser)
-            setLoading(false)
+
+            if (isMounted) {
+              const authUser: AuthUser = {
+                id: session.user.id,
+                email: session.user.email || null,
+                username: profile?.username || session.user.user_metadata?.username,
+                avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url,
+                bio: profile?.bio,
+                social_links: profile?.social_links,
+                email_confirmed_at: session.user.email_confirmed_at,
+                email_verified: session.user.email_confirmed_at ? true : false,
+                profile
+              }
+              setUser(authUser)
+              setLoading(false)
+            }
+          } catch (profileError) {
+            console.error('Error processing user profile:', profileError)
+            if (isMounted) {
+              // Set user with basic info even if profile fetch fails
+              const authUser: AuthUser = {
+                id: session.user.id,
+                email: session.user.email || null,
+                username: session.user.user_metadata?.username,
+                avatar_url: session.user.user_metadata?.avatar_url,
+                email_confirmed_at: session.user.email_confirmed_at,
+                email_verified: session.user.email_confirmed_at ? true : false,
+              }
+              setUser(authUser)
+              setLoading(false)
+            }
           }
         } else {
           console.log('No authenticated user found')
@@ -97,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Error initializing auth:', error)
         if (isMounted) {
+          setUser(null)
           setLoading(false)
         }
       }
@@ -124,11 +156,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               isProcessingAuth.current = true
               
               // Get user profile from database
-              const { data: profile } = await supabase
+              const { data: profile, error: profileError } = await supabase
                 .from('users')
                 .select('*')
                 .eq('id', session.user.id)
                 .single()
+              
+              if (profileError) {
+                console.error('Error fetching user profile in auth state change:', profileError)
+                // Continue without profile data
+              }
               
               if (isMounted) {
                 const authUser: AuthUser = {
@@ -158,6 +195,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setLoading(false)
               }
               isProcessingAuth.current = false
+            }
+          } else {
+            // Handle token refresh errors
+            console.log('Token refresh failed, clearing auth state')
+            if (isMounted) {
+              setUser(null)
+              setLoading(false)
             }
           }
         } else if (event === 'SIGNED_OUT') {
