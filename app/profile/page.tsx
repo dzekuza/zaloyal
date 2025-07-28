@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import PageContainer from "@/components/PageContainer";
 import { useAuth } from "@/components/auth-provider-wrapper"
-import AuthRequired from "@/components/auth-required"
+import AuthWrapper from "@/components/auth-wrapper"
 import { walletAuth } from "@/lib/wallet-auth"
 import WalletIcon from "@/components/wallet-icon"
 
@@ -34,8 +34,6 @@ const XIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 )
 
-
-
 interface LinkedIdentity {
   id: string;
   user_id: string;
@@ -51,8 +49,8 @@ interface LinkedIdentity {
   };
 }
 
-export default function ProfilePage() {
-  const { user, loading: authLoading, signOut, clearAuthState, clearOAuthState } = useAuth()
+function ProfileContent() {
+  const { user, signOut, clearAuthState, clearOAuthState } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -89,88 +87,76 @@ export default function ProfilePage() {
 
   const { toast } = useToast();
 
-
-
   // Main initialization useEffect
   useEffect(() => {
     const initializePage = async () => {
       console.log('Initializing profile page...');
       try {
-        // 🔥 BEST PRACTICE: Get user from Supabase Auth, not custom users table
+        // Get user from Supabase Auth
         const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
         
-        if (authError || !currentUser) {
-          console.log('No authenticated user found');
-          router.push('/');
+        if (authError) {
+          console.error('Auth error:', authError);
+          setError('Authentication error');
+          setLoading(false);
           return;
         }
 
-        console.log('DEBUG: User authenticated via Supabase Auth:', currentUser.id);
-        console.log('DEBUG: User metadata:', currentUser.user_metadata);
-        console.log('DEBUG: User identities:', currentUser.identities);
+        if (!currentUser) {
+          console.log('No authenticated user found');
+          setLoading(false);
+          return;
+        }
 
-        // Set user data from auth.users
-        setProfile({
-          id: currentUser.id,
-          email: currentUser.email,
-          username: currentUser.user_metadata?.username || currentUser.user_metadata?.name || currentUser.email?.split('@')[0],
-          avatar_url: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture,
-          bio: currentUser.user_metadata?.bio || '',
-          social_links: currentUser.user_metadata?.social_links || {},
-          total_xp: currentUser.user_metadata?.total_xp || 0,
-          level: currentUser.user_metadata?.level || 1
-        });
+        console.log('User authenticated:', currentUser.email);
+        
+        // Fetch user profile from database
+        const { data: profileData, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', currentUser.id)
+          .single();
 
-        // Set editable fields from auth user data
-        setUsername(currentUser.user_metadata?.username || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || '');
-        setAvatarUrl(currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '');
-        setBio(currentUser.user_metadata?.bio || '');
-        setSocialLinks(currentUser.user_metadata?.social_links || {});
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Profile fetch error:', profileError);
+          setError('Failed to load profile');
+          setLoading(false);
+          return;
+        }
 
-        // Fetch linked identities from Supabase Auth
+        if (profileData) {
+          setProfile(profileData);
+          setUsername(profileData.username || '');
+          setAvatarUrl(profileData.avatar_url || '');
+          setBio(profileData.bio || '');
+          setSocialLinks(profileData.social_links || {});
+        }
+
+        // Fetch linked identities
         await fetchLinkedIdentities();
-
-        // Check for wallet connection
+        
+        // Check wallet connection
         await checkWalletConnection();
-
-        // Handle success/error messages from URL params
-        const successParam = searchParams.get('success');
-        const errorParam = searchParams.get('error');
-        const messageParam = searchParams.get('message');
-
-        if (successParam) {
-          setSuccess(successParam);
-          setTimeout(() => setSuccess(''), 5000);
-        }
-
-        if (errorParam) {
-          setError(errorParam + (messageParam ? `: ${messageParam}` : ''));
-          setTimeout(() => setError(''), 5000);
-        }
-
+        
+        setLoading(false);
       } catch (error) {
         console.error('Error initializing profile page:', error);
-        setError('Failed to load profile data');
-      } finally {
+        setError('Failed to initialize profile');
         setLoading(false);
       }
     };
 
-    if (!authLoading) {
-      initializePage();
-    }
-  }, [authLoading, router, searchParams]);
+    initializePage();
+  }, []);
 
   // Check for wallet connection
   const checkWalletConnection = async () => {
     try {
-      const currentWalletUser = await walletAuth.getCurrentUser();
-      if (currentWalletUser) {
-        setWalletUser(currentWalletUser);
-        console.log('Wallet user found:', currentWalletUser.walletAddress.substring(0, 8) + '...');
-      }
-    } catch (walletError) {
-      console.log('No wallet linked or wallet error:', walletError);
+      const walletUser = await walletAuth.getUser();
+      setWalletUser(walletUser);
+    } catch (error) {
+      console.log('No wallet connected');
+      setWalletUser(null);
     }
   };
 
@@ -188,51 +174,22 @@ export default function ProfilePage() {
   // 🔥 BEST PRACTICE: Fetch linked identities from Supabase Auth ONLY
   const fetchLinkedIdentities = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // 🔥 BEST PRACTICE: Get identities from Auth identities
-      const { data: identitiesData, error: identitiesError } = await supabase.auth.getUserIdentities();
+      const { data: identities, error } = await supabase.auth.getUserIdentities();
       
-      if (identitiesError) {
-        console.error('Error getting user identities:', identitiesError);
+      if (error) {
+        console.error('Error fetching identities:', error);
         return;
       }
 
-      const identities: LinkedIdentity[] = [];
-      
-      // Process each identity from Auth
-      identitiesData?.identities?.forEach((identity: any) => {
-        if (identity.provider === 'discord') {
-          identities.push({
-            id: `discord-${user.id}`,
-            user_id: user.id,
-            identity_id: identity.identity_id,
-            provider: 'discord',
-            identity_data: {
-              user_name: identity.identity_data?.username || identity.identity_data?.name,
-              screen_name: identity.identity_data?.username || identity.identity_data?.name,
-              name: identity.identity_data?.name || identity.identity_data?.full_name,
-              avatar_url: identity.identity_data?.avatar_url || identity.identity_data?.picture,
-            }
-          });
-        } else if (identity.provider === 'twitter') {
-          identities.push({
-            id: `twitter-${user.id}`,
-            user_id: user.id,
-            identity_id: identity.identity_id,
-            provider: 'x', // Map twitter to 'x' for UI consistency
-            identity_data: {
-              user_name: identity.identity_data?.user_name || identity.identity_data?.screen_name,
-              screen_name: identity.identity_data?.screen_name || identity.identity_data?.user_name,
-              name: identity.identity_data?.name || identity.identity_data?.full_name,
-              avatar_url: identity.identity_data?.profile_image_url || identity.identity_data?.avatar_url,
-            }
-          });
-        }
-      });
-      
-      setLinkedIdentities(identities);
+      if (identities?.identities) {
+        setLinkedIdentities(identities.identities.map((identity: any) => ({
+          id: identity.identity_id,
+          user_id: user?.id || '',
+          identity_id: identity.identity_id,
+          provider: identity.provider,
+          identity_data: identity.identity_data
+        })));
+      }
     } catch (error) {
       console.error('Error fetching linked identities:', error);
     }
@@ -902,21 +859,11 @@ export default function ProfilePage() {
 
 
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#181818]">
         <div className="text-white text-xl">Loading...</div>
       </div>
-    )
-  }
-
-  // If not signed in, show sign-in prompt
-  if (!user) {
-    return (
-      <AuthRequired 
-        title="Sign In Required"
-        message="Please sign in with your email to access your profile and connect social accounts."
-      />
     )
   }
 
@@ -1318,5 +1265,18 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
     </PageContainer>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <AuthWrapper
+      requireAuth={true}
+      title="Sign In Required"
+      message="Please sign in with your email or wallet to access your profile and connect social accounts."
+      onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+    >
+      <ProfileContent />
+    </AuthWrapper>
   )
 } 
