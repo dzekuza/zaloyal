@@ -95,24 +95,39 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
     try {
       setLoading(true)
       
-      // Fetch submissions with user and task data
+      // Fetch submissions first
       const { data: submissionsData, error: submissionsError } = await supabase
         .from('user_task_submissions')
-        .select(`
-          *,
-          users:user_id (*),
-          tasks:task_id (*)
-        `)
+        .select('*')
         .eq('quest_id', quest.id)
         .order('created_at', { ascending: false })
 
-      if (submissionsError) {
-        console.error('Error fetching submissions:', submissionsError)
-        return
+      // Fetch users and tasks separately
+      const userIds = [...new Set(submissionsData?.map(s => s.user_id) || [])]
+      const taskIds = [...new Set(submissionsData?.map(s => s.task_id) || [])]
+
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .in('user_id', userIds)
+
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('*')
+        .in('id', taskIds)
+
+      if (usersError) {
+        console.error('Error fetching users:', usersError)
+      }
+      if (tasksError) {
+        console.error('Error fetching tasks:', tasksError)
       }
 
+      // Create maps for easy lookup
+      const usersMap = new Map(usersData?.map(u => [u.user_id, u]) || [])
+      const tasksMap = new Map(tasksData?.map(t => [t.id, t]) || [])
+
       // Fetch social accounts for each user
-      const userIds = [...new Set(submissionsData?.map(s => s.user_id) || [])]
       const { data: socialAccounts, error: socialError } = await supabase
         .from('social_accounts')
         .select('*')
@@ -134,6 +149,8 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
       // Combine the data
       const combinedData = submissionsData?.map(submission => ({
         ...submission,
+        users: usersMap.get(submission.user_id) || null,
+        tasks: tasksMap.get(submission.task_id) || null,
         social_accounts: socialAccountsMap.get(submission.user_id) || []
       })) || []
 
@@ -205,8 +222,6 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
         return <BookOpen className="w-4 h-4 text-yellow-400" />
               case 'form':
           return <FileText className="w-4 h-4 text-orange-400" />
-        case 'discord':
-          return <MessageCircle className="w-4 h-4 text-indigo-400" />
       default:
         return <CheckCircle className="w-4 h-4 text-gray-400" />
     }

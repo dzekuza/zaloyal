@@ -192,10 +192,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to record task completion" }, { status: 500 })
       }
 
-      // Update user XP
-      if (user.wallet_address) {
+      // Get user's wallet address from social accounts
+      const { data: socialAccounts } = await supabaseAdmin
+        .from('social_accounts')
+        .select('wallet_address')
+        .eq('user_id', userId || user.id)
+        .eq('platform', 'wallet')
+        .single()
+
+      // Update user XP if wallet address exists
+      if (socialAccounts?.wallet_address) {
         await supabaseAdmin.rpc("increment_user_xp", {
-          user_wallet: user.wallet_address.toLowerCase(),
+          user_wallet: socialAccounts.wallet_address.toLowerCase(),
           xp_amount: task.xp_reward,
         })
       }

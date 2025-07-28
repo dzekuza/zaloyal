@@ -797,6 +797,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
   // Handle adding new task
   const handleAddTask = useCallback(async (taskData: Partial<Task>) => {
+    console.log('DEBUG: handleAddTask called with data:', taskData)
+    
     if (!isAdminOrCreator()) {
       toast({
         title: 'Unauthorized',
@@ -822,8 +824,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         social_username: taskData.social_username || null,
         social_post_id: taskData.social_post_id || null,
         download_url: taskData.download_url || null,
-        // Removed fields that don't exist: download_title, download_description, form_title, form_description, etc.
-                          // form_url: taskData.form_url || null, // Removed - column doesn't exist in database
+        form_url: taskData.form_url || null,
         visit_url: taskData.visit_url || null,
         visit_title: taskData.visit_title || null,
         visit_description: taskData.visit_description || null,

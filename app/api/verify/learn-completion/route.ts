@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
         correctAnswers,
         totalQuestions,
         submitted_at: new Date().toISOString(),
+        verifier_notes: `Score: ${score}% (${correctAnswers}/${totalQuestions} correct)`,
       },
       verification_data: {
         method: "quiz",
@@ -90,17 +91,24 @@ export async function POST(request: NextRequest) {
       },
       xp_earned: passed ? task.xp_reward : 0,
       verified_at: passed ? new Date().toISOString() : null,
-      verifier_notes: `Score: ${score}% (${correctAnswers}/${totalQuestions} correct)`,
     })
 
     if (submissionError) {
       throw submissionError
     }
 
-    // Update user XP if passed
-    if (passed && user.wallet_address) {
+    // Get user's wallet address from social accounts
+    const { data: socialAccounts } = await supabaseAdmin
+      .from('social_accounts')
+      .select('wallet_address')
+      .eq('user_id', user.id)
+      .eq('platform', 'wallet')
+      .single()
+
+    // Update user XP if passed and wallet address exists
+    if (passed && socialAccounts?.wallet_address) {
       const { error: xpError } = await supabaseAdmin.rpc("increment_user_xp", {
-        user_wallet: user.wallet_address.toLowerCase(),
+        user_wallet: socialAccounts.wallet_address.toLowerCase(),
         xp_amount: task.xp_reward,
       })
 

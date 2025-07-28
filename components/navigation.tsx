@@ -93,9 +93,9 @@ export default function Navigation() {
     <>
       {/* Sidebar Navigation */}
       <div className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-full md:w-64 bg-[#111111]/80 backdrop-blur-md border-r border-[#282828] z-40">
-        <div className="flex items-center justify-start py-4 pl-4">
-          <Link href="/">
-            <Image src="/belinklogo.svg" alt="Belink Logo" width={48} height={48} className="h-12 w-12" priority />
+        <div className="px-4 py-6">
+          <Link href="/" className="flex items-center px-3 py-2">
+            <Image src="/belinklogo.svg" alt="Belink Logo" width={64} height={64} className="h-16 w-16" priority />
           </Link>
         </div>
         <nav className="flex flex-col flex-1 px-4 py-6">

@@ -227,6 +227,7 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('DEBUG: TaskForm handleSubmit called with formData:', formData)
     onSubmit(formData)
   }
 
@@ -333,6 +334,7 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
               <SelectValue placeholder="Select action" className="text-gray-400" />
             </SelectTrigger>
             <SelectContent className="bg-[#111111] border-[#282828]">
+              {/* Discord tasks only show "Join server" action */}
               {formData.social_platform === 'discord' ? (
                 <SelectItem value="join" className="text-white hover:bg-[#1a1a1a]">Join server</SelectItem>
               ) : (
@@ -349,6 +351,7 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
         </div>
       </div>
       <div className="space-y-2">
+        {/* Discord tasks show "Discord Invite URL" instead of "URL" */}
         <Label htmlFor="social_url" className="text-sm font-medium text-gray-200">
           {formData.social_platform === 'discord' ? 'Discord Invite URL' : 'URL'}
         </Label>
@@ -372,6 +375,7 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
         )}
       </div>
       <div className="space-y-2">
+        {/* Discord tasks show "Server Name" instead of "Username" */}
         <Label htmlFor="social_username" className="text-sm font-medium text-gray-200">
           {formData.social_platform === 'discord' ? 'Server Name' : 'Username'}
         </Label>
