@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
         status: 'verified',
         submitted_at: new Date().toISOString(),
         verified_at: new Date().toISOString(),
+        verified: true,
         submission_data: {
           task_type: 'form',
           form_url: formUrl

@@ -194,7 +194,7 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
           case 'telegram':
             return <MessageCircle className="w-4 h-4 text-blue-400" />
           case 'discord':
-            return <MessageSquare className="w-4 h-4 text-indigo-400" />
+            return <MessageCircle className="w-4 h-4 text-indigo-400" />
           default:
             return <ExternalLink className="w-4 h-4 text-gray-400" />
         }

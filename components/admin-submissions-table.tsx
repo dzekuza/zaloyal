@@ -275,17 +275,40 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
   const getTaskIcon = (task: Task) => {
     switch (task.type) {
       case 'social':
-        return <Twitter className="w-4 h-4 text-blue-400" />
+        if (task.social_platform === 'twitter') return <Twitter className="w-4 h-4 text-blue-400" />
+        if (task.social_platform === 'discord') return <MessageCircle className="w-4 h-4 text-indigo-400" />
+        if (task.social_platform === 'telegram') return <MessageSquare className="w-4 h-4 text-blue-500" />
+        return <ExternalLink className="w-4 h-4 text-gray-400" />
       case 'visit':
         return <ExternalLink className="w-4 h-4 text-green-400" />
       case 'download':
         return <Download className="w-4 h-4 text-purple-400" />
       case 'learn':
         return <BookOpen className="w-4 h-4 text-yellow-400" />
-              case 'form':
-          return <FileText className="w-4 h-4 text-orange-400" />
+      case 'form':
+        return <FileText className="w-4 h-4 text-orange-400" />
       default:
         return <CheckCircle className="w-4 h-4 text-gray-400" />
+    }
+  }
+
+  const getTaskTypeDisplay = (task: Task) => {
+    switch (task.type) {
+      case 'social':
+        if (task.social_platform === 'twitter') return 'X';
+        if (task.social_platform === 'discord') return 'Discord';
+        if (task.social_platform === 'telegram') return 'Telegram';
+        return 'Social';
+      case 'visit':
+        return 'Visit URL';
+      case 'download':
+        return 'Download';
+      case 'learn':
+        return 'Quiz';
+      case 'form':
+        return 'Form';
+      default:
+        return task.title || 'Task';
     }
   }
 
@@ -336,16 +359,16 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
     const verificationData = submission.verification_data || {}
 
     return (
-      <div className="p-4 bg-[#111111] border-t border-[#282828]">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-semibold text-white mb-3">Submission Data</h4>
-            <div className="space-y-3 text-sm">
+      <div className="p-3 sm:p-4 bg-[#111111] border-t border-[#282828]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <div className="space-y-3">
+            <h4 className="font-semibold text-white mb-3 text-sm sm:text-base">Submission Data</h4>
+            <div className="space-y-3 text-xs sm:text-sm">
               {/* Quiz Answers - Enhanced Display */}
               {submissionData.answers && (
                 <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
                   <span className="text-gray-400 block mb-2">Quiz Answers:</span>
-                  <div className="text-white">
+                  <div className="text-white break-words">
                     {Array.isArray(submissionData.answers) 
                       ? submissionData.answers.map((answer: string, index: number) => (
                           <div key={index} className="mb-1">
@@ -376,7 +399,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
               {submissionData.question && (
                 <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
                   <span className="text-gray-400 block mb-2">Question:</span>
-                  <div className="text-white mb-2">{submissionData.question}</div>
+                  <div className="text-white mb-2 break-words">{submissionData.question}</div>
                   {submissionData.selected_answers && (
                     <div>
                       <span className="text-gray-400 block mb-1">Selected Answer(s):</span>
@@ -404,8 +427,8 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       ? submissionData.quiz_answers.map((answer: any, index: number) => (
                           <div key={index} className="mb-2 p-2 bg-[#0a0a0a] rounded border border-[#333]">
                             <div className="text-gray-400 text-xs mb-1">Question {index + 1}</div>
-                            <div className="text-sm">{answer.question || 'No question text'}</div>
-                            <div className="text-green-400 text-sm mt-1">
+                            <div className="text-sm break-words">{answer.question || 'No question text'}</div>
+                            <div className="text-green-400 text-sm mt-1 break-words">
                               Selected: {answer.selected || answer.answer || 'No answer'}
                             </div>
                             {answer.correct !== undefined && (
@@ -431,14 +454,13 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
               {submissionData.visit_url && (
                 <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
                   <span className="text-gray-400 block mb-2">Visit URL:</span>
-                  <a 
-                    href={submissionData.visit_url} 
-                    target="_blank" 
+                  <a
+                    href={submissionData.visit_url}
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 break-all"
+                    className="text-blue-400 hover:text-blue-300 break-all"
                   >
                     {submissionData.visit_url}
-                    <ExternalLinkIcon className="w-3 h-3 flex-shrink-0" />
                   </a>
                 </div>
               )}
@@ -447,71 +469,90 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
               {submissionData.download_url && (
                 <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
                   <span className="text-gray-400 block mb-2">Download URL:</span>
-                  <a 
-                    href={submissionData.download_url} 
-                    target="_blank" 
+                  <a
+                    href={submissionData.download_url}
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 break-all"
+                    className="text-green-400 hover:text-green-300 break-all"
                   >
                     {submissionData.download_url}
-                    <ExternalLinkIcon className="w-3 h-3 flex-shrink-0" />
                   </a>
                 </div>
               )}
               
-              {/* Form URL */}
-              {submissionData.form_url && (
+              {/* Form Data */}
+              {submissionData.form_data && (
                 <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
-                  <span className="text-gray-400 block mb-2">Form URL:</span>
-                  <a 
-                    href={submissionData.form_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 break-all"
-                  >
-                    {submissionData.form_url}
-                    <ExternalLinkIcon className="w-3 h-3 flex-shrink-0" />
-                  </a>
+                  <span className="text-gray-400 block mb-2">Form Data:</span>
+                  <div className="text-white">
+                    {typeof submissionData.form_data === 'object' 
+                      ? Object.entries(submissionData.form_data).map(([key, value]) => (
+                          <div key={key} className="mb-1">
+                            <span className="text-gray-400">{key}:</span> {String(value)}
+                          </div>
+                        ))
+                      : <span>{String(submissionData.form_data)}</span>
+                    }
+                  </div>
                 </div>
               )}
-              
-              {/* Discord Social */}
-              {submissionData.social_platform === 'discord' && submissionData.social_url && (
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <h4 className="font-semibold text-white mb-3 text-sm sm:text-base">Verification Data</h4>
+            <div className="space-y-3 text-xs sm:text-sm">
+              {/* Social Verification */}
+              {verificationData.social_verified && (
                 <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
-                  <span className="text-gray-400 block mb-2">Discord Server:</span>
-                  <a 
-                    href={submissionData.social_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 break-all"
-                  >
-                    {submissionData.social_url}
-                    <ExternalLinkIcon className="w-3 h-3 flex-shrink-0" />
-                  </a>
-                  {submissionData.discord_user_id && (
-                    <div className="mt-2 text-xs">
-                      <span className="text-gray-400">Discord User ID:</span>
-                      <span className="text-white ml-2">{submissionData.discord_user_id}</span>
+                  <span className="text-gray-400 block mb-2">Social Verification:</span>
+                  <div className="text-white">
+                    <div className="mb-1">
+                      <span className="text-gray-400">Status:</span> 
+                      <span className="text-green-400 ml-2">Verified</span>
                     </div>
-                  )}
-                  {submissionData.guild_id && (
-                    <div className="mt-1 text-xs">
-                      <span className="text-gray-400">Server ID:</span>
-                      <span className="text-white ml-2">{submissionData.guild_id}</span>
-                    </div>
-                  )}
+                    {verificationData.social_username && (
+                      <div className="mb-1">
+                        <span className="text-gray-400">Username:</span> 
+                        <span className="text-white ml-2">{verificationData.social_username}</span>
+                      </div>
+                    )}
+                    {verificationData.social_post_url && (
+                      <div className="mb-1">
+                        <span className="text-gray-400">Post URL:</span>
+                        <a
+                          href={verificationData.social_post_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 ml-2 break-all"
+                        >
+                          {verificationData.social_post_url}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               
-              {/* Social Username */}
-              {submissionData.social_username && (
+              {/* Manual Verification */}
+              {submission.manual_verification_note && (
                 <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
-                  <span className="text-gray-400">Social Username:</span>
-                  <span className="text-white ml-2">{submissionData.social_username}</span>
+                  <span className="text-gray-400 block mb-2">Manual Verification Note:</span>
+                  <div className="text-white break-words">{submission.manual_verification_note}</div>
                 </div>
               )}
               
-              {/* Formatted Submission Data */}
+              {/* XP Removal */}
+              {submission.xp_removed && (
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-red-400 block mb-2">XP Removed: {submission.xp_removed}</span>
+                  {submission.xp_removal_reason && (
+                    <div className="text-gray-300 break-words">{submission.xp_removal_reason}</div>
+                  )}
+                </div>
+              )}
+              
+              {/* Any other fields that aren't covered above */}
               {Object.keys(submissionData).length > 0 && (
                 <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
                   <span className="text-gray-400 block mb-2">Submission Details:</span>
@@ -520,9 +561,9 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                     {submissionData.url && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">URL:</span>
-                        <a 
-                          href={submissionData.url} 
-                          target="_blank" 
+                        <a
+                          href={submissionData.url}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-400 hover:text-blue-300 flex items-center gap-1 break-all"
                         >
@@ -532,7 +573,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       </div>
                     )}
                     
-                    {/* Action type */}
+                    {/* Action-based submissions */}
                     {submissionData.action && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Action:</span>
@@ -548,7 +589,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       </div>
                     )}
                     
-                    {/* Duration for visit tasks */}
+                    {/* Duration */}
                     {submissionData.duration_seconds && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Duration:</span>
@@ -556,7 +597,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       </div>
                     )}
                     
-                    {/* Social platform details */}
+                    {/* Social platform */}
                     {submissionData.social_platform && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Platform:</span>
@@ -567,12 +608,12 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                     {/* Social action */}
                     {submissionData.social_action && (
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-400">Action:</span>
+                        <span className="text-gray-400">Social Action:</span>
                         <span className="text-white capitalize">{submissionData.social_action}</span>
                       </div>
                     )}
                     
-                    {/* Discord specific data */}
+                    {/* Discord specific */}
                     {submissionData.discord_user_id && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Discord User ID:</span>
@@ -582,12 +623,12 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                     
                     {submissionData.guild_id && (
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-400">Server ID:</span>
+                        <span className="text-gray-400">Guild ID:</span>
                         <span className="text-white">{submissionData.guild_id}</span>
                       </div>
                     )}
                     
-                    {/* Telegram specific data */}
+                    {/* Telegram specific */}
                     {submissionData.telegram_user_id && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Telegram User ID:</span>
@@ -609,11 +650,11 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       </div>
                     )}
                     
-                    {/* Quiz specific data */}
+                    {/* Quiz specific */}
                     {submissionData.score && (
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-400">Quiz Score:</span>
-                        <span className="text-white font-semibold">{submissionData.score}%</span>
+                        <span className="text-gray-400">Score:</span>
+                        <span className="text-white">{submissionData.score}%</span>
                       </div>
                     )}
                     
@@ -631,7 +672,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       </div>
                     )}
                     
-                    {/* Form specific data */}
+                    {/* Form specific */}
                     {submissionData.form_data && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Form Data:</span>
@@ -639,7 +680,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       </div>
                     )}
                     
-                    {/* Download specific data */}
+                    {/* Download specific */}
                     {submissionData.download_path && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Download Path:</span>
@@ -651,59 +692,24 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                     {submissionData.verified_at && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Verified At:</span>
-                        <span className="text-white">{formatDate(submissionData.verified_at)}</span>
+                        <span className="text-white">{new Date(submissionData.verified_at).toLocaleString()}</span>
                       </div>
                     )}
                     
                     {/* Any other fields that aren't covered above */}
-                    {Object.entries(submissionData).filter(([key, value]) => 
-                      value && 
-                      !['url', 'action', 'task_type', 'duration_seconds', 'social_platform', 
-                        'social_action', 'discord_user_id', 'guild_id', 'telegram_user_id', 
-                        'telegram_username', 'channel_id', 'score', 'correct_answers', 
+                    {Object.entries(submissionData).filter(([key, value]) =>
+                      value &&
+                      !['url', 'action', 'task_type', 'duration_seconds', 'social_platform',
+                        'social_action', 'discord_user_id', 'guild_id', 'telegram_user_id',
+                        'telegram_username', 'channel_id', 'score', 'correct_answers',
                         'total_questions', 'form_data', 'download_path', 'verified_at'].includes(key)
                     ).map(([key, value]) => (
                       <div key={key} className="flex items-center gap-2">
                         <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}:</span>
-                        <span className="text-white">{String(value)}</span>
+                        <span className="text-white break-words">{String(value)}</span>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-              
-              {/* Show empty state if no submission data */}
-              {Object.keys(submissionData).length === 0 && (
-                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
-                  <span className="text-gray-400">No submission data available</span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-white mb-3">Verification Data</h4>
-            <div className="space-y-3 text-sm">
-              <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
-                <span className="text-gray-400">Method:</span>
-                <span className="text-white ml-2">{verificationData.method || 'Unknown'}</span>
-              </div>
-              
-              {verificationData.verified !== undefined && (
-                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
-                  <span className="text-gray-400">Verified:</span>
-                  <span className={`ml-2 ${verificationData.verified ? 'text-green-400' : 'text-red-400'}`}>
-                    {verificationData.verified ? 'Yes' : 'No'}
-                  </span>
-                </div>
-              )}
-              
-              {(submission.xp_removal_reason || submission.submission_data?.xp_removal_reason) && (
-                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
-                  <span className="text-gray-400">XP Removal Reason:</span>
-                  <span className="text-red-400 ml-2">
-                    {submission.xp_removal_reason || submission.submission_data?.xp_removal_reason}
-                  </span>
                 </div>
               )}
             </div>
@@ -718,7 +724,8 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
     if (!submission?.users) return null
 
     const user = submission.users
-    const socialAccounts = submission.social_accounts || []
+    // Get social accounts from the user's actual connected accounts, not from submission
+    const socialAccounts = user.user_metadata?.providers || []
 
     return (
       <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
@@ -759,58 +766,6 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
             <div>
               <h4 className="font-semibold text-white mb-3">Connected Accounts</h4>
               <div className="space-y-3">
-                {/* Wallet */}
-                {socialAccounts.find(acc => acc.platform === 'solana') && (
-                  <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
-                    <Wallet className="w-5 h-5 text-purple-400" />
-                    <div>
-                      <div className="text-white font-medium">Wallet</div>
-                      <div className="text-gray-400 text-sm">
-                        {socialAccounts.find(acc => acc.platform === 'solana')?.wallet_address}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Discord */}
-                {socialAccounts.find(acc => acc.platform === 'discord') && (
-                  <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
-                    <MessageCircle className="w-5 h-5 text-blue-400" />
-                    <div>
-                      <div className="text-white font-medium">Discord</div>
-                      <div className="text-gray-400 text-sm">
-                        {socialAccounts.find(acc => acc.platform === 'discord')?.discord_username}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* X/Twitter */}
-                {socialAccounts.find(acc => acc.platform === 'x') && (
-                  <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
-                    <Twitter className="w-5 h-5 text-blue-400" />
-                    <div>
-                      <div className="text-white font-medium">X (Twitter)</div>
-                      <div className="text-gray-400 text-sm">
-                        {socialAccounts.find(acc => acc.platform === 'x')?.x_username}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Telegram */}
-                {socialAccounts.find(acc => acc.platform === 'telegram') && (
-                  <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
-                    <MessageSquare className="w-5 h-5 text-blue-400" />
-                    <div>
-                      <div className="text-white font-medium">Telegram</div>
-                      <div className="text-gray-400 text-sm">
-                        {socialAccounts.find(acc => acc.platform === 'telegram')?.telegram_username}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Check for social accounts in user metadata (for OAuth users) */}
                 {user.user_metadata && (
                   <>
@@ -819,7 +774,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
                         <MessageCircle className="w-5 h-5 text-blue-400" />
                         <div>
-                          <div className="text-white font-medium">Discord (OAuth)</div>
+                          <div className="text-white font-medium">Discord</div>
                           <div className="text-gray-400 text-sm">
                             {user.user_metadata.discord_username || user.user_metadata.discord_id}
                           </div>
@@ -832,9 +787,22 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
                         <Twitter className="w-5 h-5 text-blue-400" />
                         <div>
-                          <div className="text-white font-medium">X (Twitter) (OAuth)</div>
+                          <div className="text-white font-medium">X (Twitter)</div>
                           <div className="text-gray-400 text-sm">
                             {user.user_metadata.x_username}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Telegram from metadata */}
+                    {user.user_metadata.telegram_id && (
+                      <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                        <MessageSquare className="w-5 h-5 text-blue-400" />
+                        <div>
+                          <div className="text-white font-medium">Telegram</div>
+                          <div className="text-gray-400 text-sm">
+                            {user.user_metadata.telegram_username || user.user_metadata.telegram_id}
                           </div>
                         </div>
                       </div>
@@ -842,7 +810,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                   </>
                 )}
 
-                {socialAccounts.length === 0 && !user.user_metadata?.discord_id && !user.user_metadata?.x_username && (
+                {!user.user_metadata?.discord_id && !user.user_metadata?.x_username && !user.user_metadata?.telegram_id && (
                   <div className="text-gray-400 text-center py-4">
                     No connected accounts found
                   </div>
@@ -899,12 +867,14 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
               <Users className="w-5 h-5" />
               User Submissions
             </CardTitle>
-            {onExport && (
-              <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
-                <FileDown className="w-4 h-4 mr-2" />
-                Export Submissions
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {onExport && (
+                <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -925,12 +895,14 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
               <Users className="w-5 h-5" />
               User Submissions
             </CardTitle>
-            {onExport && (
-              <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
-                <FileDown className="w-4 h-4 mr-2" />
-                Export Submissions
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {onExport && (
+                <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -951,28 +923,30 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
               <Users className="w-5 h-5" />
               User Submissions ({submissions.length})
             </CardTitle>
-            {onExport && (
-              <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
-                <FileDown className="w-4 h-4 mr-2" />
-                Export Submissions
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {onExport && (
+                <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <div className="min-w-full inline-block align-middle">
+          <div className="overflow-x-auto">
+            <div className="min-w-full">
               <div className="overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-[#282828] hover:bg-[#181818]">
-                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">User</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[140px] sm:min-w-[180px]">Task</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[80px] sm:min-w-[100px]">Type</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">Status</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">Task XP</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">Date</TableHead>
-                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium">Actions</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[120px] sm:min-w-[140px]">User</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[120px] sm:min-w-[160px] max-w-[200px] lg:max-w-[250px]">Task</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[70px] sm:min-w-[90px]">Type</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[70px] sm:min-w-[90px]">Status</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[60px] sm:min-w-[80px]">XP</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[80px] sm:min-w-[100px]">Date</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm font-medium min-w-[80px] sm:min-w-[100px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -980,15 +954,15 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                       <React.Fragment key={submission.id}>
                         <TableRow className="border-[#282828] hover:bg-[#181818]">
                           <TableCell className="text-xs sm:text-sm">
-                            <div className="flex items-center gap-2 min-w-[120px] sm:min-w-[150px]">
-                              <Avatar className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
+                            <div className="flex items-center gap-2 min-w-[100px] sm:min-w-[120px]">
+                              <Avatar className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
                                 <AvatarImage src={submission.users?.avatar_url || undefined} />
                                 <AvatarFallback className="text-xs">
                                   {submission.users?.username?.charAt(0) || submission.users?.email?.charAt(0) || 'U'}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
-                                <div className="text-white font-medium break-words leading-tight">
+                                <div className="text-white font-medium break-words leading-tight text-xs sm:text-sm">
                                   {submission.users?.username || submission.users?.email || 'Unknown User'}
                                 </div>
                                 <div className="text-gray-400 text-xs break-words leading-tight mt-1">
@@ -1005,32 +979,32 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                             </div>
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm">
-                            <div className="min-w-[140px] sm:min-w-[180px] max-w-[200px] lg:max-w-[250px]">
-                              <div className="text-white font-medium break-words leading-tight">
+                            <div className="min-w-[100px] sm:min-w-[140px] max-w-[180px] lg:max-w-[220px]">
+                              <div className="text-white font-medium break-words leading-tight text-xs sm:text-sm">
                                 {submission.tasks?.title || 'Unknown Task'}
                               </div>
                               <div className="text-gray-400 text-xs break-words leading-tight mt-1">
                                 <div className="flex items-center gap-1">
                                   {submission.tasks && getTaskIcon(submission.tasks as Task)}
-                                  <span className="capitalize">{submission.tasks?.type || 'Unknown'}</span>
+                                  <span className="capitalize">{submission.tasks ? getTaskTypeDisplay(submission.tasks as Task) : 'Unknown'}</span>
                                 </div>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm">
-                            <div className="flex items-center gap-1 min-w-[80px] sm:min-w-[100px]">
+                            <div className="flex items-center gap-1 min-w-[60px] sm:min-w-[80px]">
                               {submission.tasks && getTaskIcon(submission.tasks as Task)}
-                              <span className="capitalize font-medium text-white">{submission.tasks?.type || 'Unknown'}</span>
+                              <span className="capitalize font-medium text-white text-xs sm:text-sm">{submission.tasks ? getTaskTypeDisplay(submission.tasks as Task) : 'Unknown'}</span>
                             </div>
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm">
-                            <div className="min-w-[80px] sm:min-w-[100px]">
+                            <div className="min-w-[60px] sm:min-w-[80px]">
                               {getStatusBadge(submission)}
                             </div>
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm">
-                            <div className="text-center min-w-[80px] sm:min-w-[100px]">
-                              <div className="text-white font-medium">
+                            <div className="text-center min-w-[50px] sm:min-w-[70px]">
+                              <div className="text-white font-medium text-xs sm:text-sm">
                                 {submission.tasks?.xp_reward || 0} XP
                               </div>
                               {submission.xp_removed && (
@@ -1041,17 +1015,17 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                             </div>
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm">
-                            <div className="text-gray-300 min-w-[100px] sm:min-w-[120px]">
+                            <div className="text-gray-300 min-w-[70px] sm:min-w-[90px] text-xs sm:text-sm">
                               {formatDate(submission.created_at)}
                             </div>
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm">
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 min-w-[70px] sm:min-w-[90px]">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => toggleRowExpansion(submission.id)}
-                                className="h-6 w-6 p-0"
+                                className="h-5 w-5 sm:h-6 sm:w-6 p-0"
                               >
                                 {expandedRows.has(submission.id) ? (
                                   <ChevronUp className="w-3 h-3" />
@@ -1063,10 +1037,10 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                                 size="sm"
                                 variant="outline"
                                 onClick={() => {
-                                  setSelectedUser(submission.users?.id || null)
+                                  setSelectedUser(submission.user_id)
                                   setShowUserModal(true)
                                 }}
-                                className="h-6 w-6 p-0"
+                                className="h-5 w-5 sm:h-6 sm:w-6 p-0"
                               >
                                 <User className="w-3 h-3" />
                               </Button>
@@ -1075,7 +1049,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport 
                                   size="sm"
                                   variant="destructive"
                                   onClick={() => setShowRemoveXPDialog(submission.id)}
-                                  className="h-6 w-6 p-0"
+                                  className="h-5 w-5 sm:h-6 sm:w-6 p-0"
                                 >
                                   <Trash className="w-3 h-3" />
                                 </Button>

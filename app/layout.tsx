@@ -4,11 +4,13 @@ import ClientLayout from "./ClientLayout"
 import { Toaster } from "@/components/ui/toaster"
 import { Inter, Poppins } from 'next/font/google'
 
-// Add font configurations
+// Add font configurations with proper subsets
 const inter = Inter({ 
-  subsets: ['latin'],
+  subsets: ['latin', 'cyrillic-ext'],
   variable: '--font-inter',
   display: 'swap',
+  preload: true,
+  fallback: ['system-ui', 'arial'],
 })
 
 const poppins = Poppins({ 
@@ -16,6 +18,8 @@ const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-poppins',
   display: 'swap',
+  preload: true,
+  fallback: ['system-ui', 'arial'],
 })
 
 export default function RootLayout({

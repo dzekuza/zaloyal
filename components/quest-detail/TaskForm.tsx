@@ -236,6 +236,52 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     console.log('DEBUG: TaskForm handleSubmit called with formData:', formData)
+    
+    // Validate required fields based on task type
+    if (formData.type === 'social') {
+      if (!formData.social_platform) {
+        alert('Please select a social platform')
+        return
+      }
+      if (!formData.social_action) {
+        alert('Please select a social action')
+        return
+      }
+      if (!formData.social_url) {
+        alert('Please enter a URL')
+        return
+      }
+    }
+    
+    if (formData.type === 'visit') {
+      if (!formData.visit_url) {
+        alert('Please enter a visit URL')
+        return
+      }
+    }
+    
+    if (formData.type === 'download') {
+      if (!formData.download_url) {
+        alert('Please upload a file or enter a download URL')
+        return
+      }
+    }
+    
+    if (formData.type === 'learn') {
+      if (!formData.quiz_question) {
+        alert('Please enter a quiz question')
+        return
+      }
+      if (!formData.quiz_answer_1 || !formData.quiz_answer_2) {
+        alert('Please provide at least 2 answer options')
+        return
+      }
+      if (formData.quiz_correct_answer === null || formData.quiz_correct_answer === undefined) {
+        alert('Please select the correct answer')
+        return
+      }
+    }
+    
     onSubmit(formData)
   }
 
@@ -370,6 +416,7 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
           value={formData.social_url || ''}
           onChange={(e) => setFormData(prev => ({ ...prev, social_url: e.target.value }))}
           className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
+          required={formData.type === 'social'}
         />
         {formData.social_platform === 'discord' && (
           <p className="text-xs text-gray-400">

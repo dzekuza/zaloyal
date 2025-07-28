@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Trophy, Zap, CheckCircle, Star, Clock } from "lucide-react";
 import QuestCard from '@/components/QuestCard';
 
-export default function DashboardClient({ profile, activeQuests, completedQuests, badges, achievements }: any) {
+export default function DashboardClient({ profile, activeQuests, completedQuests, completedTasks, badges, achievements }: any) {
   const [activeTab, setActiveTab] = useState("overview");
 
   // Level progress calculation
@@ -185,23 +185,53 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
           <TabsContent value="history" className="space-y-6">
             <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white">Completed Quests</CardTitle>
-                <CardDescription className="text-gray-300">Your quest completion history</CardDescription>
+                <CardTitle className="text-white">Completed Tasks</CardTitle>
+                <CardDescription className="text-gray-300">Your task completion history with project and quest details</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {completedQuests.map((quest: any) => (
-                    <div key={quest.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
-                      <div>
-                        <h3 className="text-white font-semibold">{quest.title}</h3>
-                        <p className="text-gray-400 text-sm">Completed on {quest.completed_at}</p>
+                  {completedTasks.map((taskSubmission: any) => {
+                    const task = taskSubmission.tasks;
+                    const quest = task?.quests;
+                    const project = quest?.projects;
+                    
+                    if (!task || !quest) return null;
+                    
+                    return (
+                      <div key={taskSubmission.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            {project?.logo_url && (
+                              <img 
+                                src={project.logo_url} 
+                                alt={project.name} 
+                                className="w-6 h-6 rounded-full"
+                              />
+                            )}
+                            <div>
+                              <h3 className="text-white font-semibold">{task.title}</h3>
+                              <p className="text-gray-400 text-sm">
+                                {project?.name || 'Unknown Project'} • {quest.title}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-gray-400 text-xs">
+                            Completed on {new Date(taskSubmission.created_at).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-yellow-400 font-semibold">+{task.xp_reward} XP</p>
+                          <p className="text-gray-400 text-xs capitalize">{task.type}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-yellow-400 font-semibold">+{quest.total_xp_earned} XP</p>
-                        <p className="text-gray-400 text-sm">Rank #{quest.rank}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

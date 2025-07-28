@@ -142,7 +142,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
     }
 
     checkUserSubmissions()
-  }, [])
+  }, [verifyingTask]) // Refresh when verification status changes
 
   if (!isAuthenticated && !isAdminOrCreator()) {
     return (
@@ -366,16 +366,11 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
             <div className="mt-3">
               {task.social_action === 'join' && task.social_url ? (
                 <div className="space-y-2">
-                  <a 
-                    href={getAbsoluteUrl(task.social_url)} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-indigo-400 hover:text-indigo-300 text-sm break-all block"
-                  >
-                    Join Discord Server
-                  </a>
                   <p className="text-xs text-gray-400">
-                    Click the link above to join the Discord server, then click "Verify Task" to confirm your membership.
+                    {completedTasks[task.id] 
+                      ? "Click 'Verify Task' to confirm your Discord server membership."
+                      : "Click 'Complete Task' to open the Discord server, then join and come back to verify."
+                    }
                   </p>
                 </div>
               ) : (
@@ -521,7 +516,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                         </Button>
                       </div>
                     )}
-                    {!isCompleted && !isAdminOrCreator() && (
+                    {!isCompleted && !isLocallyCompleted && !isAdminOrCreator() && (
                       <div className="flex gap-1 md:gap-2">
                         {task.type === 'learn' ? (
                           <Button onClick={() => { setShowQuiz(s => ({ ...s, [task.id]: true })); setCompletedTasks(prev => ({ ...prev, [task.id]: true })); }} className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm" size="sm">Start Quiz</Button>
@@ -536,6 +531,55 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                               >
                                 {isCompleting ? 'Completing...' : 'Complete Task'}
                               </Button>
+                            ) : task.type === 'social' && task.social_platform === 'discord' ? (
+                              // For Discord tasks, show "Complete task" button first, then "Verify task" after completion
+                              <div className="flex gap-1 md:gap-2">
+                                {!completedTasks[task.id] ? (
+                                  <Button
+                                    onClick={() => {
+                                      if (task.social_url) {
+                                        window.open(task.social_url, '_blank');
+                                        setCompletedTasks(prev => ({ ...prev, [task.id]: true }));
+                                        toast({
+                                          title: "Discord server opened",
+                                          description: "Please join the server, then come back and click 'Verify Task'.",
+                                        });
+                                      }
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm"
+                                    size="sm"
+                                  >
+                                    Complete Task
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    onClick={async () => {
+                                      await handleTaskVerification(task);
+                                      // Refresh user submissions after verification
+                                      const { data: { session } } = await supabase.auth.getSession()
+                                      if (session) {
+                                        const { data: submissions } = await supabase
+                                          .from('user_task_submissions')
+                                          .select('*')
+                                          .eq('user_id', session.user.id)
+                                          .eq('status', 'verified')
+
+                                        const submissionsMap: Record<string, any> = {}
+                                        submissions?.forEach(submission => {
+                                          submissionsMap[submission.task_id] = submission
+                                        })
+
+                                        setUserSubmissions(submissionsMap)
+                                      }
+                                    }}
+                                    disabled={isVerifying}
+                                    className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
+                                    size="sm"
+                                  >
+                                    {isVerifying ? 'Verifying...' : 'Verify Task'}
+                                  </Button>
+                                )}
+                              </div>
                             ) : (
                               <Button
                                 onClick={async () => {

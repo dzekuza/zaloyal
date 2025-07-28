@@ -2,25 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const { guildId, userId } = await request.json()
-
-    if (!guildId || !userId) {
-      return NextResponse.json({ 
-        error: 'Missing guildId or userId' 
-      }, { status: 400 })
-    }
-
     if (!DISCORD_BOT_TOKEN) {
-      return NextResponse.json({ 
-        error: 'Discord bot token not configured' 
+      return NextResponse.json({
+        error: 'Discord bot token not configured',
+        message: 'DISCORD_BOT_TOKEN environment variable is not set'
       }, { status: 500 })
     }
 
-    console.log('DEBUG: Testing Discord bot with:', { guildId, userId })
-
-    // Test 1: Check if bot token is valid
+    // Test the bot token by getting bot info
     const botResponse = await fetch('https://discord.com/api/v10/users/@me', {
       headers: {
         'Authorization': `Bot ${DISCORD_BOT_TOKEN}`,
@@ -29,18 +20,17 @@ export async function POST(request: NextRequest) {
     })
 
     if (!botResponse.ok) {
-      const botError = await botResponse.text()
-      console.error('Bot token validation failed:', botError)
-      return NextResponse.json({ 
-        error: 'Invalid bot token',
-        details: botError
-      }, { status: 401 })
+      return NextResponse.json({
+        error: 'Invalid Discord bot token',
+        message: 'The Discord bot token is invalid or expired',
+        status: botResponse.status
+      }, { status: 500 })
     }
 
-    const botData = await botResponse.json()
-    console.log('DEBUG: Bot validation successful:', { botId: botData.id, botUsername: botData.username })
+    const botInfo = await botResponse.json()
 
-    // Test 2: Check if bot can access the guild
+    // Test guild access for the specific server
+    const guildId = '1399394969722294445' // The guild ID from the logs
     const guildResponse = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, {
       headers: {
         'Authorization': `Bot ${DISCORD_BOT_TOKEN}`,
@@ -48,60 +38,29 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    if (!guildResponse.ok) {
-      const guildError = await guildResponse.text()
-      console.error('Guild access failed:', guildError)
-      return NextResponse.json({ 
-        error: 'Bot cannot access guild',
-        details: guildError
-      }, { status: 403 })
-    }
-
-    const guildData = await guildResponse.json()
-    console.log('DEBUG: Guild access successful:', { guildName: guildData.name, guildId: guildData.id })
-
-    // Test 3: Check if user is a member of the guild
-    const memberResponse = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, {
-      headers: {
-        'Authorization': `Bot ${DISCORD_BOT_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
-    })
-
-    const isMember = memberResponse.ok
-    const memberData = isMember ? await memberResponse.json() : null
-
-    console.log('DEBUG: Member check result:', { isMember, memberData })
-
     return NextResponse.json({
       success: true,
-      bot: {
-        id: botData.id,
-        username: botData.username,
-        valid: true
+      botInfo: {
+        id: botInfo.id,
+        username: botInfo.username,
+        bot: botInfo.bot
       },
-      guild: {
-        id: guildData.id,
-        name: guildData.name,
-        accessible: true
+      guildAccess: {
+        guildId,
+        canAccess: guildResponse.ok,
+        status: guildResponse.status,
+        statusText: guildResponse.statusText
       },
-      member: {
-        userId,
-        isMember,
-        data: memberData
-      },
-      permissions: {
-        botTokenConfigured: !!DISCORD_BOT_TOKEN,
-        canAccessGuild: true,
-        canCheckMembers: true
-      }
+      message: guildResponse.ok 
+        ? 'Bot is properly configured and can access the guild'
+        : 'Bot cannot access the guild - it may not be in the server'
     })
 
   } catch (error) {
-    console.error('Discord bot test error:', error)
-    return NextResponse.json({ 
-      error: 'Discord bot test failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error testing Discord bot:', error)
+    return NextResponse.json({
+      error: 'Failed to test Discord bot',
+      message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 } 

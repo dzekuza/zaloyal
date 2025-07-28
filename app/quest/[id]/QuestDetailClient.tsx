@@ -220,7 +220,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   // Export submissions function
   const handleExportSubmissions = async () => {
     try {
-      // Fetch all submissions for this quest
+      // Fetch all submissions for this quest with comprehensive data
       const { data: submissions, error } = await supabase
         .from('user_task_submissions')
         .select(`
@@ -242,24 +242,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
       console.log('DEBUG: Fetched submissions:', submissions)
 
-      // Transform data for CSV export
-      const csvData = submissions?.map(submission => ({
-        'User ID': submission.user_id || 'Unknown',
-        'Username': submission.users?.username || submission.users?.email || 'Unknown',
-        'Wallet Address': submission.users?.wallet_address || 'N/A',
-        'Task Title': submission.tasks?.title || 'Unknown Task',
-        'Task Type': submission.tasks?.type || 'Unknown',
-        'XP Earned': submission.xp_earned || 0,
-        'Submission Date': submission.submitted_at || submission.created_at || 'N/A',
-        'Verification Date': submission.verified_at || 'N/A',
-        'Social Username': submission.social_username || 'N/A',
-        'Social Post URL': submission.social_post_url || 'N/A',
-        'Quiz Answers': submission.quiz_answers ? JSON.stringify(submission.quiz_answers) : 'N/A',
-        'Manual Verification Note': submission.manual_verification_note || 'N/A',
-        'XP Removal Reason': submission.xp_removal_reason || 'N/A',
-      })) || []
-
-      if (csvData.length === 0) {
+      if (!submissions || submissions.length === 0) {
         toast({
           title: 'No data to export',
           description: 'No submissions found for this quest',
@@ -268,11 +251,135 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         return
       }
 
-      // Convert to CSV
+      // Get auth users data for additional information
+      const userIds = [...new Set(submissions.map(s => s.user_id))]
+      const authUsersResponse = await fetch('/api/admin/get-auth-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userIds })
+      })
+
+      let authUsersMap = new Map()
+      if (authUsersResponse.ok) {
+        const { users: authUsersData } = await authUsersResponse.json()
+        authUsersData?.forEach((user: any) => {
+          authUsersMap.set(user.id, user)
+        })
+      }
+
+      // Transform data for CSV export with comprehensive information
+      const csvData = submissions.map(submission => {
+        const authUser = authUsersMap.get(submission.user_id)
+        const user = submission.users
+        const task = submission.tasks
+        const submissionData = submission.submission_data || {}
+        const verificationData = submission.verification_data || {}
+
+        // Helper function to safely extract nested data
+        const extractData = (obj: any, path: string, defaultValue = 'N/A') => {
+          try {
+            return path.split('.').reduce((o, i) => o?.[i], obj) || defaultValue
+          } catch {
+            return defaultValue
+          }
+        }
+
+        // Helper function to format complex data
+        const formatComplexData = (data: any) => {
+          if (!data) return 'N/A'
+          if (typeof data === 'string') return data
+          if (typeof data === 'number') return data.toString()
+          if (Array.isArray(data)) return data.join('; ')
+          if (typeof data === 'object') return JSON.stringify(data)
+          return String(data)
+        }
+
+        return {
+          'Submission ID': submission.id || 'N/A',
+          'User ID': submission.user_id || 'N/A',
+          'Username': user?.username || authUser?.user_metadata?.username || 'Unknown',
+          'Email': authUser?.email || user?.email || 'N/A',
+          'Wallet Address': user?.wallet_address || 'N/A',
+          'Task ID': submission.task_id || 'N/A',
+          'Task Title': task?.title || 'Unknown Task',
+          'Task Type': task?.type || 'Unknown',
+          'Task Description': task?.description || 'N/A',
+          'XP Earned': submission.xp_earned || task?.xp_reward || 0,
+          'XP Removed': submission.xp_removed || 0,
+          'XP Removal Reason': submission.xp_removal_reason || 'N/A',
+          'Status': submission.status || 'N/A',
+          'Submission Date': submission.submitted_at || submission.created_at || 'N/A',
+          'Verification Date': submission.verified_at || 'N/A',
+          'Manual Verification Note': submission.manual_verification_note || 'N/A',
+          
+          // Social-specific data
+          'Social Platform': extractData(submissionData, 'social_platform') || task?.social_platform || 'N/A',
+          'Social Action': extractData(submissionData, 'social_action') || task?.social_action || 'N/A',
+          'Social Username': submission.social_username || extractData(submissionData, 'social_username') || 'N/A',
+          'Social Post URL': submission.social_post_url || extractData(submissionData, 'social_post_url') || 'N/A',
+          'Social URL': extractData(submissionData, 'social_url') || task?.social_url || 'N/A',
+          
+          // Visit-specific data
+          'Visit URL': extractData(submissionData, 'visit_url') || task?.visit_url || 'N/A',
+          'Visit Duration': extractData(submissionData, 'duration_seconds') || task?.visit_duration_seconds || 'N/A',
+          
+          // Download-specific data
+          'Download URL': extractData(submissionData, 'download_url') || task?.download_url || 'N/A',
+          'Download Path': extractData(submissionData, 'download_path') || 'N/A',
+          
+          // Form-specific data
+          'Form URL': extractData(submissionData, 'form_url') || task?.form_url || 'N/A',
+          'Form Data': formatComplexData(extractData(submissionData, 'form_data')),
+          
+          // Quiz-specific data
+          'Quiz Score': extractData(submissionData, 'score') || 'N/A',
+          'Quiz Answers': formatComplexData(extractData(submissionData, 'answers')),
+          'Quiz Question': extractData(submissionData, 'question') || task?.quiz_question || 'N/A',
+          'Quiz Selected Answers': formatComplexData(extractData(submissionData, 'selected_answers')),
+          'Quiz Answer Details': formatComplexData(extractData(submissionData, 'quiz_answers')),
+          
+          // Discord-specific data
+          'Discord User ID': extractData(submissionData, 'discord_user_id') || 'N/A',
+          'Discord Guild ID': extractData(submissionData, 'guild_id') || 'N/A',
+          
+          // Telegram-specific data
+          'Telegram User ID': extractData(submissionData, 'telegram_user_id') || 'N/A',
+          'Telegram Username': extractData(submissionData, 'telegram_username') || 'N/A',
+          'Telegram Channel ID': extractData(submissionData, 'channel_id') || 'N/A',
+          
+          // Verification data
+          'Verification Method': extractData(verificationData, 'method') || 'N/A',
+          'Verification Status': extractData(verificationData, 'verified') ? 'Verified' : 'Not Verified',
+          'Social Verification Status': extractData(verificationData, 'social_verified') ? 'Verified' : 'Not Verified',
+          
+          // User metadata
+          'User Created At': authUser?.created_at || user?.created_at || 'N/A',
+          'User Last Sign In': authUser?.last_sign_in_at || 'N/A',
+          'Email Confirmed At': authUser?.email_confirmed_at || 'N/A',
+          'User Role': authUser?.app_metadata?.role || authUser?.user_metadata?.role || 'N/A',
+          
+          // Raw data for debugging
+          'Raw Submission Data': formatComplexData(submissionData),
+          'Raw Verification Data': formatComplexData(verificationData),
+        }
+      })
+
+      // Convert to CSV with proper escaping
       const headers = Object.keys(csvData[0])
       const csvContent = [
         headers.join(','),
-        ...csvData.map(row => headers.map(header => `"${String(row[header as keyof typeof row])}"`).join(','))
+        ...csvData.map(row => 
+          headers.map(header => {
+            const value = String(row[header as keyof typeof row] || '')
+            // Escape quotes and wrap in quotes if contains comma, quote, or newline
+            const escaped = value.replace(/"/g, '""')
+            return value.includes(',') || value.includes('"') || value.includes('\n') 
+              ? `"${escaped}"` 
+              : escaped
+          }).join(',')
+        )
       ].join('\n')
 
       // Create and download file
@@ -280,15 +387,16 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       const link = document.createElement('a')
       const url = URL.createObjectURL(blob)
       link.setAttribute('href', url)
-      link.setAttribute('download', `${quest.title}_submissions_${new Date().toISOString().split('T')[0]}.csv`)
+      link.setAttribute('download', `${quest.title.replace(/[^a-zA-Z0-9]/g, '_')}_submissions_${new Date().toISOString().split('T')[0]}.csv`)
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      URL.revokeObjectURL(url)
 
       toast({
         title: 'Export successful',
-        description: `Exported ${csvData.length} submissions`,
+        description: `Exported ${csvData.length} submissions to CSV`,
       })
     } catch (error) {
       console.error('Error exporting submissions:', error)
@@ -551,8 +659,23 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               return
             }
             
-            verified = result.verified
-            message = result.message || (verified ? 'Discord task verified successfully!' : 'Discord task verification failed. Please join the server and try again.')
+            if (result.success && result.verified) {
+              verified = true
+              message = result.message || 'Discord task verified successfully!'
+              // Discord tasks are already handled by the API
+              // No need to create duplicate submission records
+              toast({
+                title: 'Task completed!',
+                description: message,
+              })
+              setVerifyingTask(null)
+              // Refresh user submissions to update UI
+              await refreshTasks()
+              return
+            } else {
+              verified = false
+              message = result.message || 'Discord task verification failed. Please join the server and try again.'
+            }
           } else if (task.social_platform === 'telegram') {
             // For Telegram, use the existing verification endpoint
             const response = await fetch('/api/verify/telegram-join-real', {
@@ -767,6 +890,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           status: 'verified',
           submitted_at: new Date().toISOString(),
           verified_at: new Date().toISOString(),
+          verified: true,
           submission_data: {
             task_type: task.type,
             social_platform: task.social_platform,
@@ -778,9 +902,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           verification_data: {
             method: 'api_verification',
             verified: true
-          },
-          xp_earned: task.xp_reward,
-          xp_awarded: task.xp_reward
+          }
         }
 
         // Save task submission to database
@@ -897,10 +1019,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         social_username: taskData.social_username || null,
         social_post_id: taskData.social_post_id || null,
         download_url: taskData.download_url || null,
-        form_url: taskData.form_url || null,
         visit_url: taskData.visit_url || null,
-        visit_title: taskData.visit_title || null,
-        visit_description: taskData.visit_description || null,
         visit_duration_seconds: taskData.visit_duration_seconds || null,
         learn_content: taskData.learn_content || null,
         learn_questions: taskData.learn_questions || null,
@@ -916,6 +1035,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         order_index: tasks.length
       }
 
+      console.log('DEBUG: Task insert data:', taskInsertData)
+
       const { data, error } = await supabase
         .from('tasks')
         .insert(taskInsertData)
@@ -926,7 +1047,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         console.error('Error adding task:', error)
         toast({
           title: 'Failed to add task',
-          description: 'Failed to add task',
+          description: error.message || 'Failed to add task',
           variant: 'destructive',
         })
         return
@@ -975,10 +1096,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         social_post_id: taskData.social_post_id,
         download_url: taskData.download_url,
         // Removed fields that don't exist: download_title, download_description, form_title, form_description, etc.
-                          // form_url: taskData.form_url, // Removed - column doesn't exist in database
         visit_url: taskData.visit_url,
-        visit_title: taskData.visit_title,
-        visit_description: taskData.visit_description,
         visit_duration_seconds: taskData.visit_duration_seconds,
         learn_content: taskData.learn_content,
         learn_questions: taskData.learn_questions,
@@ -993,6 +1111,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         quiz_is_multi_select: taskData.quiz_is_multi_select
       }
 
+      console.log('DEBUG: Task update data:', taskUpdateData)
+
       const { data, error } = await supabase
         .from('tasks')
         .update(taskUpdateData)
@@ -1004,7 +1124,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         console.error('Error updating task:', error)
         toast({
           title: 'Failed to update task',
-          description: 'Failed to update task',
+          description: error.message || 'Failed to update task',
           variant: 'destructive',
         })
         return
@@ -1043,7 +1163,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
   return (
     <PageContainer>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         
         <QuestHeader 
           quest={quest} 
@@ -1053,30 +1173,34 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           onEditQuest={() => setShowEditQuest(true)}
         />
         
-        <TaskList
-          tasks={tasks}
-          verifyingTask={verifyingTask}
-          submissionData={submissionData}
-          isAdminOrCreator={isAdminOrCreator}
-          setEditingTask={setEditingTask}
-          setShowEditTask={setShowEditTask}
-          setShowQuiz={setShowQuiz}
-          handleTaskVerification={handleTaskVerification}
-          handleDeleteTask={handleDeleteTask}
-          walletUser={walletUser}
-          isAuthenticated={isAuthenticated}
-          questId={quest.id}
-        />
+        <div className="overflow-hidden">
+          <TaskList
+            tasks={tasks}
+            verifyingTask={verifyingTask}
+            submissionData={submissionData}
+            isAdminOrCreator={isAdminOrCreator}
+            setEditingTask={setEditingTask}
+            setShowEditTask={setShowEditTask}
+            setShowQuiz={setShowQuiz}
+            handleTaskVerification={handleTaskVerification}
+            handleDeleteTask={handleDeleteTask}
+            walletUser={walletUser}
+            isAuthenticated={isAuthenticated}
+            questId={quest.id}
+          />
+        </div>
 
         {/* Admin Submissions Table */}
         {isAdminOrCreator() && (
-          <div className="mt-8">
-            <AdminSubmissionsTable 
-              quest={quest} 
-              tasks={tasks} 
-              isAdmin={true}
-              onExport={handleExportSubmissions}
-            />
+          <div className="mt-6 sm:mt-8">
+            <div className="overflow-hidden">
+              <AdminSubmissionsTable 
+                quest={quest} 
+                tasks={tasks} 
+                isAdmin={true}
+                onExport={handleExportSubmissions}
+              />
+            </div>
           </div>
         )}
 

@@ -9,6 +9,19 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     setIsMounted(true)
+    
+    // Handle font loading errors to prevent JavaScript syntax errors
+    const handleFontError = (event: Event) => {
+      console.warn('Font loading error detected, using fallback fonts:', event)
+    }
+    
+    // Listen for font loading errors
+    document.addEventListener('error', handleFontError, true)
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('error', handleFontError, true)
+    }
   }, [])
 
   // Prevent hydration mismatch by not rendering until mounted

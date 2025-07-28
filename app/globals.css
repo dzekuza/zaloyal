@@ -67,16 +67,36 @@
   body {
     @apply bg-background text-foreground;
     background-color: #181818;
-    font-family: var(--font-inter), system-ui, sans-serif;
+    font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-display: swap;
   }
   
-  /* Font utilities */
+  /* Font utilities with better fallbacks */
   .font-display {
-    font-family: var(--font-poppins), system-ui, sans-serif;
+    font-family: var(--font-poppins), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-display: swap;
   }
   
   .font-body {
-    font-family: var(--font-inter), system-ui, sans-serif;
+    font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-display: swap;
+  }
+  
+  /* Prevent font loading errors */
+  @font-face {
+    font-family: 'Inter';
+    font-display: swap;
+    font-style: normal;
+    font-weight: 100 900;
+    src: local('Inter'), local('Inter-Regular');
+  }
+  
+  @font-face {
+    font-family: 'Poppins';
+    font-display: swap;
+    font-style: normal;
+    font-weight: 300 700;
+    src: local('Poppins'), local('Poppins-Regular');
   }
 }
 

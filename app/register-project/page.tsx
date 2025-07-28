@@ -35,6 +35,8 @@ import PageContainer from "@/components/PageContainer";
 import { toast } from 'sonner';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth-provider-wrapper";
+import { DiscordIcon, XIcon } from "@/components/discord-icon"
+import WalletIcon from "@/components/wallet-icon"
 
 interface ProjectForm {
   // Step 1: Basic Info
@@ -49,6 +51,7 @@ interface ProjectForm {
 
   // Step 3: Social Media
   twitterUrl: string
+  twitterUsername: string
   discordUrl: string
   telegramUrl: string
   githubUrl: string
@@ -58,6 +61,21 @@ interface ProjectForm {
   logoUrl: string
   coverImageUrl: string
   additionalInfo: string
+}
+
+interface LinkedIdentity {
+  id: string;
+  user_id: string;
+  identity_id: string;
+  provider: string;
+  identity_data?: {
+    user_name?: string;
+    screen_name?: string;
+    name?: string;
+    avatar_url?: string;
+    email?: string;
+    [key: string]: any;
+  };
 }
 
 const blockchainNetworks = [
@@ -95,6 +113,7 @@ const steps = [
 
 function RegisterProjectContent() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -109,6 +128,7 @@ function RegisterProjectContent() {
     contractAddress: "",
     blockchainNetwork: "",
     twitterUrl: "",
+    twitterUsername: "",
     discordUrl: "",
     telegramUrl: "",
     githubUrl: "",
@@ -118,14 +138,233 @@ function RegisterProjectContent() {
     additionalInfo: "",
   })
   const router = useRouter()
+  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
   const [unlinkingDiscord, setUnlinkingDiscord] = useState(false)
   const discordInfo = user?.profile?.discord_id ? {
-    id: user.profile.discord_id,
-    username: user.profile.discord_username,
+    username: user.profile.discord_username || "Discord User",
     avatar: user.profile.discord_avatar_url,
   } : null
 
   const currentUser = user
+
+  // Social account linking states
+  const [linkedIdentities, setLinkedIdentities] = useState<LinkedIdentity[]>([])
+  const [isLinking, setIsLinking] = useState<string | null>(null)
+
+  // Fetch linked social accounts
+  const fetchLinkedIdentities = async () => {
+    try {
+      // Get Auth identities first
+      const { data: identities, error } = await supabase.auth.getUserIdentities();
+      
+      if (error) {
+        console.error('Error fetching identities:', error);
+      }
+
+      const linkedIdentities: LinkedIdentity[] = [];
+
+      // Process Auth identities
+      if (identities?.identities) {
+        identities.identities.forEach((identity: any) => {
+          if (identity.provider === 'discord') {
+            linkedIdentities.push({
+              id: identity.identity_id,
+              user_id: user?.id || '',
+              identity_id: identity.identity_id,
+              provider: 'discord',
+              identity_data: {
+                user_name: identity.identity_data?.username || identity.identity_data?.name,
+                screen_name: identity.identity_data?.username || identity.identity_data?.name,
+                name: identity.identity_data?.name || identity.identity_data?.full_name,
+                avatar_url: identity.identity_data?.avatar_url || identity.identity_data?.picture,
+              }
+            });
+          } else if (identity.provider === 'twitter') {
+            linkedIdentities.push({
+              id: identity.identity_id,
+              user_id: user?.id || '',
+              identity_id: identity.identity_id,
+              provider: 'x', // Map twitter to 'x' for UI consistency
+              identity_data: {
+                user_name: identity.identity_data?.user_name || identity.identity_data?.screen_name,
+                screen_name: identity.identity_data?.screen_name || identity.identity_data?.user_name,
+                name: identity.identity_data?.name || identity.identity_data?.screen_name,
+                avatar_url: identity.identity_data?.avatar_url || identity.identity_data?.profile_image_url,
+              }
+            });
+          }
+        });
+      }
+
+      // Also check social_accounts table for additional linked accounts
+      if (user?.id) {
+        const { data: socialAccounts, error: socialError } = await supabase
+          .from('social_accounts')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (socialError) {
+          console.error('Error fetching social accounts:', socialError);
+        } else if (socialAccounts) {
+          socialAccounts.forEach((account) => {
+            // Check if this account is already in linkedIdentities
+            const existingIdentity = linkedIdentities.find(
+              identity => identity.provider === account.platform
+            );
+
+            if (!existingIdentity) {
+              // Add account from social_accounts table
+              linkedIdentities.push({
+                id: account.id,
+                user_id: account.user_id,
+                identity_id: account.account_id,
+                provider: account.platform,
+                identity_data: {
+                  user_name: account.username || account.account_id,
+                  screen_name: account.username || account.account_id,
+                  name: account.username || account.account_id,
+                  avatar_url: account.profile_data?.avatar_url,
+                }
+              });
+            }
+          });
+        }
+      }
+
+      setLinkedIdentities(linkedIdentities);
+      
+      // Pre-populate social links if accounts are linked
+      const twitterIdentity = linkedIdentities.find(id => id.provider === 'x');
+      const discordIdentity = linkedIdentities.find(id => id.provider === 'discord');
+      
+      if (twitterIdentity && !formData.twitterUrl) {
+        setFormData(prev => ({
+          ...prev,
+          twitterUrl: `https://twitter.com/${twitterIdentity.identity_data?.user_name || twitterIdentity.identity_data?.screen_name}`
+        }));
+      }
+      if (twitterIdentity && !formData.twitterUsername) {
+        setFormData(prev => ({
+          ...prev,
+          twitterUsername: twitterIdentity.identity_data?.user_name || twitterIdentity.identity_data?.screen_name || ''
+        }));
+      }
+      if (discordIdentity && !formData.discordUrl) {
+        setFormData(prev => ({
+          ...prev,
+          discordUrl: `https://discord.gg/${discordIdentity.identity_data?.user_name || discordIdentity.identity_data?.screen_name}`
+        }));
+      }
+      
+    } catch (error) {
+      console.error('Error fetching linked identities:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchLinkedIdentities();
+    }
+  }, [user]);
+
+  // Link Discord account
+  const handleLinkDiscord = async () => {
+    setIsLinking('discord');
+    try {
+      console.log('DEBUG: Initiating Discord OAuth via Supabase Auth');
+
+      // Clear any existing OAuth state
+      localStorage.removeItem('supabase.auth.token')
+      sessionStorage.removeItem('supabase.auth.token')
+      
+      // Generate a unique state parameter
+      const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      sessionStorage.setItem('oauth_state', state)
+
+      if (!user) {
+        throw new Error('Please log in with your email first.');
+      }
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'discord',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback/supabase`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Discord OAuth initiated successfully');
+    } catch (error) {
+      console.error('Discord linking error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to link Discord account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLinking(null);
+    }
+  };
+
+  // Link X (Twitter) account
+  const handleLinkX = async () => {
+    setIsLinking('x');
+    try {
+      console.log('DEBUG: Initiating X OAuth via Supabase Auth');
+
+      // Clear any existing OAuth state
+      localStorage.removeItem('supabase.auth.token')
+      sessionStorage.removeItem('supabase.auth.token')
+      
+      // Generate a unique state parameter
+      const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      sessionStorage.setItem('oauth_state', state)
+
+      if (!user) {
+        throw new Error('Please log in with your email first.');
+      }
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'twitter',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback/supabase`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('X OAuth initiated successfully');
+    } catch (error) {
+      console.error('X linking error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to link X account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLinking(null);
+    }
+  };
+
+  const getIdentityDisplayName = (identity: LinkedIdentity) => {
+    return identity.identity_data?.user_name || 
+           identity.identity_data?.screen_name || 
+           identity.identity_data?.name || 
+           'Unknown User';
+  };
 
   useEffect(() => {
     setIsClient(true);
@@ -289,6 +528,7 @@ function RegisterProjectContent() {
         contract_address: formData.contractAddress || null,
         blockchain_network: formData.blockchainNetwork || null,
         twitter_url: formData.twitterUrl || null,
+        twitter_username: formData.twitterUsername || null,
         discord_url: formData.discordUrl || null,
         telegram_url: formData.telegramUrl || null,
         github_url: formData.githubUrl || null,
@@ -362,11 +602,19 @@ function RegisterProjectContent() {
 
       setCreatedProjectId(insertedProjects?.id || null);
       setSubmitted(true)
-      toast.success('Project created!');
+      toast({
+        title: "Success",
+        description: "Project created!",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Project registration error:", error)
       alert("Failed to submit project application. Please try again.")
-      toast.error('Failed to submit project application.');
+      toast({
+        title: "Error",
+        description: "Failed to submit project application.",
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false)
     }
@@ -630,46 +878,111 @@ function RegisterProjectContent() {
               {currentStep === 3 && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Twitter URL */}
                     <div className="space-y-2">
                       <Label htmlFor="twitter" className="text-white flex items-center gap-2">
                         <Twitter className="w-4 h-4" />
                         Twitter
                       </Label>
-                      <Input
-                        id="twitter"
-                        value={formData.twitterUrl}
-                        onChange={(e) => handleInputChange("twitterUrl", e.target.value)}
-                        placeholder="https://twitter.com/yourproject"
-                        className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                      />
+                      {linkedIdentities.find(id => id.provider === 'x') ? (
+                        <Input
+                          id="twitter"
+                          value={formData.twitterUrl}
+                          onChange={(e) => handleInputChange("twitterUrl", e.target.value)}
+                          placeholder="https://twitter.com/yourproject"
+                          className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                          <div className="flex items-center gap-3">
+                            <XIcon className="w-6 h-6 text-gray-400" />
+                            <div>
+                              <div className="text-white font-medium">X (Twitter)</div>
+                              <div className="text-sm text-gray-400">Not connected</div>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                            onClick={handleLinkX}
+                            disabled={isLinking === 'x'}
+                          >
+                            {isLinking === 'x' ? 'Connecting...' : 'Connect'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
+                    {/* Twitter Username */}
+                    <div className="space-y-2">
+                      <Label htmlFor="twitterUsername" className="text-white flex items-center gap-2">
+                        <Twitter className="w-4 h-4" />
+                        Twitter Username
+                      </Label>
+                      {linkedIdentities.find(id => id.provider === 'x') ? (
+                        <Input
+                          id="twitterUsername"
+                          value={formData.twitterUsername}
+                          onChange={(e) => handleInputChange("twitterUsername", e.target.value)}
+                          placeholder="e.g. belinkxyz"
+                          className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                          <div className="flex items-center gap-3">
+                            <XIcon className="w-6 h-6 text-gray-400" />
+                            <div>
+                              <div className="text-white font-medium">X (Twitter)</div>
+                              <div className="text-sm text-gray-400">Not connected</div>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                            onClick={handleLinkX}
+                            disabled={isLinking === 'x'}
+                          >
+                            {isLinking === 'x' ? 'Connecting...' : 'Connect'}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Discord */}
                     <div className="space-y-2">
                       <Label htmlFor="discord" className="text-white flex items-center gap-2">
                         <MessageSquare className="w-4 h-4" />
                         Discord
                       </Label>
-                      {discordInfo ? (
-                        <div className="flex items-center gap-3">
-                          {discordInfo.avatar && (
-                            <img src={discordInfo.avatar} alt="Discord Avatar" className="w-8 h-8 rounded-full" />
-                          )}
-                          <span className="text-white font-medium">{discordInfo.username}</span>
-                          <Button
-                            className="bg-red-600 hover:bg-red-700 text-white border-0 ml-2"
-                            onClick={handleUnlinkDiscord}
-                            disabled={unlinkingDiscord}
+                      {linkedIdentities.find(id => id.provider === 'discord') ? (
+                        <Input
+                          id="discord"
+                          value={formData.discordUrl}
+                          onChange={(e) => handleInputChange("discordUrl", e.target.value)}
+                          placeholder="https://discord.gg/yourproject"
+                          className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                          <div className="flex items-center gap-3">
+                            <DiscordIcon className="w-6 h-6 text-gray-400" />
+                            <div>
+                              <div className="text-white font-medium">Discord</div>
+                              <div className="text-sm text-gray-400">Not connected</div>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleLinkDiscord}
+                            disabled={isLinking === 'discord'}
+                            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                           >
-                            {unlinkingDiscord ? 'Unlinking...' : 'Unlink Discord'}
+                            {isLinking === 'discord' ? 'Connecting...' : 'Connect'}
                           </Button>
                         </div>
-                      ) : (
-                        <Button
-                          className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
-                          onClick={() => supabase.auth.linkIdentity({ provider: 'discord' })}
-                        >
-                          Connect Discord
-                        </Button>
                       )}
                     </div>
 
