@@ -339,7 +339,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                     href={getAbsoluteUrl(task.social_url)} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 text-sm break-all"
+                    className="text-blue-400 hover:text-blue-300 text-sm break-all word-break-all"
                   >
                     Follow {task.social_username || 'admin'} on X
                   </a>
@@ -351,7 +351,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                   href={getAbsoluteUrl(task.social_url)} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 text-sm break-all"
+                  className="text-blue-400 hover:text-blue-300 text-sm break-all word-break-all"
                 >
                   {task.social_url}
                 </a>
@@ -387,7 +387,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                   href={getAbsoluteUrl(task.social_url)} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-blue-500 hover:text-blue-400 text-sm break-all"
+                  className="text-blue-500 hover:text-blue-400 text-sm break-all word-break-all"
                 >
                   Join {task.social_username || 'admin'} on Telegram
                 </a>
@@ -407,7 +407,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                 href={getAbsoluteUrl(task.visit_url)} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-purple-400 hover:text-purple-300 text-sm break-all"
+                className="text-purple-400 hover:text-purple-300 text-sm break-all word-break-all"
               >
                 {task.visit_url}
               </a>
@@ -435,7 +435,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                 href={getAbsoluteUrl(task.download_url)} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 text-sm break-all"
+                className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 text-sm break-all word-break-all"
                 onClick={() => trackTaskCompletion(task, 'downloaded', { url: task.download_url })}
               >
                 <Download className="w-4 h-4" />
@@ -492,20 +492,20 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
             <div key={task.id} className="flex items-start gap-3 md:gap-4 p-3 md:p-4 bg-[#111111] rounded-lg border border-[#282828] transition-all duration-300 hover:bg-[#181818] overflow-hidden">
               <div className="flex-1 min-w-0">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       {getTaskIcon(task)}
-                      <h3 className="text-white font-semibold text-sm md:text-base">{getTaskTypeDisplay(task)}</h3>
+                      <h3 className="text-white font-semibold text-sm md:text-base break-words">{getTaskTypeDisplay(task)}</h3>
                       {isCompleted && (
                         <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Completed</Badge>
                       )}
                     </div>
-                    <p className="text-gray-300 text-xs md:text-sm mb-3">{getTaskDescription(task)}</p>
+                    <p className="text-gray-300 text-xs md:text-sm mb-3 break-words">{getTaskDescription(task)}</p>
                     
                     {/* Task-specific content */}
                     {renderTaskContent(task)}
                   </div>
-                  <div className="flex items-center gap-1 md:gap-2">
+                  <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
                     {isAdminOrCreator() && (
                       <div className="flex gap-1">
                         <Button size="sm" variant="outline" onClick={() => { setEditingTask(task); setShowEditTask(true); }} className="h-6 w-6 md:h-8 md:w-8 p-0">
@@ -517,7 +517,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                       </div>
                     )}
                     {!isCompleted && !isLocallyCompleted && !isAdminOrCreator() && (
-                      <div className="flex gap-1 md:gap-2">
+                      <div className="flex gap-1 md:gap-2 flex-wrap">
                         {task.type === 'learn' ? (
                           <Button onClick={() => { setShowQuiz(s => ({ ...s, [task.id]: true })); setCompletedTasks(prev => ({ ...prev, [task.id]: true })); }} className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm" size="sm">Start Quiz</Button>
                         ) : (
@@ -533,7 +533,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                               </Button>
                             ) : task.type === 'social' && task.social_platform === 'discord' ? (
                               // For Discord tasks, show "Complete task" button first, then "Verify task" after completion
-                              <div className="flex gap-1 md:gap-2">
+                              <div className="flex gap-1 md:gap-2 flex-wrap">
                                 {!completedTasks[task.id] ? (
                                   <Button
                                     onClick={() => {

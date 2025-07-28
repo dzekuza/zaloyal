@@ -81,7 +81,7 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, 
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Quest Image */}
-      <div className="relative w-full h-32 sm:h-48 rounded-lg overflow-hidden bg-[#111111] border border-[#282828]">
+      <div className="relative w-full h-[300px] rounded-lg overflow-hidden bg-[#111111] border border-[#282828]">
         <img 
           src={quest.image_url || "/quest-cover-fallback.jpeg"} 
           alt={quest.title}
@@ -90,8 +90,8 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, 
       </div>
       
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Link href={`/project/${quest.project_id}`} className="text-gray-400 hover:text-white transition-colors">
               <ArrowLeft className="w-4 h-4" />
             </Link>
@@ -104,13 +104,13 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, 
               </Badge>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{quest.title}</h1>
-          <p className="text-gray-300 mb-4 text-sm sm:text-base">{quest.description}</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 break-words">{quest.title}</h1>
+          <p className="text-gray-300 mb-4 text-sm sm:text-base break-words">{quest.description}</p>
           
           {/* Project Information */}
           {quest.projects?.name && (
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#111111] border border-[#282828] flex items-center justify-center">
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#111111] border border-[#282828] flex items-center justify-center flex-shrink-0">
                 {quest.projects.logo_url ? (
                   <img 
                     src={quest.projects.logo_url} 
@@ -121,12 +121,12 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, 
                   <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                 )}
               </div>
-              <span className="text-gray-300 text-sm sm:text-base">{quest.projects.name}</span>
+              <span className="text-gray-300 text-sm sm:text-base break-words">{quest.projects.name}</span>
             </div>
           )}
           
           {/* Quest Stats */}
-          <div className="flex items-center gap-4 text-xs sm:text-sm text-gray-400">
+          <div className="flex items-center gap-4 text-xs sm:text-sm text-gray-400 flex-wrap">
             <div className="flex items-center gap-1">
               <Target className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>{quest.total_xp || 0} XP</span>
@@ -139,7 +139,7 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, 
         </div>
         
         {adminStatus && (
-          <div className="flex flex-col sm:flex-row gap-2 lg:flex-col lg:gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 lg:flex-col lg:gap-2 flex-shrink-0">
             <Button onClick={onAddTask} className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Add Task

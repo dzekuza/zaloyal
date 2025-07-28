@@ -53,7 +53,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
       <Navigation />
       
       {/* Main Content */}
-      <div className="flex-1 md:ml-64 pb-16 md:pb-0">
+      <div className="flex-1 md:ml-64 pb-16 md:pb-0 overflow-x-hidden">
         {children}
       </div>
       

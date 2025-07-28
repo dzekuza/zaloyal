@@ -95,7 +95,7 @@ export default function Navigation() {
       <div className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-full md:w-64 bg-[#111111]/80 backdrop-blur-md border-r border-[#282828] z-40">
         <div className="px-4 py-6">
           <Link href="/" className="flex items-center px-3 py-2">
-            <Image src="/belinklogo.svg" alt="Belink Logo" width={64} height={64} className="w-16" priority />
+            <Image src="/belinklogo.svg" alt="Belink Logo" width={64} height={64} className="w-32" priority />
           </Link>
         </div>
         <nav className="flex flex-col flex-1 px-4 py-6">
