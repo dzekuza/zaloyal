@@ -9,7 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { X, Plus, Trash2 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { X, Plus, Trash2, HelpCircle } from "lucide-react"
 import { FileUpload } from "@/components/ui/file-upload"
 import { Task } from "./types"
 import { supabase } from "@/lib/supabase"
@@ -133,6 +141,8 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
   
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null)
+  const [showDiscordSetup, setShowDiscordSetup] = useState(false)
+  const [showTelegramSetup, setShowTelegramSetup] = useState(false)
   
   const [formData, setFormData] = useState<Partial<Task>>({
     type: 'social',
@@ -372,9 +382,6 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
               <SelectItem value="twitter" className="text-white hover:bg-[#1a1a1a]">Twitter/X</SelectItem>
               <SelectItem value="discord" className="text-white hover:bg-[#1a1a1a]">Discord</SelectItem>
               <SelectItem value="telegram" className="text-white hover:bg-[#1a1a1a]">Telegram</SelectItem>
-              <SelectItem value="instagram" className="text-white hover:bg-[#1a1a1a]">Instagram</SelectItem>
-              <SelectItem value="youtube" className="text-white hover:bg-[#1a1a1a]">YouTube</SelectItem>
-              <SelectItem value="tiktok" className="text-white hover:bg-[#1a1a1a]">TikTok</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -388,9 +395,11 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
               <SelectValue placeholder="Select action" className="text-gray-400" />
             </SelectTrigger>
             <SelectContent className="bg-[#111111] border-[#282828]">
-              {/* Discord tasks only show "Join server" action */}
+              {/* Platform-specific actions */}
               {formData.social_platform === 'discord' ? (
                 <SelectItem value="join" className="text-white hover:bg-[#1a1a1a]">Join server</SelectItem>
+              ) : formData.social_platform === 'telegram' ? (
+                <SelectItem value="join" className="text-white hover:bg-[#1a1a1a]">Join channel</SelectItem>
               ) : (
                 <>
                   <SelectItem value="follow" className="text-white hover:bg-[#1a1a1a]">Follow</SelectItem>
@@ -405,14 +414,16 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
         </div>
       </div>
       <div className="space-y-2">
-        {/* Discord tasks show "Discord Invite URL" instead of "URL" */}
+        {/* Platform-specific URL labels */}
         <Label htmlFor="social_url" className="text-sm font-medium text-gray-200">
-          {formData.social_platform === 'discord' ? 'Discord Invite URL' : 'URL'}
+          {formData.social_platform === 'discord' ? 'Discord Invite URL' : 
+           formData.social_platform === 'telegram' ? 'Telegram Channel/Group URL' : 'URL'}
         </Label>
         <Input
           id="social_url"
           type="url"
-          placeholder={formData.social_platform === 'discord' ? 'https://discord.gg/...' : 'https://...'}
+          placeholder={formData.social_platform === 'discord' ? 'https://discord.gg/...' : 
+                     formData.social_platform === 'telegram' ? 'https://t.me/...' : 'https://...'}
           value={formData.social_url || ''}
           onChange={(e) => setFormData(prev => ({ ...prev, social_url: e.target.value }))}
           className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
@@ -423,20 +434,27 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
             Enter the Discord server invite URL (e.g., https://discord.gg/abc123)
           </p>
         )}
-        {!task && formData.social_platform && formData.social_platform !== 'discord' && socialAccounts[formData.social_platform as keyof typeof socialAccounts] && (
+        {formData.social_platform === 'telegram' && (
+          <p className="text-xs text-gray-400">
+            Enter the Telegram channel or group URL (e.g., https://t.me/channelname)
+          </p>
+        )}
+        {!task && formData.social_platform && formData.social_platform !== 'discord' && formData.social_platform !== 'telegram' && socialAccounts[formData.social_platform as keyof typeof socialAccounts] && (
           <p className="text-xs text-gray-400">
             Pre-filled with your {formData.social_platform} profile URL
           </p>
         )}
       </div>
       <div className="space-y-2">
-        {/* Discord tasks show "Server Name" instead of "Username" */}
+        {/* Platform-specific username labels */}
         <Label htmlFor="social_username" className="text-sm font-medium text-gray-200">
-          {formData.social_platform === 'discord' ? 'Server Name' : 'Username'}
+          {formData.social_platform === 'discord' ? 'Server Name' : 
+           formData.social_platform === 'telegram' ? 'Channel/Group Name' : 'Username'}
         </Label>
         <Input
           id="social_username"
-          placeholder={formData.social_platform === 'discord' ? 'My Discord Server' : '@username'}
+          placeholder={formData.social_platform === 'discord' ? 'My Discord Server' : 
+                     formData.social_platform === 'telegram' ? 'My Telegram Channel' : '@username'}
           value={formData.social_username || ''}
           onChange={(e) => setFormData(prev => ({ ...prev, social_username: e.target.value }))}
           className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
@@ -446,13 +464,300 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
             Enter a name for your Discord server (optional)
           </p>
         )}
-        {!task && formData.social_platform && formData.social_platform !== 'discord' && socialAccounts[formData.social_platform as keyof typeof socialAccounts] && (
+        {formData.social_platform === 'telegram' && (
+          <p className="text-xs text-gray-400">
+            Enter a name for your Telegram channel or group (optional)
+          </p>
+        )}
+        {!task && formData.social_platform && formData.social_platform !== 'discord' && formData.social_platform !== 'telegram' && socialAccounts[formData.social_platform as keyof typeof socialAccounts] && (
           <p className="text-xs text-gray-400">
             Pre-filled with your {formData.social_platform} username
           </p>
         )}
       </div>
+
+      {/* Discord Setup Instructions Button */}
+      {formData.social_platform === 'discord' && (
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDiscordSetup(true)}
+            className="border-[#282828] text-gray-300 hover:bg-[#1a1a1a] hover:text-white"
+          >
+            <HelpCircle className="w-4 h-4 mr-2" />
+            How to setup
+          </Button>
+        </div>
+      )}
+
+      {/* Telegram Setup Instructions Button */}
+      {formData.social_platform === 'telegram' && (
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTelegramSetup(true)}
+            className="border-[#282828] text-gray-300 hover:bg-[#1a1a1a] hover:text-white"
+          >
+            <HelpCircle className="w-4 h-4 mr-2" />
+            How to setup
+          </Button>
+        </div>
+      )}
     </div>
+  )
+
+  const renderDiscordSetupInstructions = () => (
+    <Dialog open={showDiscordSetup} onOpenChange={setShowDiscordSetup}>
+      <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold text-white">Discord Bot Setup Guide</DialogTitle>
+          <DialogDescription className="text-gray-300">
+            Follow these steps to set up your Discord server for task verification
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6 px-6 pb-6">
+          {/* Step 1 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                1
+              </div>
+              <h3 className="text-lg font-semibold text-white">Invite the Bot to Your Server</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                Click the button below to invite the BeLink verification bot to your Discord server:
+              </p>
+              <Button 
+                onClick={() => window.open('https://discord.com/api/oauth2/authorize?client_id=1397282925849874492&permissions=8&scope=bot', '_blank')}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Invite BeLink Bot
+              </Button>
+              <p className="text-xs text-gray-400">
+                The bot needs administrator permissions to verify user memberships
+              </p>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                2
+              </div>
+              <h3 className="text-lg font-semibold text-white">Configure Bot Permissions</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                After inviting the bot, ensure it has the following permissions:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-1 ml-4">
+                <li>View Channels</li>
+                <li>Read Message History</li>
+                <li>View Server Insights</li>
+                <li>Server Members Intent (enabled in Discord Developer Portal)</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                3
+              </div>
+              <h3 className="text-lg font-semibold text-white">Create an Invite Link</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                Create a permanent invite link for your Discord server:
+              </p>
+              <ol className="list-decimal list-inside text-gray-300 space-y-1 ml-4">
+                <li>Go to your Discord server settings</li>
+                <li>Navigate to "Invites" in the left sidebar</li>
+                <li>Click "Create Invite"</li>
+                <li>Set "Expire After" to "Never"</li>
+                <li>Copy the invite link (e.g., https://discord.gg/abc123)</li>
+                <li>Paste it in the "Discord Invite URL" field above</li>
+              </ol>
+            </div>
+          </div>
+
+          {/* Step 4 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                4
+              </div>
+              <h3 className="text-lg font-semibold text-white">Test the Setup</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                Once everything is configured, you can test the setup:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-1 ml-4">
+                <li>Join your Discord server using the invite link</li>
+                <li>Create a test quest with the Discord join task</li>
+                <li>Try completing the task to verify everything works</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Troubleshooting */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                ?
+              </div>
+              <h3 className="text-lg font-semibold text-white">Troubleshooting</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                If users can't verify their Discord membership:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-1 ml-4">
+                <li>Ensure the bot is still in your server</li>
+                <li>Check that the bot has the required permissions</li>
+                <li>Verify the invite link is still valid</li>
+                <li>Make sure users are joining with the same Discord account they connected to BeLink</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+
+  const renderTelegramSetupInstructions = () => (
+    <Dialog open={showTelegramSetup} onOpenChange={setShowTelegramSetup}>
+      <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold text-white">Telegram Bot Setup Guide</DialogTitle>
+          <DialogDescription className="text-gray-300">
+            Follow these steps to set up your Telegram channel for task verification
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6 px-6 pb-6">
+          {/* Step 1 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                1
+              </div>
+              <h3 className="text-lg font-semibold text-white">Add Bot to Your Channel</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                Add the BeLink verification bot to your Telegram channel as an admin:
+              </p>
+              <ol className="list-decimal list-inside text-gray-300 space-y-1 ml-4">
+                <li>Open your Telegram channel</li>
+                <li>Go to channel settings</li>
+                <li>Click "Administrators"</li>
+                <li>Click "Add Admin"</li>
+                <li>Search for: <code className="bg-gray-800 px-2 py-1 rounded">@BeLinkVerifyBot</code></li>
+                <li>Grant admin permissions to the bot</li>
+              </ol>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                2
+              </div>
+              <h3 className="text-lg font-semibold text-white">Configure Bot Permissions</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                Ensure the bot has the following permissions:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-1 ml-4">
+                <li>Add Members</li>
+                <li>Ban Users</li>
+                <li>Delete Messages</li>
+                <li>Pin Messages</li>
+                <li>Manage Voice Chats</li>
+                <li>Read Messages</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                3
+              </div>
+              <h3 className="text-lg font-semibold text-white">Create Channel Invite Link</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                Create a permanent invite link for your Telegram channel:
+              </p>
+              <ol className="list-decimal list-inside text-gray-300 space-y-1 ml-4">
+                <li>Go to your channel settings</li>
+                <li>Click "Invite Links"</li>
+                <li>Click "Create Link"</li>
+                <li>Set "Expire After" to "Never"</li>
+                <li>Copy the invite link (e.g., https://t.me/+abc123)</li>
+                <li>Paste it in the "Telegram Channel/Group URL" field above</li>
+              </ol>
+            </div>
+          </div>
+
+          {/* Step 4 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                4
+              </div>
+              <h3 className="text-lg font-semibold text-white">Test the Setup</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                Once everything is configured, you can test the setup:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-1 ml-4">
+                <li>Join your Telegram channel using the invite link</li>
+                <li>Create a test quest with the Telegram join task</li>
+                <li>Try completing the task to verify everything works</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Troubleshooting */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                ?
+              </div>
+              <h3 className="text-lg font-semibold text-white">Troubleshooting</h3>
+            </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-gray-300">
+                If users can't verify their Telegram membership:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-1 ml-4">
+                <li>Ensure the bot is still an admin in your channel</li>
+                <li>Check that the bot has the required permissions</li>
+                <li>Verify the invite link is still valid</li>
+                <li>Make sure users are joining with the same Telegram account they connected to BeLink</li>
+                <li>Ensure the channel is public or the bot has access to member list</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 
   const renderVisitFields = () => (
@@ -655,6 +960,12 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
           {task ? 'Update Task' : 'Add Task'}
         </Button>
       </div>
+
+      {/* Discord Setup Instructions Dialog */}
+      {renderDiscordSetupInstructions()}
+
+      {/* Telegram Setup Instructions Dialog */}
+      {renderTelegramSetupInstructions()}
     </form>
   )
 } 

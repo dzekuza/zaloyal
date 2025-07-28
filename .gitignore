@@ -29,3 +29,4 @@ yarn-error.log*
 next-env.d.ts
 supabase/migrations/20250727185618_create_auth_trigger.sql
 supabase/migrations/20250724195215_fix_sync_wallet_trigger.sql
+TELEGRAM_BOT_SETUP.md

@@ -7,7 +7,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { DiscordIcon } from '@/components/discord-icon'
 import { TelegramIcon } from '@/components/telegram-icon'
 import { MediumIcon } from '@/components/medium-icon'
-import { YoutubeIcon } from '@/components/youtube-icon'
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"

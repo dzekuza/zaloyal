@@ -31,7 +31,7 @@ export default function TestDiscordForm() {
               <SelectContent>
                 <SelectItem value="discord">Discord</SelectItem>
                 <SelectItem value="twitter">Twitter</SelectItem>
-                <SelectItem value="instagram">Instagram</SelectItem>
+                <SelectItem value="telegram">Telegram</SelectItem>
               </SelectContent>
             </Select>
           </div>

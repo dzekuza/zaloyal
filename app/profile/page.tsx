@@ -34,6 +34,12 @@ const XIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 )
 
+const TelegramIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+  </svg>
+)
+
 interface LinkedIdentity {
   id: string;
   user_id: string;
@@ -531,6 +537,114 @@ function ProfileContent() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to unlink Discord account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUnlinking(null);
+    }
+  };
+
+  // Link Telegram account using verification code
+  const handleLinkTelegram = async () => {
+    setIsLinking('telegram');
+    try {
+      // Check if user is authenticated
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in with your email first.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if Telegram is already linked
+      const existingTelegram = linkedIdentities.find(identity => identity.provider === 'telegram');
+      if (existingTelegram) {
+        toast({
+          title: "Already Linked",
+          description: "Telegram account is already linked to your profile.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Generate verification code
+      const response = await fetch('/api/auth/link-telegram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate verification code');
+      }
+
+      // Show verification instructions
+      toast({
+        title: "Telegram Verification",
+        description: `Verification code: ${data.verificationCode}\n\n1. Open Telegram and search for @belinkverify_bot\n2. Start a chat with the bot\n3. Send the verification code: ${data.verificationCode}`,
+        duration: 10000,
+      });
+
+    } catch (error) {
+      console.error('Telegram linking error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to link Telegram account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLinking(null);
+    }
+  };
+
+  // Unlink Telegram account
+  const handleUnlinkTelegram = async () => {
+    setIsUnlinking('telegram');
+    try {
+      const telegramIdentity = linkedIdentities.find(identity => identity.provider === 'telegram');
+      
+      if (!telegramIdentity) {
+        throw new Error('Telegram account not found');
+      }
+
+      // Check if user has at least 2 identities before unlinking
+      if (linkedIdentities.length < 2) {
+        throw new Error('Cannot unlink your last authentication method. Please add another account first.');
+      }
+
+      // Add null check for user ID before delete operation
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      // Remove from social_accounts table
+      const { error } = await supabase
+        .from('social_accounts')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('platform', 'telegram');
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Telegram account unlinked successfully",
+      });
+
+      // Refresh linked identities
+      await fetchLinkedIdentities();
+    } catch (error) {
+      console.error('Telegram unlinking error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to unlink Telegram account. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -1236,6 +1350,48 @@ function ProfileContent() {
                         </Button>
                       </div>
                     )}
+
+                  {/* Telegram Account */}
+                  {linkedIdentities.find(id => id.provider === 'telegram') ? (
+                    <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                      <div className="flex items-center gap-3">
+                        <TelegramIcon className="w-8 h-8 text-blue-400" />
+                        <div>
+                          <div className="text-white font-medium">
+                            {getIdentityDisplayName(linkedIdentities.find(id => id.provider === 'telegram')!)}
+                          </div>
+                          <div className="text-sm text-gray-400">Telegram</div>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={handleUnlinkTelegram}
+                        disabled={isUnlinking === 'telegram'}
+                      >
+                        {isUnlinking === 'telegram' ? 'Unlinking...' : 'Unlink'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                      <div className="flex items-center gap-3">
+                        <TelegramIcon className="w-8 h-8 text-gray-400" />
+                        <div>
+                          <div className="text-white font-medium">Telegram</div>
+                          <div className="text-sm text-gray-400">Not connected</div>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleLinkTelegram}
+                        disabled={isLinking === 'telegram'}
+                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                      >
+                        {isLinking === 'telegram' ? 'Connecting...' : 'Connect'}
+                      </Button>
+                    </div>
+                  )}
 
                   {/* X (Twitter) Account */}
                   {linkedIdentities.find(id => id.provider === 'x') ? (
