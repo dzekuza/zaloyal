@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import DashboardClient from "@/components/DashboardClient";
-import AuthRequired from "@/components/auth-required";
+import AuthWrapper from "@/components/auth-wrapper";
 import PageContainer from "@/components/PageContainer";
 import { useAuth } from "@/components/auth-provider-wrapper";
 
-export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth()
-  // Fix useState types
+function DashboardContent() {
+  const { user } = useAuth()
   const [profile, setProfile] = useState<any>(null);
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [completedQuests, setCompletedQuests] = useState<any[]>([]);
@@ -50,22 +49,22 @@ export default function DashboardPage() {
     fetchData();
   }, [user]);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#181818]">
         <p className="text-white text-xl">Loading your dashboard...</p>
       </div>
     );
   }
-  if (!user || !profile) {
+
+  if (!profile) {
     return (
-      <AuthRequired 
-        title="Sign In Required"
-        message="Please sign in with your email or wallet to view your dashboard."
-        onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-      />
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+        <p className="text-white text-xl">Profile not found...</p>
+      </div>
     );
   }
+
   return (
     <PageContainer>
       <DashboardClient
@@ -76,5 +75,18 @@ export default function DashboardPage() {
         achievements={achievements}
       />
     </PageContainer>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <AuthWrapper
+      requireAuth={true}
+      title="Sign In Required"
+      message="Please sign in with your email or wallet to view your dashboard."
+      onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+    >
+      <DashboardContent />
+    </AuthWrapper>
   );
 }

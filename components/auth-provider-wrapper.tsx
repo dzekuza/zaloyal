@@ -52,10 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Initializing authentication...')
         
         // Get the current session
-        console.log('DEBUG: Getting initial session...')
         const { data: { session }, error } = await supabase.auth.getSession()
-        
-        console.log('DEBUG: Initial session result:', { session, error })
         
         if (error) {
           console.error('Error getting session:', error)
@@ -66,9 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (session?.user) {
-          console.log('Found Supabase user:', session.user.email)
-          console.log('DEBUG: Initial user metadata:', session.user.user_metadata)
-          console.log('DEBUG: Initial app metadata:', session.user.app_metadata)
+          console.log('Found authenticated user:', session.user.email)
           
           // Get user profile from database
           const { data: profile } = await supabase
@@ -76,8 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .select('*')
             .eq('id', session.user.id)
             .single()
-
-          console.log('DEBUG: Initial profile query result:', { profile })
 
           if (isMounted) {
             const authUser: AuthUser = {
@@ -111,73 +104,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth()
 
-    // Single auth state change listener
+    // Auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Event:", event)
-        console.log("Session:", session)
         console.log('Auth state changed:', event, session?.user?.email)
-        console.log('DEBUG: isProcessingAuth:', isProcessingAuth.current)
         
         if (!isMounted) return
         
         // Prevent processing during auth flow
         if (isProcessingAuth.current && event === 'SIGNED_OUT') {
-          console.log('DEBUG: Ignoring SIGNED_OUT during auth processing')
-          return
-        }
-        
-        // Handle INITIAL_SESSION events (when page loads with existing session)
-        if (event === 'INITIAL_SESSION') {
-          if (session?.user) {
-            try {
-              console.log('DEBUG: Initial session found, processing...')
-              
-              // Get user profile from database
-              const { data: profile } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', session.user.id)
-                .single()
-              
-              if (isMounted) {
-                const authUser: AuthUser = {
-                  id: session.user.id,
-                  email: session.user.email || null,
-                  username: profile?.username || session.user.user_metadata?.username,
-                  avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url,
-                  bio: profile?.bio,
-                  social_links: profile?.social_links,
-                  email_confirmed_at: session.user.email_confirmed_at,
-                  email_verified: session.user.email_confirmed_at ? true : false,
-                  profile
-                }
-                
-                console.log('DEBUG: Setting user state from initial session:', authUser)
-                setUser(authUser)
-                setLoading(false)
-              }
-            } catch (error) {
-              console.error('Error in initial session:', error)
-              if (isMounted) {
-                setUser(null)
-                setLoading(false)
-              }
-            }
-          } else {
-            console.log('DEBUG: No initial session found')
-            if (isMounted) {
-              setUser(null)
-              setLoading(false)
-            }
-          }
+          console.log('Ignoring SIGNED_OUT during auth processing')
           return
         }
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user) {
             try {
-              console.log('DEBUG: User authenticated, processing...')
+              console.log('User authenticated, processing...')
               isProcessingAuth.current = true
               
               // Get user profile from database
@@ -200,14 +143,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   profile
                 }
                 
-                console.log('DEBUG: Setting user state:', authUser)
                 setUser(authUser)
                 setLoading(false)
                 
                 // Reset processing flag after a delay
                 setTimeout(() => {
                   isProcessingAuth.current = false
-                }, 5000)
+                }, 2000)
               }
             } catch (error) {
               console.error('Error in auth state change:', error)
@@ -219,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         } else if (event === 'SIGNED_OUT') {
-          console.log('DEBUG: User signed out')
+          console.log('User signed out')
           if (isMounted) {
             setUser(null)
             setLoading(false)
@@ -236,9 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithX = async () => {
     try {
-      console.log('DEBUG: Initiating X OAuth via Supabase Auth')
+      console.log('Initiating X OAuth via Supabase Auth')
 
-      // Use Supabase Auth for X authentication
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'twitter',
         options: {
@@ -249,14 +190,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (error) throw error
       
-      console.log('DEBUG: OAuth initiated, redirecting to X...')
+      console.log('OAuth initiated, redirecting to X...')
       
       toast({
         title: "Success",
         description: "Redirecting to X for authentication...",
       })
       
-      // The redirect should happen automatically
       if (data?.url) {
         window.location.href = data.url
       }
@@ -273,27 +213,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithDiscord = async () => {
     try {
-      console.log('DEBUG: Initiating Discord OAuth via Supabase Auth')
+      console.log('Initiating Discord OAuth via Supabase Auth')
 
-      // Use Supabase Auth for Discord authentication
-              const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'discord',
-          options: {
-            redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/callback`,
-            scopes: 'identify email'
-          }
-        })
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'discord',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback/supabase`,
+          scopes: 'identify email'
+        }
+      })
       
       if (error) throw error
       
-      console.log('DEBUG: OAuth initiated, redirecting to Discord...')
+      console.log('OAuth initiated, redirecting to Discord...')
       
       toast({
         title: "Success",
         description: "Redirecting to Discord for authentication...",
       })
       
-      // The redirect should happen automatically
       if (data?.url) {
         window.location.href = data.url
       }

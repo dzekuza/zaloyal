@@ -10,8 +10,7 @@ import ProjectCard from "@/components/ProjectCard"
 import EditProjectForm from "@/components/edit-project-form"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useAuth } from "@/components/auth-provider-wrapper"
-
-import AuthRequired from '@/components/auth-required';
+import AuthWrapper from "@/components/auth-wrapper"
 import PageContainer from "@/components/PageContainer";
 
 interface Project {
@@ -36,108 +35,98 @@ interface Project {
   xpToCollect?: number;
 }
 
-export default function MyProjectsPage() {
-  const { user, loading: authLoading } = useAuth()
+function MyProjectsContent() {
+  const { user } = useAuth()
   const [myProjects, setMyProjects] = useState<Project[]>([])
   const [allProjects, setAllProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const checkSessionAndFetch = async () => {
+    const fetchProjects = async () => {
       if (!user) {
         setMyProjects([]);
         setAllProjects([]);
         setLoading(false);
-        setCurrentUserId(null);
         return;
       }
-      setCurrentUserId(user.id);
-      console.log('DEBUG: Fetching projects for user:', user.id);
       
-      // Fetch my projects
-      const { data: myData, error: myError } = await supabase
-        .from("projects")
-        .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured, total_participants')
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: false });
+      console.log('Fetching projects for user:', user.id);
+      setLoading(true);
       
-      if (myError) {
-        console.error("Error loading my projects:", {
-          error: myError,
-          code: myError.code,
-          message: myError.message,
-          details: myError.details,
-          hint: myError.hint
-        });
-        setError("Error loading your projects: " + myError.message);
+      try {
+        // Fetch my projects
+        const { data: myData, error: myError } = await supabase
+          .from("projects")
+          .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured, total_participants')
+          .eq("owner_id", user.id)
+          .order("created_at", { ascending: false });
+        
+        if (myError) {
+          console.error("Error loading my projects:", myError);
+          setError("Error loading your projects: " + myError.message);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('My projects fetched successfully:', myData?.length || 0, 'projects');
+        
+        // Fetch all projects
+        const { data: allData, error: allError } = await supabase
+          .from("projects")
+          .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured, total_participants')
+          .order("created_at", { ascending: false });
+        
+        if (allError) {
+          console.error("Error loading all projects:", allError);
+          setError("Error loading all projects: " + allError.message);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('All projects fetched successfully:', allData?.length || 0, 'projects');
+        
+        // For each project, fetch all quests and sum total_xp
+        const addXP = async (projects: Project[]) => Promise.all(
+          (projects || []).map(async (project) => {
+            console.log('Fetching quests for project:', project.id);
+            const { data: quests, error: questsError } = await supabase
+              .from("quests")
+              .select("total_xp")
+              .eq("project_id", project.id)
+              .eq("status", "active");
+            
+            if (questsError) {
+              console.error("Error loading quests for project", project.id, questsError);
+              setError("Error loading quests for project: " + project.id + ": " + questsError.message);
+            } else {
+              console.log('Quests fetched for project:', project.id, quests?.length || 0, 'quests');
+            }
+            
+            const xpToCollect = (quests || []).reduce((sum, q) => sum + (q.total_xp || 0), 0);
+            return { ...project, xpToCollect };
+          })
+        );
+        
+        setMyProjects(await addXP(myData || []));
+        setAllProjects(await addXP((allData || []).filter((p) => p.owner_id !== user.id)));
         setLoading(false);
-        return;
-      }
-      
-      console.log('DEBUG: My projects fetched successfully:', myData?.length || 0, 'projects');
-      
-      // Fetch all projects
-      const { data: allData, error: allError } = await supabase
-        .from("projects")
-        .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured, total_participants')
-        .order("created_at", { ascending: false });
-      
-      if (allError) {
-        console.error("Error loading all projects:", {
-          error: allError,
-          code: allError.code,
-          message: allError.message,
-          details: allError.details,
-          hint: allError.hint
-        });
-        setError("Error loading all projects: " + allError.message);
+        
+        console.log('Projects loaded successfully');
+        console.log('My projects count:', (myData || []).length);
+        console.log('All projects count:', (allData || []).length);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        setError('Failed to load projects');
         setLoading(false);
-        return;
       }
-      
-      console.log('DEBUG: All projects fetched successfully:', allData?.length || 0, 'projects');
-      // For each project, fetch all quests and sum total_xp
-      const addXP = async (projects: Project[]) => Promise.all(
-        (projects || []).map(async (project) => {
-          console.log('DEBUG: Fetching quests for project:', project.id);
-          const { data: quests, error: questsError } = await supabase
-            .from("quests")
-            .select("total_xp")
-            .eq("project_id", project.id)
-            .eq("status", "active");
-          
-          if (questsError) {
-            console.error("Error loading quests for project", project.id, {
-              error: questsError,
-              code: questsError.code,
-              message: questsError.message,
-              details: questsError.details,
-              hint: questsError.hint
-            });
-            setError("Error loading quests for project: " + project.id + ": " + questsError.message);
-          } else {
-            console.log('DEBUG: Quests fetched for project:', project.id, quests?.length || 0, 'quests');
-          }
-          
-          const xpToCollect = (quests || []).reduce((sum, q) => sum + (q.total_xp || 0), 0);
-          return { ...project, xpToCollect };
-        })
-      );
-      setMyProjects(await addXP(myData || []));
-      setAllProjects(await addXP((allData || []).filter((p) => p.owner_id !== user.id)));
-      setLoading(false);
-      
-      console.log('DEBUG: Projects loaded successfully');
-      console.log('DEBUG: My projects count:', (myData || []).length);
-      console.log('DEBUG: All projects count:', (allData || []).length);
     };
-    checkSessionAndFetch();
+    
+    fetchProjects();
   }, [user]);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-white text-xl">Loading your projects...</p>
@@ -151,16 +140,6 @@ export default function MyProjectsPage() {
         <p className="text-white text-xl">{error}</p>
       </div>
     )
-  }
-
-  if (!currentUserId) {
-    return (
-      <AuthRequired
-        title="Sign In Required"
-        message="Please sign in with your email or wallet to view and manage your projects."
-        onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-      />
-    );
   }
 
   if (!myProjects.length) {
@@ -203,7 +182,7 @@ export default function MyProjectsPage() {
           <ProjectCard
             key={project.id}
             project={project}
-            currentUserId={currentUserId}
+            currentUserId={user.id}
             onEdit={() => setEditingProject(project)}
             onDelete={() => handleDelete(project.id)}
             xpToCollect={project.xpToCollect}
@@ -232,6 +211,19 @@ export default function MyProjectsPage() {
         </DialogContent>
       </Dialog>
     </PageContainer>
+  )
+}
+
+export default function MyProjectsPage() {
+  return (
+    <AuthWrapper
+      requireAuth={true}
+      title="Sign In Required"
+      message="Please sign in with your email or wallet to view and manage your projects."
+      onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+    >
+      <MyProjectsContent />
+    </AuthWrapper>
   )
 }
 

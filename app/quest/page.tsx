@@ -7,13 +7,22 @@ import QuestCard from '@/components/QuestCard'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/components/auth-provider-wrapper'
+import AuthWrapper from '@/components/auth-wrapper'
 
-export default function QuestPage() {
+function QuestContent() {
+  const { user } = useAuth()
   const [quests, setQuests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchQuests = async () => {
+      if (!user) {
+        setQuests([])
+        setLoading(false)
+        return
+      }
+
       try {
         const { data, error } = await supabase
           .from('quests')
@@ -40,7 +49,7 @@ export default function QuestPage() {
     }
 
     fetchQuests()
-  }, [])
+  }, [user])
 
   if (loading) {
     return (
@@ -92,5 +101,18 @@ export default function QuestPage() {
         )}
       </div>
     </PageContainer>
+  )
+}
+
+export default function QuestPage() {
+  return (
+    <AuthWrapper
+      requireAuth={true}
+      title="Sign In Required"
+      message="Please sign in with your email or wallet to view quests."
+      onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+    >
+      <QuestContent />
+    </AuthWrapper>
   )
 } 
