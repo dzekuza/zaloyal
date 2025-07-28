@@ -313,69 +313,98 @@ function ProjectDiscoveryClientWithAuth({ projects, categories }: ProjectDiscove
           </div>
         )}
 
-        {/* Hero Section */}
-        <div className="text-center space-y-6 py-12 md:py-16">
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white">
-            Web3 Projects
-          </h1>
-          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-            Discover amazing Web3 projects and complete their quests to earn rewards
-          </p>
-          <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
-            <span className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              {safeProjects.length} Verified Projects
-            </span>
-            <span className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              {totalQuests} Active Quests
-            </span>
-            <span className="flex items-center gap-2">
-              <Trophy className="w-4 h-4" />
-              {totalXPToCollect.toLocaleString()} XP to Collect
-            </span>
-          </div>
-        </div>
-
-        {/* Search and Filter Section - Column Layout */}
-        <div className="flex flex-col gap-4 mb-8 w-full">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
-              <Input
-                placeholder="Search projects..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-gray-200 backdrop-blur-sm focus:ring-2 focus:ring-green-500"
-              />
+        {/* Animated Hero Section */}
+        <div className="relative w-full">
+          <HeroGeometric 
+            badge="Web3 Projects"
+            title1="Discover Amazing"
+            title2="Web3 Projects"
+          />
+          <div className="absolute bottom-8 md:bottom-4 left-1/2 transform -translate-x-1/2 z-20">
+            <div className="flex flex-wrap justify-center gap-2 md:gap-3 text-xs md:text-sm text-gray-300">
+              <span className="flex items-center gap-1 md:gap-2 bg-black/40 backdrop-blur-sm px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-green-500/30">
+                <Users className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">{safeProjects.length} Verified Projects</span>
+                <span className="sm:hidden">{safeProjects.length} Projects</span>
+              </span>
+              <span className="flex items-center gap-1 md:gap-2 bg-black/40 backdrop-blur-sm px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-green-500/30">
+                <Zap className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">{totalQuests} Active Quests</span>
+                <span className="sm:hidden">{totalQuests} Quests</span>
+              </span>
+              <span className="flex items-center gap-1 md:gap-2 bg-black/40 backdrop-blur-sm px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-green-500/30">
+                <Trophy className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">{totalXPToCollect.toLocaleString()} XP to Collect</span>
+                <span className="sm:hidden">{totalXPToCollect.toLocaleString()} XP</span>
+              </span>
             </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full md:w-48 bg-white/10 border-white/20 text-white backdrop-blur-sm">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
-                <SelectItem value="all" className="text-white hover:bg-[#06351f]">
-                  All Categories
-                </SelectItem>
-                {safeCategories.map((category) => (
-                  <SelectItem key={category} value={category.toLowerCase()} className="text-white hover:bg-[#06351f]">
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
-        {/* Projects Section - Column Layout */}
-        <div className="flex flex-col gap-8">
-          {/* Featured Projects */}
-          {featuredProjects.length > 0 && (
+        {/* Projects Section */}
+        <div className="w-full px-4 md:px-6 py-8">
+          {/* Search and Filter Section - Column Layout */}
+          <div className="flex flex-col gap-4 mb-8 w-full">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
+                <Input
+                  placeholder="Search projects..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-gray-200 backdrop-blur-sm focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-full md:w-48 bg-white/10 border-white/20 text-white backdrop-blur-sm">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#0b4b34] border-[#0b4b34]">
+                  <SelectItem value="all" className="text-white hover:bg-[#06351f]">
+                    All Categories
+                  </SelectItem>
+                  {safeCategories.map((category) => (
+                    <SelectItem key={category} value={category.toLowerCase()} className="text-white hover:bg-[#06351f]">
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Projects Section - Column Layout */}
+          <div className="flex flex-col gap-8">
+            {/* Featured Projects */}
+            {featuredProjects.length > 0 && (
+              <div className="w-full">
+                <h2 className="text-2xl font-bold text-white mb-6">Featured Projects</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {featuredProjects.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      currentUserId={user?.id ? user.id : undefined}
+                      xpToCollect={project.xpToCollect}
+                      myXp={userProjectXp[project.id] || 0}
+                    >
+                      <Link href={`/project/${project.id}`}>
+                        <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white">
+                          View Project
+                        </Button>
+                      </Link>
+                    </ProjectCard>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* All Projects */}
             <div className="w-full">
-              <h2 className="text-2xl font-bold text-white mb-6">Featured Projects</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">All Projects</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {featuredProjects.map((project) => (
+                {allProjects.map((project) => (
                   <ProjectCard
                     key={project.id}
                     project={project}
@@ -391,36 +420,14 @@ function ProjectDiscoveryClientWithAuth({ projects, categories }: ProjectDiscove
                   </ProjectCard>
                 ))}
               </div>
+              
+              {filteredProjects.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-gray-400 text-lg mb-2">No projects found</p>
+                  <p className="text-gray-500">Try different search terms or filters</p>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* All Projects */}
-          <div className="w-full">
-            <h2 className="text-2xl font-bold text-white mb-6">All Projects</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {allProjects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  currentUserId={user?.id ? user.id : undefined}
-                  xpToCollect={project.xpToCollect}
-                  myXp={userProjectXp[project.id] || 0}
-                >
-                  <Link href={`/project/${project.id}`}>
-                    <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white">
-                      View Project
-                    </Button>
-                  </Link>
-                </ProjectCard>
-              ))}
-            </div>
-            
-            {filteredProjects.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-400 text-lg mb-2">No projects found</p>
-                <p className="text-gray-500">Try different search terms or filters</p>
-              </div>
-            )}
           </div>
         </div>
       </div>

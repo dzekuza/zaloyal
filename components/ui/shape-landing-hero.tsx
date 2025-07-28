@@ -94,9 +94,7 @@ function HeroGeometric({
     };
 
     return (
-        <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#181818]">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-500/[0.05] via-transparent to-emerald-500/[0.05] blur-3xl" />
-
+        <div className="relative h-[60vh] w-full flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 overflow-hidden">
                 <ElegantShape
                     delay={0.3}
@@ -144,7 +142,54 @@ function HeroGeometric({
                 />
             </div>
 
-            <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-transparent to-[#181818]/80 pointer-events-none" />
+            <div className="relative z-10 w-full">
+                <div className="max-w-3xl mx-auto text-center">
+                    <motion.div
+                        custom={0}
+                        variants={fadeUpVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm border border-green-500/20 mb-6 md:mb-8"
+                    >
+                        <Circle className="h-2 w-2 fill-green-500/80" />
+                        <span className="text-sm text-white/80 tracking-wide">
+                            {badge}
+                        </span>
+                    </motion.div>
+
+                    <motion.div
+                        custom={1}
+                        variants={fadeUpVariants}
+                        initial="hidden"
+                        animate="visible"
+                    >
+                        <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-4 md:mb-6 tracking-tight">
+                            <span className="bg-clip-text text-transparent bg-gradient-to-b from-white to-white/80">
+                                {title1}
+                            </span>
+                            <br />
+                            <span
+                                className={cn(
+                                    "bg-clip-text text-transparent bg-gradient-to-r from-green-300 via-white/90 to-emerald-300 "
+                                )}
+                            >
+                                {title2}
+                            </span>
+                        </h1>
+                    </motion.div>
+
+                    <motion.div
+                        custom={2}
+                        variants={fadeUpVariants}
+                        initial="hidden"
+                        animate="visible"
+                    >
+                        <p className="text-sm sm:text-base md:text-lg text-white/60 mb-8 sm:mb-6 leading-relaxed font-light tracking-wide max-w-xl mx-auto px-4">
+                            Discover amazing Web3 projects and complete their quests to earn rewards
+                        </p>
+                    </motion.div>
+                </div>
+            </div>
         </div>
     );
 }

@@ -10,7 +10,7 @@ const PageContainer = React.memo(function PageContainer({ children, className = 
   
   return (
     <div className="w-full flex justify-center">
-      <div className={containerClassName}>
+      <div className={containerClassName} style={{ padding: '0px' }}>
         {children}
       </div>
     </div>
