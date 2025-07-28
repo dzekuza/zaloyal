@@ -1,44 +1,39 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
 
 export async function POST(request: NextRequest) {
   try {
-    const { userWallet, userId, userEmail, taskId, answers, isCorrect, quizData } = await request.json()
+    const { taskId, answers, isCorrect, quizData } = await request.json()
 
     if (!taskId || !answers) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
     }
 
-    // Get user from database
-    let user;
-    if (userWallet) {
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("wallet_address", userWallet.toLowerCase())
-        .single()
-
-      if (userError || !userData) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 })
-      }
-      user = userData;
-    } else if (userId) {
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("id", userId)
-        .single()
-
-      if (userError || !userData) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 })
-      }
-      user = userData;
-    } else {
-      return NextResponse.json({ error: "User authentication required" }, { status: 401 })
+    // Get user session from Authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: "Missing or invalid authorization header" }, { status: 401 })
+    }
+    
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: "User not authenticated" }, { status: 401 })
     }
 
     // Get task details
-    const { data: task, error: taskError } = await supabase.from("tasks").select("*").eq("id", taskId).single()
+    const { data: task, error: taskError } = await supabaseAdmin.from("tasks").select("*").eq("id", taskId).single()
 
     if (taskError || !task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 })
@@ -74,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create task submission
-    const { error: submissionError } = await supabase.from("user_task_submissions").upsert({
+    const { error: submissionError } = await supabaseAdmin.from("user_task_submissions").upsert({
       user_id: user.id,
       task_id: taskId,
       quest_id: task.quest_id,
@@ -103,33 +98,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user XP if passed
-    if (passed) {
-      let xpError;
-      if (userWallet) {
-        const { error } = await supabase.rpc("increment_user_xp", {
-          user_wallet: userWallet.toLowerCase(),
-          xp_amount: task.xp_reward,
-        })
-        xpError = error;
-      } else if (userEmail) {
-        // For email users, update XP directly
-        const { data: currentUser } = await supabase
-          .from("users")
-          .select("total_xp")
-          .eq("email", userEmail)
-          .single()
-        
-        if (currentUser) {
-          const { error } = await supabase
-            .from("users")
-            .update({ 
-              total_xp: (currentUser.total_xp || 0) + task.xp_reward,
-              updated_at: new Date().toISOString()
-            })
-            .eq("email", userEmail)
-          xpError = error;
-        }
-      }
+    if (passed && user.wallet_address) {
+      const { error: xpError } = await supabaseAdmin.rpc("increment_user_xp", {
+        user_wallet: user.wallet_address.toLowerCase(),
+        xp_amount: task.xp_reward,
+      })
 
       if (xpError) {
         console.error("XP update error:", xpError)

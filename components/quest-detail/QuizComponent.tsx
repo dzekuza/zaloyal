@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, XCircle, BookOpen, AlertTriangle } from "lucide-react"
 import { Task } from "./types"
+import { supabase } from '@/lib/supabase'
 
 interface QuizComponentProps {
   task?: Task | null
@@ -81,11 +82,21 @@ export default function QuizComponent({ task, onComplete }: QuizComponentProps) 
     setIsSubmitting(true)
 
     try {
+      // Get current session for authentication
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session) {
+        setMessage("Authentication required. Please sign in again.")
+        return
+      }
+
       const response = await fetch('/api/verify/learn-completion', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
+        credentials: 'include',
         body: JSON.stringify({
           taskId: task.id,
           answers: selectedAnswers,

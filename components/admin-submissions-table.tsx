@@ -203,8 +203,10 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
         return <Download className="w-4 h-4 text-purple-400" />
       case 'learn':
         return <BookOpen className="w-4 h-4 text-yellow-400" />
-      case 'form':
-        return <FileText className="w-4 h-4 text-orange-400" />
+              case 'form':
+          return <FileText className="w-4 h-4 text-orange-400" />
+        case 'discord':
+          return <MessageCircle className="w-4 h-4 text-indigo-400" />
       default:
         return <CheckCircle className="w-4 h-4 text-gray-400" />
     }
@@ -321,6 +323,32 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
                     {submissionData.form_url}
                     <ExternalLinkIcon className="w-3 h-3" />
                   </a>
+                </div>
+              )}
+              {submissionData.social_platform === 'discord' && submissionData.social_url && (
+                <div>
+                  <span className="text-gray-400">Discord Server:</span>
+                  <a 
+                    href={submissionData.social_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-indigo-400 hover:text-indigo-300 ml-2 flex items-center gap-1"
+                  >
+                    {submissionData.social_url}
+                    <ExternalLinkIcon className="w-3 h-3" />
+                  </a>
+                  {submissionData.discord_user_id && (
+                    <div className="mt-1">
+                      <span className="text-gray-400 text-xs">Discord User ID:</span>
+                      <span className="text-white text-xs ml-2">{submissionData.discord_user_id}</span>
+                    </div>
+                  )}
+                  {submissionData.guild_id && (
+                    <div>
+                      <span className="text-gray-400 text-xs">Server ID:</span>
+                      <span className="text-white text-xs ml-2">{submissionData.guild_id}</span>
+                    </div>
+                  )}
                 </div>
               )}
               {submissionData.social_username && (

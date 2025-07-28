@@ -233,28 +233,33 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
             </div>
           );
         }
-        if (task.social_platform === 'discord') {
-          return (
-            <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
-              <div className="flex items-center gap-2 mb-2">
-                <MessageCircle className="w-4 h-4 text-indigo-400" />
-                <span className="text-sm text-gray-300">Discord Task</span>
-              </div>
-              {task.social_action === 'join' && task.social_url ? (
-                <a 
-                  href={getAbsoluteUrl(task.social_url)} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-indigo-400 hover:text-indigo-300 text-sm break-all"
-                >
-                  Join {task.social_username || 'admin'} on Discord
-                </a>
-              ) : (
-                <p className="text-indigo-400 text-sm">Join the admin's Discord channel</p>
-              )}
+            if (task.social_platform === 'discord') {
+      return (
+        <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
+          <div className="flex items-center gap-2 mb-2">
+            <MessageCircle className="w-4 h-4 text-indigo-400" />
+            <span className="text-sm text-gray-300">Discord Task</span>
+          </div>
+          {task.social_action === 'join' && task.social_url ? (
+            <div className="space-y-2">
+              <a 
+                href={getAbsoluteUrl(task.social_url)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-indigo-400 hover:text-indigo-300 text-sm break-all block"
+              >
+                Join Discord Server
+              </a>
+              <p className="text-xs text-gray-400">
+                Click the link above to join the Discord server, then click "Verify Task" to confirm your membership.
+              </p>
             </div>
-          );
-        }
+          ) : (
+            <p className="text-indigo-400 text-sm">Join the Discord server</p>
+          )}
+        </div>
+      );
+    }
         if (task.social_platform === 'telegram') {
           return (
             <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">

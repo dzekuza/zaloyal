@@ -460,67 +460,45 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             verified = result.verified
             message = result.message || (verified ? 'Task verified successfully!' : 'Task verification failed. Please complete the task and try again.')
           } else if (task.social_platform === 'discord') {
-            // For Discord verification
-            const { data: { user }, error: userError } = await supabase.auth.getUser()
-            
-            if (userError || !user) {
-              toast({
-                title: 'Authentication error',
-                description: 'Please sign in again to verify tasks',
-                variant: 'destructive',
-              })
-              return
-            }
-
-            // Check if user has Discord authentication
-            const hasDiscordAuth = (user as any)?.app_metadata?.providers?.includes('discord')
-            if (!hasDiscordAuth) {
-              toast({
-                title: 'Discord account not connected',
-                description: 'Please connect your Discord account in your profile to verify tasks',
-                variant: 'destructive',
-              })
-              return
-            }
-
-            // Extract guild ID from Discord invite URL
-            const guildId = task.social_url?.match(/discord\.gg\/([a-zA-Z0-9]+)/)?.[1] || 
-                           task.social_url?.match(/discord\.com\/invite\/([a-zA-Z0-9]+)/)?.[1]
-            
-            if (!guildId) {
-              toast({
-                title: 'Invalid Discord invite',
-                description: 'Discord invite URL not found in task',
-                variant: 'destructive',
-              })
-              return
-            }
-
-            // Call Discord verification API
-            const response = await fetch('/api/verify/discord-join', {
+            // For Discord verification using the new API
+            const response = await fetch('/api/verify/discord-join-real', {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
               },
+              credentials: 'include',
               body: JSON.stringify({
+                taskId: task.id,
                 userId: currentUserUUID,
-                guildId
+                questId: quest.id
               })
             })
+            
+            console.log('DEBUG: Discord verification response status:', response.status);
 
             const result = await response.json()
+            console.log('DEBUG: Discord verification response:', result);
             
             if (!response.ok) {
-              toast({
-                title: 'Discord verification not available',
-                description: result.error || 'Discord verification requires additional setup',
-                variant: 'destructive',
-              })
+              if (response.status === 400 && result.action === 'connect_discord') {
+                toast({
+                  title: 'Discord account not connected',
+                  description: 'Please connect your Discord account in your profile to verify tasks',
+                  variant: 'destructive',
+                })
+              } else {
+                toast({
+                  title: 'Verification failed',
+                  description: result.error || result.message || 'Failed to verify Discord task',
+                  variant: 'destructive',
+                })
+              }
               return
             }
             
-            verified = result.success
-            message = verified ? 'Discord task verified successfully!' : 'Discord task verification failed. Please join the server and try again.'
+            verified = result.verified
+            message = result.message || (verified ? 'Discord task verified successfully!' : 'Discord task verification failed. Please join the server and try again.')
           } else if (task.social_platform === 'telegram') {
             // For Telegram, use the existing verification endpoint
             const response = await fetch('/api/verify/telegram-join-real', {
