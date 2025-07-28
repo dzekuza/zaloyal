@@ -44,6 +44,7 @@ import {
   ChevronUp,
   FileText,
   ExternalLink as ExternalLinkIcon,
+  FileDown,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/lib/supabase"
@@ -81,9 +82,10 @@ interface AdminSubmissionsTableProps {
   quest: Quest
   tasks: Task[]
   isAdmin: boolean
+  onExport?: () => void
 }
 
-export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSubmissionsTableProps) {
+export default function AdminSubmissionsTable({ quest, tasks, isAdmin, onExport }: AdminSubmissionsTableProps) {
   const [submissions, setSubmissions] = useState<UserTaskSubmission[]>([])
   const [loading, setLoading] = useState(true)
   const [removingXP, setRemovingXP] = useState<string | null>(null)
@@ -750,10 +752,21 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
   if (loading) {
     return (
       <Card className="bg-[#111111] border-[#282828]">
-        <CardHeader>
-          <CardTitle className="text-white">User Submissions</CardTitle>
+        <CardHeader className="p-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-white flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              User Submissions
+            </CardTitle>
+            {onExport && (
+              <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
+                <FileDown className="w-4 h-4 mr-2" />
+                Export Submissions
+              </Button>
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="text-center py-8 text-gray-400">
             Loading submissions...
           </div>
@@ -765,10 +778,21 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
   if (submissions.length === 0) {
     return (
       <Card className="bg-[#111111] border-[#282828]">
-        <CardHeader>
-          <CardTitle className="text-white">User Submissions</CardTitle>
+        <CardHeader className="p-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-white flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              User Submissions
+            </CardTitle>
+            {onExport && (
+              <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
+                <FileDown className="w-4 h-4 mr-2" />
+                Export Submissions
+              </Button>
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="text-center py-8 text-gray-400">
             No submissions found for this quest
           </div>
@@ -780,148 +804,144 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
   return (
     <>
       <Card className="bg-[#111111] border-[#282828]">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            User Submissions ({submissions.length})
-          </CardTitle>
+        <CardHeader className="p-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-white flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              User Submissions ({submissions.length})
+            </CardTitle>
+            {onExport && (
+              <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
+                <FileDown className="w-4 h-4 mr-2" />
+                Export Submissions
+              </Button>
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-[#282828] hover:bg-[#181818]">
-                  <TableHead className="text-gray-400">User</TableHead>
-                  <TableHead className="text-gray-400">Task</TableHead>
-                  <TableHead className="text-gray-400">Type</TableHead>
-                  <TableHead className="text-gray-400">Status</TableHead>
-                  <TableHead className="text-gray-400">Task XP</TableHead>
-                  <TableHead className="text-gray-400">Date</TableHead>
-                  <TableHead className="text-gray-400">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {submissions.map((submission) => {
-                  const user = submission.users
-                  const task = submission.tasks
-                  
-                  if (!user) return null
-
-                  const isExpanded = expandedRows.has(submission.id)
-
-                  return (
-                    <React.Fragment key={submission.id}>
-                      <TableRow className="border-[#282828] hover:bg-[#181818]">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar 
-                              className="w-8 h-8 cursor-pointer hover:opacity-80"
-                              onClick={() => {
-                                setSelectedUser(submission.user_id)
-                                setShowUserModal(true)
-                              }}
-                            >
-                              <AvatarImage src={user.avatar_url || undefined} />
-                              <AvatarFallback className="bg-green-500 text-white text-sm">
-                                {user.username?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
+        <CardContent className="p-0">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="min-w-full inline-block align-middle">
+              <div className="overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-[#282828] hover:bg-[#181818]">
+                      <TableHead className="text-gray-400 text-xs sm:text-sm">User</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm">Task</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm">Type</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm">Task XP</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm">Date</TableHead>
+                      <TableHead className="text-gray-400 text-xs sm:text-sm">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {submissions.map((submission) => (
+                      <TableRow key={submission.id} className="border-[#282828] hover:bg-[#181818]">
+                        <TableCell className="text-xs sm:text-sm">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-6 h-6 sm:w-8 sm:h-8">
+                              <AvatarImage src={submission.users?.avatar_url || undefined} />
+                              <AvatarFallback className="text-xs">
+                                {submission.users?.username?.charAt(0) || submission.users?.email?.charAt(0) || 'U'}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <div className="text-white font-medium">
-                                {user.username || 'Unknown User'}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-white font-medium truncate">
+                                {submission.users?.username || submission.users?.email || 'Unknown User'}
                               </div>
-                              <div className="text-gray-400 text-sm">
-                                {user.email}
+                              <div className="text-gray-400 text-xs truncate">
+                                {submission.users?.email ? (
+                                  <span className="flex items-center gap-1">
+                                    <Mail className="w-3 h-3" />
+                                    {submission.users.email}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-500">No email</span>
+                                )}
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {task ? (
-                              <>
-                                {getTaskIcon(task as Task)}
-                                <span className="text-white">{task.title}</span>
-                              </>
-                            ) : (
-                              <span className="text-gray-400">Task not found</span>
-                            )}
+                        <TableCell className="text-xs sm:text-sm">
+                          <div className="max-w-[120px] sm:max-w-[200px]">
+                            <div className="text-white font-medium truncate">
+                              {submission.tasks?.title || 'Unknown Task'}
+                            </div>
+                            <div className="text-gray-400 text-xs truncate">
+                              {submission.tasks && getTaskIcon(submission.tasks as Task)}
+                              {submission.tasks?.type || 'Unknown'}
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">
-                            {task?.type || 'unknown'}
-                          </Badge>
+                        <TableCell className="text-xs sm:text-sm">
+                          <div className="flex items-center gap-1">
+                            {submission.tasks && getTaskIcon(submission.tasks as Task)}
+                            <span className="capitalize">{submission.tasks?.type || 'Unknown'}</span>
+                          </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-xs sm:text-sm">
                           {getStatusBadge(submission)}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Trophy className="w-4 h-4 text-green-400" />
-                            <span className="text-green-400 font-semibold">
-                              {submission.tasks?.xp_reward || 0}
-                            </span>
-                            {(submission.xp_removed || submission.submission_data?.xp_removed) && (
-                              <span className="text-red-400 text-sm">
-                                (-{submission.xp_removed || submission.submission_data?.xp_removed || 0})
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="text-white">{formatDate(submission.created_at)}</div>
-                            {submission.verified_at && (
-                              <div className="text-gray-400 text-xs">
-                                Verified: {formatDate(submission.verified_at)}
+                        <TableCell className="text-xs sm:text-sm">
+                          <div className="text-center">
+                            <div className="text-white font-medium">
+                              {submission.xp_earned || 0} XP
+                            </div>
+                            {submission.xp_removed && (
+                              <div className="text-red-400 text-xs">
+                                -{submission.xp_removed} XP
                               </div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                        <TableCell className="text-xs sm:text-sm">
+                          <div className="text-gray-300">
+                            {formatDate(submission.created_at)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm">
+                          <div className="flex items-center gap-1">
                             <Button
-                              variant="ghost"
                               size="sm"
+                              variant="outline"
                               onClick={() => toggleRowExpansion(submission.id)}
-                              className="text-gray-400 hover:text-white"
+                              className="h-6 w-6 p-0"
                             >
-                              {isExpanded ? (
-                                <ChevronUp className="w-4 h-4" />
+                              {expandedRows.has(submission.id) ? (
+                                <ChevronUp className="w-3 h-3" />
                               ) : (
-                                <ChevronDown className="w-4 h-4" />
+                                <ChevronDown className="w-3 h-3" />
                               )}
                             </Button>
-                                                         {submission.status === 'verified' && 
-                              !submission.xp_removed && 
-                              !submission.submission_data?.xp_removed && (
-                               <Button
-                                 variant="ghost"
-                                 size="sm"
-                                 onClick={() => setShowRemoveXPDialog(submission.id)}
-                                 className="text-red-400 hover:text-red-300"
-                               >
-                                 <Trash className="w-4 h-4" />
-                               </Button>
-                             )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedUser(submission.users?.id || null)
+                                setShowUserModal(true)
+                              }}
+                              className="h-6 w-6 p-0"
+                            >
+                              <User className="w-3 h-3" />
+                            </Button>
+                            {submission.status === 'verified' && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setShowRemoveXPDialog(submission.id)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Trash className="w-3 h-3" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
-                      
-                      {/* Expanded Details Row */}
-                      {isExpanded && (
-                        <TableRow key={`${submission.id}-details`} className="border-[#282828]">
-                          <TableCell colSpan={7} className="p-0">
-                            {renderSubmissionDetails(submission)}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

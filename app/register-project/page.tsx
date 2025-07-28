@@ -30,7 +30,7 @@ import ImageUpload from "@/components/image-upload"
 import WalletConnect from "@/components/wallet-connect"
 import { useRouter } from "next/navigation"
 
-import AuthRequired from "@/components/auth-required";
+import AuthWrapper from "@/components/auth-wrapper";
 import PageContainer from "@/components/PageContainer";
 import { toast } from 'sonner';
 import { useToast } from "@/hooks/use-toast";
@@ -93,8 +93,8 @@ const steps = [
   { id: 4, title: "Images & Details", description: "Upload images and additional info" },
 ]
 
-export default function RegisterProject() {
-  const { user, loading: authLoading } = useAuth()
+function RegisterProjectContent() {
+  const { user } = useAuth()
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -148,19 +148,10 @@ export default function RegisterProject() {
     return () => unsubscribeWallet()
   }, [])
   
-  // Authentication check
-  if (!loading && !user) {
-    return (
-      <AuthRequired 
-        title="Sign In Required"
-        message="Please sign in with your email or wallet to register your project."
-        onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-      />
-    )
-  }
+
 
   // Show loading while auth is being checked
-  if (loading || authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -819,5 +810,18 @@ export default function RegisterProject() {
           </Card>
         </div>
       </PageContainer>
+  )
+}
+
+export default function RegisterProject() {
+  return (
+    <AuthWrapper
+      requireAuth={true}
+      title="Sign In Required"
+      message="Please sign in with your email or wallet to register your project."
+      onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+    >
+      <RegisterProjectContent />
+    </AuthWrapper>
   )
 }

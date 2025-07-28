@@ -31,7 +31,7 @@ import { supabase } from "@/lib/supabase"
 import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import type { Database } from "@/lib/supabase"
 import ImageUpload from "@/components/image-upload"
-import AuthRequired from "@/components/auth-required"
+import AuthWrapper from "@/components/auth-wrapper"
 import { extractTweetIdFromUrl, extractUsernameFromUrl } from "@/lib/twitter-utils"
 import { useAuth } from "@/components/auth-provider-wrapper"
 
@@ -95,7 +95,7 @@ interface QuestForm {
   tasks: TaskForm[]
 }
 
-export default function CreateQuest() {
+function CreateQuestContent() {
   const { user, loading: authLoading } = useAuth()
   const [questCategories, setQuestCategories] = useState<{ id: string; name: string }[]>([])
   const [questForm, setQuestForm] = useState<QuestForm>({
@@ -272,17 +272,6 @@ export default function CreateQuest() {
     fetchCategories()
   }, []);
   
-  // Authentication check
-  if (!user && !authLoading) {
-    return (
-      <AuthRequired 
-        title="Sign In Required"
-        message="Please sign in with your email or wallet to create quests and projects."
-        onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-      />
-    )
-  }
-
   // Show loading while auth is being checked
   if (authLoading) {
     return (
@@ -1330,5 +1319,18 @@ export default function CreateQuest() {
           </DialogContent>
         </Dialog>
       </PageContainer>
+  )
+}
+
+export default function CreateQuest() {
+  return (
+    <AuthWrapper
+      requireAuth={true}
+      title="Sign In Required"
+      message="Please sign in with your email or wallet to create quests and projects."
+      onAuthClick={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
+    >
+      <CreateQuestContent />
+    </AuthWrapper>
   )
 }

@@ -79,10 +79,10 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, 
   const adminStatus = isAdminOrCreator()
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Quest Image */}
       {quest.image_url && (
-        <div className="relative w-full h-48 rounded-lg overflow-hidden bg-[#111111] border border-[#282828]">
+        <div className="relative w-full h-32 sm:h-48 rounded-lg overflow-hidden bg-[#111111] border border-[#282828]">
           <img 
             src={quest.image_url} 
             alt={quest.title}
@@ -91,7 +91,7 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, 
         </div>
       )}
       
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <Link href={`/project/${quest.project_id}`} className="text-gray-400 hover:text-white transition-colors">
@@ -106,51 +106,47 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, 
               </Badge>
             )}
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{quest.title}</h1>
-          <p className="text-gray-300 mb-4">{quest.description}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{quest.title}</h1>
+          <p className="text-gray-300 mb-4 text-sm sm:text-base">{quest.description}</p>
           
           {/* Project Information */}
           {quest.projects?.name && (
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-[#111111] border border-[#282828] flex items-center justify-center">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#111111] border border-[#282828] flex items-center justify-center">
                 {quest.projects.logo_url ? (
                   <img 
                     src={quest.projects.logo_url} 
                     alt={quest.projects.name}
-                    className="w-6 h-6 rounded-full object-cover"
+                    className="w-4 h-4 sm:w-6 sm:h-6 rounded-full object-cover"
                   />
                 ) : (
-                  <FileText className="w-4 h-4 text-gray-400" />
+                  <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                 )}
               </div>
-              <span className="text-gray-300">{quest.projects.name}</span>
+              <span className="text-gray-300 text-sm sm:text-base">{quest.projects.name}</span>
             </div>
           )}
           
           {/* Quest Stats */}
-          <div className="flex items-center gap-4 text-sm text-gray-400">
+          <div className="flex items-center gap-4 text-xs sm:text-sm text-gray-400">
             <div className="flex items-center gap-1">
-              <Target className="w-4 h-4" />
+              <Target className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>{quest.total_xp || 0} XP</span>
             </div>
             <div className="flex items-center gap-1">
-              <Eye className="w-4 h-4" />
+              <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>{quest.participant_count || 0} participants</span>
             </div>
           </div>
         </div>
         
         {adminStatus && (
-          <div className="flex gap-2">
-            <Button onClick={onAddTask} className="bg-green-600 hover:bg-green-700">
+          <div className="flex flex-col sm:flex-row gap-2 lg:flex-col lg:gap-2">
+            <Button onClick={onAddTask} className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Add Task
             </Button>
-            <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
-              <FileDown className="w-4 h-4 mr-2" />
-              Export Submissions
-            </Button>
-            <Button onClick={onEditQuest} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
+            <Button onClick={onEditQuest} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 w-full sm:w-auto">
               <Edit className="w-4 h-4 mr-2" />
               Edit Quest
             </Button>
@@ -1078,7 +1074,8 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             <AdminSubmissionsTable 
               quest={quest} 
               tasks={tasks} 
-              isAdmin={true} 
+              isAdmin={true}
+              onExport={handleExportSubmissions}
             />
           </div>
         )}

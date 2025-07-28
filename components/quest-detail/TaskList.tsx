@@ -238,7 +238,18 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
       return;
     }
 
-    console.log('Session found for task completion:', walletUser?.email);
+    // Get current session
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to complete tasks.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('Session found for task completion:', session.user.email);
     console.log('Task object:', task);
 
     setCompletingTask(task.id);
@@ -247,7 +258,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
     try {
       const completionData = {
         taskId: task.id,
-        userId: walletUser?.id,
+        userId: session.user.id,
         questId: task.quest_id || questId,
         action: task.type === 'download' ? 'downloaded' : 
                 task.type === 'visit' ? 'visited' : 
@@ -263,7 +274,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${walletUser?.access_token}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(completionData),
       });
