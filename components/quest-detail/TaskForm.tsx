@@ -147,7 +147,7 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
     download_url: null,
     download_title: null,
     download_description: null,
-    form_url: null,
+            // form_url: null, // Removed - column doesn't exist in database
     form_title: null,
     form_description: null,
     visit_url: null,
@@ -174,7 +174,7 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
         download_url: task.download_url,
         download_title: task.download_title,
         download_description: task.download_description,
-        form_url: task.form_url,
+        // form_url: task.form_url, // Removed - column doesn't exist in database
         form_title: task.form_title,
         form_description: task.form_description,
         visit_url: task.visit_url,
@@ -397,37 +397,8 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
 
   const renderFormFields = () => (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="form_url" className="text-sm font-medium text-gray-200">Form URL</Label>
-        <Input
-          id="form_url"
-          type="url"
-          placeholder="https://..."
-          value={formData.form_url || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, form_url: e.target.value }))}
-          className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="form_title" className="text-sm font-medium text-gray-200">Form Title</Label>
-        <Input
-          id="form_title"
-          placeholder="Form title"
-          value={formData.form_title || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, form_title: e.target.value }))}
-          className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="form_description" className="text-sm font-medium text-gray-200">Form Description</Label>
-        <Textarea
-          id="form_description"
-          placeholder="Form description"
-          value={formData.form_description || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, form_description: e.target.value }))}
-          className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500 min-h-[80px]"
-        />
-      </div>
+                  {/* Form URL field removed - column doesn't exist in database */}
+      {/* Removed form_title and form_description fields as they don't exist in the database */}
     </div>
   )
 
@@ -444,26 +415,7 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
           maxSize={50 * 1024 * 1024} // 50MB
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="download_title" className="text-sm font-medium text-gray-200">Download Title</Label>
-        <Input
-          id="download_title"
-          placeholder="Download title"
-          value={formData.download_title || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, download_title: e.target.value }))}
-          className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="download_description" className="text-sm font-medium text-gray-200">Download Description</Label>
-        <Textarea
-          id="download_description"
-          placeholder="Download description"
-          value={formData.download_description || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, download_description: e.target.value }))}
-          className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500 min-h-[80px]"
-        />
-      </div>
+      {/* Removed download_title and download_description fields as they don't exist in the database */}
     </div>
   )
 

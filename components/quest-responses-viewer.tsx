@@ -101,26 +101,44 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
   const fetchSubmissions = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      // First get the submissions
+      const { data: submissionsData, error: submissionsError } = await supabase
         .from('user_task_submissions')
-        .select(`
-          *,
-          users (*),
-          tasks (*)
-        `)
+        .select('*')
         .eq('quest_id', quest.id)
-        .eq('verified', true)
+        .eq('status', 'verified')
 
-      if (error) {
-        console.error('Error fetching submissions:', error)
+      if (submissionsError) {
+        console.error('Error fetching submissions:', submissionsError)
         return
       }
 
-      setSubmissions(data || [])
+      // Then get the tasks
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('*')
+        .in('id', submissionsData?.map(s => s.task_id) || [])
+
+      if (tasksError) {
+        console.error('Error fetching tasks:', tasksError)
+        return
+      }
+
+      // Create a map of tasks by ID
+      const tasksMap = new Map(tasksData?.map(task => [task.id, task]) || [])
+
+      // Combine the data
+      const combinedData = submissionsData?.map(submission => ({
+        ...submission,
+        tasks: tasksMap.get(submission.task_id) || null,
+        users: null // We'll handle user data separately if needed
+      })) || []
+
+      setSubmissions(combinedData)
       
       // Auto-select first user if available
-      if (data && data.length > 0 && !selectedUser) {
-        const firstUserId = data[0].user_id
+      if (combinedData.length > 0 && !selectedUser) {
+        const firstUserId = combinedData[0].user_id
         setSelectedUser(firstUserId)
       }
     } catch (error) {
@@ -198,7 +216,8 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
     // Map database task to Task type
     const task: Task = {
       ...taskData,
-                type: taskData.task_type || 'unknown'
+      quest_id: taskData.quest_id || undefined,
+      type: (taskData.type as 'social' | 'visit' | 'form' | 'download' | 'learn') || 'social'
     }
 
     return (
@@ -363,7 +382,7 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
                   </div>
                   <div>
                     <div className="text-white font-medium">
-                      {userData.user?.username || userData.user?.wallet_address?.slice(0, 8) + '...' || 'Unknown User'}
+                      {userData.user?.username || 'Unknown User'}
                     </div>
                     <div className="text-gray-400 text-sm">
                       {userData.completedTasks}/{userData.totalTasks} tasks
@@ -393,7 +412,7 @@ export default function QuestResponsesViewer({ quest, tasks, isAdmin }: QuestRes
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <h3 className="text-white font-semibold text-base sm:text-lg">
-                    {selectedUserData.user?.username || selectedUserData.user?.wallet_address?.slice(0, 8) + '...' || 'Unknown User'}
+                    {selectedUserData.user?.username || 'Unknown User'}
                   </h3>
                   <p className="text-gray-400 text-xs sm:text-sm">
                     {selectedUserData.completedTasks}/{selectedUserData.totalTasks} tasks completed

@@ -22,6 +22,14 @@ export type Task = {
   learn_content?: string | null;
   learn_questions?: any;
   learn_passing_score?: number | null;
+  // New quiz fields
+  quiz_question?: string | null;
+  quiz_answer_1?: string | null;
+  quiz_answer_2?: string | null;
+  quiz_answer_3?: string | null;
+  quiz_answer_4?: string | null;
+  quiz_correct_answer?: number | null;
+  quiz_is_multi_select?: boolean | null;
   user_task_submissions?: any;
   xp_reward?: number | null;
   order_index?: number | null;

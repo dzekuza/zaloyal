@@ -184,6 +184,35 @@ export interface Database {
           description: string | null
           xp_reward: number
           status: string
+          // Additional fields for different task types
+          social_platform?: string | null
+          social_action?: string | null
+          social_url?: string | null
+          social_username?: string | null
+          social_post_id?: string | null
+          download_url?: string | null
+          download_title?: string | null
+          download_description?: string | null
+          form_url?: string | null
+          form_title?: string | null
+          form_description?: string | null
+          visit_url?: string | null
+          visit_title?: string | null
+          visit_description?: string | null
+          visit_duration_seconds?: number | null
+          learn_content?: string | null
+          learn_questions?: any
+          learn_passing_score?: number | null
+          // New quiz fields
+          quiz_question?: string | null
+          quiz_answer_1?: string | null
+          quiz_answer_2?: string | null
+          quiz_answer_3?: string | null
+          quiz_answer_4?: string | null
+          quiz_correct_answer?: number | null
+          quiz_is_multi_select?: boolean | null
+          order_index?: number | null
+          required?: boolean | null
           created_at: string
           updated_at: string
         }
@@ -195,6 +224,27 @@ export interface Database {
           description?: string | null
           xp_reward?: number
           status?: string
+          // Additional fields for different task types
+          social_platform?: string | null
+          social_action?: string | null
+          social_url?: string | null
+          social_username?: string | null
+          social_post_id?: string | null
+          download_url?: string | null
+          download_title?: string | null
+          download_description?: string | null
+          form_url?: string | null
+          form_title?: string | null
+          form_description?: string | null
+          visit_url?: string | null
+          visit_title?: string | null
+          visit_description?: string | null
+          visit_duration_seconds?: number | null
+          learn_content?: string | null
+          learn_questions?: any
+          learn_passing_score?: number | null
+          order_index?: number | null
+          required?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -206,6 +256,27 @@ export interface Database {
           description?: string | null
           xp_reward?: number
           status?: string
+          // Additional fields for different task types
+          social_platform?: string | null
+          social_action?: string | null
+          social_url?: string | null
+          social_username?: string | null
+          social_post_id?: string | null
+          download_url?: string | null
+          download_title?: string | null
+          download_description?: string | null
+          form_url?: string | null
+          form_title?: string | null
+          form_description?: string | null
+          visit_url?: string | null
+          visit_title?: string | null
+          visit_description?: string | null
+          visit_duration_seconds?: number | null
+          learn_content?: string | null
+          learn_questions?: any
+          learn_passing_score?: number | null
+          order_index?: number | null
+          required?: boolean | null
           created_at?: string
           updated_at?: string
         }

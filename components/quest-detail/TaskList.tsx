@@ -169,7 +169,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
     let url = '';
     if (task.type === 'social' && task.social_url) url = getAbsoluteUrl(task.social_url);
     if (task.type === 'visit' && task.visit_url) url = getAbsoluteUrl(task.visit_url);
-    if (task.type === 'form' && task.form_url) url = getAbsoluteUrl(task.form_url);
+            // if (task.type === 'form' && task.form_url) url = getAbsoluteUrl(task.form_url); // Removed - form_url doesn't exist in database
     if (task.type === 'download' && task.download_url) url = getAbsoluteUrl(task.download_url);
     
     if (url) {
@@ -182,6 +182,15 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                     task.type === 'form' ? 'form_submitted' : 'completed'
       
       await trackTaskCompletion(task, action, { url })
+      
+      // Automatically verify download and visit tasks
+      if (task.type === 'download' || task.type === 'visit') {
+        // Add a small delay to allow the URL to open
+        setTimeout(async () => {
+          await trackTaskCompletion(task, 'verification_attempted');
+          handleTaskVerification(task);
+        }, 1000);
+      }
     }
   };
 
@@ -405,20 +414,22 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                               className="bg-gray-700 hover:bg-gray-800 text-white text-xs md:text-sm"
                               size="sm"
                             >
-                              Complete Task
+                              {task.type === 'download' || task.type === 'visit' ? 'Complete & Verify' : 'Complete Task'}
                             </Button>
-                            <Button
-                              onClick={async () => {
-                                console.log('DEBUG: Verify Task button clicked for task:', task.id);
-                                await trackTaskCompletion(task, 'verification_attempted');
-                                handleTaskVerification(task);
-                              }}
-                              disabled={isVerifying}
-                              className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
-                              size="sm"
-                            >
-                              {isVerifying ? 'Verifying...' : 'Verify Task'}
-                            </Button>
+                            {task.type !== 'download' && task.type !== 'visit' && (
+                              <Button
+                                onClick={async () => {
+                                  console.log('DEBUG: Verify Task button clicked for task:', task.id);
+                                  await trackTaskCompletion(task, 'verification_attempted');
+                                  handleTaskVerification(task);
+                                }}
+                                disabled={isVerifying}
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
+                                size="sm"
+                              >
+                                {isVerifying ? 'Verifying...' : 'Verify Task'}
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>

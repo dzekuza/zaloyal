@@ -591,6 +591,14 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             if (result.success && result.verified) {
               verified = true
               message = result.message
+              // Download tasks are already handled by the API
+              // No need to create duplicate submission records
+              toast({
+                title: 'Task completed!',
+                description: message,
+              })
+              setVerifyingTask(null)
+              return
             } else {
               verified = false
               message = result.message || 'Download verification failed'
@@ -629,6 +637,14 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
             if (result.success && result.verified) {
               verified = true
               message = result.message
+              // Visit tasks are already handled by the API
+              // No need to create duplicate submission records
+              toast({
+                title: 'Task completed!',
+                description: message,
+              })
+              setVerifyingTask(null)
+              return
             } else {
               verified = false
               message = result.message || 'Visit verification failed'
@@ -766,35 +782,36 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     }
 
     try {
+      // Filter out fields that don't exist in the database based on error messages
+      const taskInsertData = {
+        quest_id: quest.id,
+        type: taskData.type || 'social',
+        title: taskData.title || '',
+        description: taskData.description || '',
+        xp_reward: taskData.xp_reward || 100,
+        status: 'pending',
+        // Only include fields that exist in the database
+        social_platform: taskData.social_platform || null,
+        social_action: taskData.social_action || null,
+        social_url: taskData.social_url || null,
+        social_username: taskData.social_username || null,
+        social_post_id: taskData.social_post_id || null,
+        download_url: taskData.download_url || null,
+        // Removed fields that don't exist: download_title, download_description, form_title, form_description, etc.
+                          // form_url: taskData.form_url || null, // Removed - column doesn't exist in database
+        visit_url: taskData.visit_url || null,
+        visit_title: taskData.visit_title || null,
+        visit_description: taskData.visit_description || null,
+        visit_duration_seconds: taskData.visit_duration_seconds || null,
+        learn_content: taskData.learn_content || null,
+        learn_questions: taskData.learn_questions || null,
+        learn_passing_score: taskData.learn_passing_score || 80,
+        order_index: tasks.length
+      }
+
       const { data, error } = await supabase
         .from('tasks')
-        .insert({
-          quest_id: quest.id,
-          type: taskData.type || 'social',
-          title: taskData.title || '',
-          description: taskData.description || '',
-          xp_reward: taskData.xp_reward || 100,
-          status: 'pending',
-          social_platform: taskData.social_platform || null,
-          social_action: taskData.social_action || null,
-          social_url: taskData.social_url || null,
-          social_username: taskData.social_username || null,
-          social_post_id: taskData.social_post_id || null,
-          download_url: taskData.download_url || null,
-          download_title: taskData.download_title || null,
-          download_description: taskData.download_description || null,
-          form_url: taskData.form_url || null,
-          form_title: taskData.form_title || null,
-          form_description: taskData.form_description || null,
-          visit_url: taskData.visit_url || null,
-          visit_title: taskData.visit_title || null,
-          visit_description: taskData.visit_description || null,
-          visit_duration_seconds: taskData.visit_duration_seconds || null,
-          learn_content: taskData.learn_content || null,
-          learn_questions: taskData.learn_questions || null,
-          learn_passing_score: taskData.learn_passing_score || 80,
-          order_index: tasks.length
-        })
+        .insert(taskInsertData)
         .select()
         .single()
 
@@ -838,32 +855,32 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
     }
 
     try {
+      // Filter out fields that don't exist in the database
+      const taskUpdateData = {
+        type: taskData.type,
+        title: taskData.title,
+        description: taskData.description,
+        xp_reward: taskData.xp_reward,
+        social_platform: taskData.social_platform,
+        social_action: taskData.social_action,
+        social_url: taskData.social_url,
+        social_username: taskData.social_username,
+        social_post_id: taskData.social_post_id,
+        download_url: taskData.download_url,
+        // Removed fields that don't exist: download_title, download_description, form_title, form_description, etc.
+                          // form_url: taskData.form_url, // Removed - column doesn't exist in database
+        visit_url: taskData.visit_url,
+        visit_title: taskData.visit_title,
+        visit_description: taskData.visit_description,
+        visit_duration_seconds: taskData.visit_duration_seconds,
+        learn_content: taskData.learn_content,
+        learn_questions: taskData.learn_questions,
+        learn_passing_score: taskData.learn_passing_score
+      }
+
       const { data, error } = await supabase
         .from('tasks')
-        .update({
-          type: taskData.type,
-          title: taskData.title,
-          description: taskData.description,
-          xp_reward: taskData.xp_reward,
-          social_platform: taskData.social_platform,
-          social_action: taskData.social_action,
-          social_url: taskData.social_url,
-          social_username: taskData.social_username,
-          social_post_id: taskData.social_post_id,
-          download_url: taskData.download_url,
-          download_title: taskData.download_title,
-          download_description: taskData.download_description,
-          form_url: taskData.form_url,
-          form_title: taskData.form_title,
-          form_description: taskData.form_description,
-          visit_url: taskData.visit_url,
-          visit_title: taskData.visit_title,
-          visit_description: taskData.visit_description,
-          visit_duration_seconds: taskData.visit_duration_seconds,
-          learn_content: taskData.learn_content,
-          learn_questions: taskData.learn_questions,
-          learn_passing_score: taskData.learn_passing_score
-        })
+        .update(taskUpdateData)
         .eq('id', taskId)
         .select()
         .single()

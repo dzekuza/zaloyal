@@ -39,9 +39,37 @@ export async function POST(request: NextRequest) {
     // 2. Use browser extensions to verify downloads
     // 3. Implement server-side tracking
     
+    // Get task details to determine XP reward
+    const { data: task, error: taskError } = await supabase
+      .from('tasks')
+      .select('xp_reward, title, description')
+      .eq('id', taskId)
+      .single()
+
+    if (taskError || !task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 })
+    }
+
+    // Check if user has already completed this task
+    const { data: existingSubmission } = await supabase
+      .from('user_task_submissions')
+      .select('id')
+      .eq('user_id', userId || user.id)
+      .eq('task_id', taskId)
+      .single()
+
+    if (existingSubmission) {
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Task already completed!',
+        verified: true,
+        xpEarned: 0
+      })
+    }
+
     // For now, we'll assume the user has downloaded the file if they're submitting this request
     const verified = true
-    const message = `Download from ${downloadUrl} verified successfully`
+    const message = `Download from ${downloadUrl} verified successfully! You earned ${task.xp_reward} XP!`
 
     if (verified) {
       // Create task completion record
@@ -68,7 +96,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to track download completion", details: error.message }, { status: 500 })
       }
 
-      // Also create a task submission record
+      // Create a task submission record with XP
       const submissionData = {
         user_id: userId || user.id,
         task_id: taskId,
@@ -85,8 +113,8 @@ export async function POST(request: NextRequest) {
           verified: true,
           download_url: downloadUrl
         },
-        xp_earned: 0, // Will be calculated based on task
-        xp_awarded: 0
+        xp_earned: task.xp_reward,
+        xp_awarded: task.xp_reward
       }
 
       const { error: submissionError } = await supabase
@@ -98,11 +126,41 @@ export async function POST(request: NextRequest) {
         // Don't fail the request, just log the error
       }
 
+      // Update user's total XP
+      const { data: currentUser, error: userError } = await supabase
+        .from('users')
+        .select('total_xp, level')
+        .eq('id', userId || user.id)
+        .single()
+
+      if (!userError && currentUser) {
+        const newTotalXp = (currentUser.total_xp || 0) + task.xp_reward
+        const newLevel = newTotalXp >= 400 ? 5 : 
+                        newTotalXp >= 300 ? 4 : 
+                        newTotalXp >= 200 ? 3 : 
+                        newTotalXp >= 100 ? 2 : 
+                        currentUser.level || 1
+
+        const { error: xpError } = await supabase
+          .from('users')
+          .update({ 
+            total_xp: newTotalXp,
+            level: newLevel
+          })
+          .eq('id', userId || user.id)
+
+        if (xpError) {
+          console.error('Error updating user XP:', xpError)
+          // Don't fail the request, just log the error
+        }
+      }
+
       return NextResponse.json({ 
         success: true, 
         message: message,
         verified: true,
-        completionId: data?.[0]?.id || null
+        completionId: data?.[0]?.id || null,
+        xpEarned: task.xp_reward
       })
     } else {
       return NextResponse.json({ 

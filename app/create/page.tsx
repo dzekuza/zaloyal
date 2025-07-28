@@ -543,7 +543,7 @@ export default function CreateQuest() {
         download_url: task.downloadUrl || null,
         download_title: task.downloadTitle || null,
         download_description: task.downloadDescription || null,
-        form_url: task.formUrl || null,
+        // form_url: task.formUrl || null, // Removed - column doesn't exist in database
         form_title: task.formTitle || null,
         form_description: task.formDescription || null,
         visit_url: task.visitUrl || null,
