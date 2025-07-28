@@ -1,116 +1,67 @@
-'use client';
+"use client"
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import LoadingSpinner from '@/components/loading-spinner';
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { useToast } from '@/hooks/use-toast'
 
 export default function SupabaseAuthCallback() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [isProcessing, setIsProcessing] = useState(false);
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      if (isProcessing) return;
-      setIsProcessing(true);
-
+      setIsProcessing(true)
+      
       try {
-        console.log('DEBUG: Handling Supabase auth callback...');
-        
-        // Get URL parameters
-        const error = searchParams.get('error');
-        const errorCode = searchParams.get('error_code');
-        const errorDescription = searchParams.get('error_description');
-        const state = searchParams.get('state');
-        
-        console.log('DEBUG: URL search params:', { error, errorCode, errorDescription, state });
-        console.log('DEBUG: Callback timestamp:', new Date().toISOString());
-
-        // Parse state if it exists
-        let linkAction = null;
-        if (state) {
-          try {
-            const stateData = JSON.parse(atob(state));
-            linkAction = stateData.action;
-            console.log('DEBUG: State data:', stateData);
-          } catch (e) {
-            console.log('DEBUG: Could not parse state parameter');
-          }
-        }
-
-        // Handle OAuth errors
-        if (error) {
-          console.error('OAuth error:', error, errorCode, errorDescription);
-          
-          // Handle specific Discord errors
-          if (error === 'server_error' && errorDescription?.includes('Unable to exchange external code')) {
-            console.error('Discord OAuth exchange failed - this usually means the code has expired or been used');
-            router.push('/profile?error=discord_code_expired');
-            return;
-          }
-          
-          // Handle email already exists error
-          if (error === 'signup_disabled' || errorDescription?.includes('already exists') || errorDescription?.includes('email')) {
-            console.error('Account with this email already exists - trying to link accounts');
-            router.push('/profile?error=email_exists&message=Please log in with your existing account first, then try linking Discord');
-            return;
-          }
-
-          // Handle Discord-specific errors
-          if (errorDescription?.includes('Discord') || errorDescription?.includes('discord')) {
-            console.error('Discord OAuth error:', errorDescription);
-            router.push('/profile?error=discord_oauth_failed&message=Discord authentication failed. Please try again.');
-            return;
-          }
-          
-          router.push(`/profile?error=${error}`);
-          return;
-        }
-
         // Get the current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
-          console.error('Session error:', sessionError);
-          router.push('/profile?error=session_error');
-          return;
+          console.error('Session error:', sessionError)
+          toast({
+            title: "Authentication Error",
+            description: "Failed to get session. Please try again.",
+            variant: "destructive",
+          })
+          router.push('/')
+          return
         }
 
         if (!session) {
-          console.log('DEBUG: No session found, redirecting to home');
-          router.push('/');
-          return;
+          console.log('No session found, redirecting to home')
+          router.push('/')
+          return
         }
 
-        const user = session.user;
-        console.log('DEBUG: User authenticated:', user.email);
-        
-        // Check if this is a social OAuth connection (X or Discord)
-        const isSocialAuth = user.app_metadata?.provider === 'twitter' || 
-                           user.app_metadata?.provider === 'discord' ||
-                           user.user_metadata?.provider === 'twitter' ||
-                           user.user_metadata?.provider === 'discord' ||
-                           user.identities?.some((identity: any) => 
-                             identity.provider === 'twitter' || identity.provider === 'discord'
-                           );
-        
-        let socialIdentity: any = null;
-        
+        const user = session.user
+        console.log('DEBUG: Processing auth callback for user:', user.id)
+
+        // Check if this is a social OAuth connection
+        const isSocialAuth = user.app_metadata?.provider === 'twitter' || user.app_metadata?.provider === 'discord'
+        let socialIdentity = null
+
         if (isSocialAuth) {
-          console.log('DEBUG: Processing social OAuth connection...');
+          console.log('DEBUG: Processing social OAuth connection...')
           
           try {
             // Get user identities to find social identity
-            const { data: identities } = await supabase.auth.getUserIdentities();
+            const { data: identities } = await supabase.auth.getUserIdentities()
             socialIdentity = identities?.identities?.find(
               (identity: any) => identity.provider === 'twitter' || identity.provider === 'discord'
-            );
+            )
             
             if (socialIdentity) {
-              console.log('DEBUG: Found social identity, storing social account...');
+              console.log('DEBUG: Found social identity, storing social account...')
+              console.log('DEBUG: Social identity details:', {
+                provider: socialIdentity.provider,
+                identity_id: socialIdentity.identity_id,
+                identity_data: socialIdentity.identity_data
+              })
               
-              const platform = socialIdentity.provider === 'twitter' ? 'x' : 'discord';
+              const platform = socialIdentity.provider === 'twitter' ? 'x' : 'discord'
               const platformData: any = {
                 user_id: user.id,
                 platform: platform,
@@ -138,114 +89,105 @@ export default function SupabaseAuthCallback() {
                 verified: true,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
-              };
+              }
 
               // Add platform-specific fields
               if (platform === 'x') {
-                platformData.x_account_id = socialIdentity.identity_id;
-                platformData.x_username = user.user_metadata?.username || user.user_metadata?.name;
+                platformData.x_account_id = socialIdentity.identity_id
+                platformData.x_username = user.user_metadata?.username || user.user_metadata?.name
               } else if (platform === 'discord') {
-                platformData.discord_account_id = socialIdentity.identity_id;
-                platformData.discord_username = user.user_metadata?.username || user.user_metadata?.name;
+                platformData.discord_account_id = socialIdentity.identity_id
+                platformData.discord_username = user.user_metadata?.username || user.user_metadata?.name
               }
+              
+              console.log('DEBUG: Platform data prepared:', platformData)
               
               // Store or update social account with better error handling
               try {
-                const { error: socialError } = await supabase
+                console.log('DEBUG: Attempting to store social account:', {
+                  user_id: platformData.user_id,
+                  platform: platformData.platform,
+                  account_id: platformData.account_id,
+                  username: platformData.username
+                });
+
+                const { data, error: socialError } = await supabase
                   .from('social_accounts')
                   .upsert(platformData, {
                     onConflict: 'user_id,platform'
-                  });
+                  })
+                  .select();
 
                 if (socialError) {
-                  console.error('Error storing social account:', socialError);
+                  console.error('Error storing social account:', {
+                    error: socialError,
+                    code: socialError.code,
+                    message: socialError.message,
+                    details: socialError.details,
+                    hint: socialError.hint
+                  });
                   // Don't fail the entire auth flow, just log the error
                   // The user can still proceed with their account
                 } else {
-                  console.log('DEBUG: Social account stored successfully');
+                  console.log('DEBUG: Social account stored successfully:', data);
                 }
               } catch (socialError) {
-                console.error('Error storing social account:', socialError);
+                console.error('Exception storing social account:', {
+                  error: socialError,
+                  message: socialError instanceof Error ? socialError.message : 'Unknown error',
+                  stack: socialError instanceof Error ? socialError.stack : undefined
+                });
                 // Continue with the auth flow even if social account storage fails
               }
             }
           } catch (identityError) {
-            console.error('Error handling social identity:', identityError);
+            console.error('Error handling social identity:', identityError)
             // Continue with the auth flow even if social identity handling fails
           }
         }
-        
-        // Check if user record exists in users table
-        const { data: userRecord, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single();
 
-        console.log('DEBUG: User record lookup:', { userRecord: !!userRecord, userError });
+        // 🔥 BEST PRACTICE: Use auth.users for authentication, not custom users table
+        // The user is already authenticated via Supabase Auth
+        // Social details are available via user.user_metadata and user.identities
+        console.log('DEBUG: User authenticated successfully via Supabase Auth')
+        console.log('DEBUG: User metadata:', user.user_metadata)
+        console.log('DEBUG: User identities:', user.identities)
 
-        if (!userRecord) {
-          console.log('DEBUG: User record not found, creating...');
-          // The trigger should have created the user, but let's ensure it exists
-          try {
-            const { data: newUser, error: createError } = await supabase
-              .from('users')
-              .insert({
-                id: user.id,
-                email: user.email,
-                username: user.user_metadata?.username || user.user_metadata?.name || user.email?.split('@')[0],
-                avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
-                social_links: {
-                  twitter: user.user_metadata?.provider === 'twitter' ? {
-                    username: user.user_metadata?.username,
-                    id: user.user_metadata?.id,
-                    avatar_url: user.user_metadata?.avatar_url
-                  } : null,
-                  discord: user.user_metadata?.provider === 'discord' ? {
-                    username: user.user_metadata?.username,
-                    id: user.user_metadata?.id,
-                    avatar_url: user.user_metadata?.avatar_url
-                  } : null
-                }
-              })
-              .select()
-              .single();
-
-            console.log('DEBUG: User creation result:', { newUser, createError });
-
-            if (createError) {
-              console.error('Error creating user record:', createError);
-              // Don't fail the auth flow, just log the error
-            } else {
-              console.log('DEBUG: User record created successfully');
-            }
-          } catch (createError) {
-            console.error('Error creating user record:', createError);
-            // Continue with the auth flow even if user creation fails
-          }
-        }
+        // Even if social account storage failed, the user is still authenticated
+        // Social details are available in user.identities for verification
+        console.log('DEBUG: Auth flow completed successfully')
 
         // Redirect to profile page to show the new connection
-        const successParam = isSocialAuth ? `${socialIdentity?.provider || 'social'}_connected` : 'authenticated';
-        router.push(`/profile?success=${successParam}`);
-        
-      } catch (error) {
-        console.error('Error handling auth callback:', error);
-        router.push('/profile?error=auth_failed');
-      } finally {
-        setIsProcessing(false);
-      }
-    };
+        const successParam = isSocialAuth ? `${socialIdentity?.provider || 'social'}_connected` : 'authenticated'
+        router.push(`/profile?success=${successParam}`)
 
-    handleAuthCallback();
-  }, [router, searchParams, isProcessing]);
+      } catch (error) {
+        console.error('Auth callback error:', error)
+        toast({
+          title: "Authentication Error",
+          description: "An error occurred during authentication. Please try again.",
+          variant: "destructive",
+        })
+        router.push('/')
+      } finally {
+        setIsProcessing(false)
+      }
+    }
+
+    handleAuthCallback()
+  }, [router, toast])
 
   return (
-    <div className="min-h-screen bg-[#181818] flex items-center justify-center">
+    <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
-        <LoadingSpinner />
-        <p className="text-white mt-4">Completing authentication...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+        <h2 className="text-xl font-semibold mb-2">
+          {isProcessing ? 'Processing authentication...' : 'Redirecting...'}
+        </h2>
+        <p className="text-gray-600">
+          Please wait while we complete your authentication.
+        </p>
       </div>
     </div>
-  );
+  )
 } 

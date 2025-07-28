@@ -7,9 +7,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import ImageUpload from "@/components/image-upload"
-import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/components/auth-provider-wrapper"
 
 interface EditQuestFormProps {
   quest: any;
@@ -17,6 +17,7 @@ interface EditQuestFormProps {
 }
 
 export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
+  const { user, loading: authLoading } = useAuth()
   const [title, setTitle] = useState(quest.title || "")
   const [description, setDescription] = useState(quest.description || "")
   // Removed imageUrl state as it's not supported in the database
@@ -25,31 +26,15 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
-  const [emailUser, setEmailUser] = useState<any>(null)
-
-  useEffect(() => {
-    // Check for wallet user
-    const unsubscribeWallet = walletAuth.onAuthStateChange((user) => {
-      setWalletUser(user)
-    })
-
-    // Check for email user
-    const checkEmailAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase.from("users").select("*").eq("email", user.email).single()
-        setEmailUser({ ...user, profile })
-      }
-    }
-    checkEmailAuth()
-
-    return () => unsubscribeWallet()
-  }, [])
 
   const handleSave = async () => {
     if (!title.trim()) {
       setError("Quest title is required")
+      return
+    }
+
+    if (!user) {
+      setError("You must be signed in to create or edit quests")
       return
     }
 
@@ -58,92 +43,14 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
     setSuccess("")
     
     try {
-      // Debug: Log the quest object
+      // Debug: Log the quest object and user
       console.log("Debug: Quest object:", quest)
       console.log("Debug: Quest project_id:", quest.project_id)
+      console.log("Debug: Current user:", user)
       
-      // Debug: Check authentication state
-      console.log("Debug: Wallet user:", walletUser)
-      console.log("Debug: Email user:", emailUser)
-      
-      // Get current user ID with better error handling
-      let userId = null
-      let userError = null
-      
-      if (walletUser) {
-        console.log("Debug: Using wallet authentication")
-        // Try wallet lookup first
-        const { data: userData, error: walletError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("wallet_address", walletUser.walletAddress.toLowerCase())
-          .single()
-        
-        if (userData && !walletError) {
-          userId = userData.id
-          console.log("Debug: Found user by wallet:", userId)
-        } else {
-          console.log("Debug: Wallet user not found, trying to create")
-          // If wallet user not found, try to create them
-          try {
-            const response = await fetch("/api/users/upsert", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ 
-                walletAddress: walletUser.walletAddress,
-                username: walletUser.username || `User${walletUser.walletAddress.slice(-6)}`
-              }),
-            })
-            
-            if (response.ok) {
-              const { user } = await response.json()
-              userId = user.id
-              console.log("Debug: Created user by wallet:", userId)
-            } else {
-              const errorData = await response.json()
-              console.log("Debug: Failed to create wallet user:", errorData)
-              // If creation fails, try email lookup as fallback
-              if (emailUser?.email) {
-                const { data: emailUserData, error: emailError } = await supabase
-                  .from("users")
-                  .select("id")
-                  .eq("email", emailUser.email.toLowerCase())
-                  .single()
-                
-                if (emailUserData && !emailError) {
-                  userId = emailUserData.id
-                  console.log("Debug: Found user by email fallback:", userId)
-                } else {
-                  userError = `User not found and could not be created. Wallet: ${walletError?.message}, Create: ${errorData.error}, Email: ${emailError?.message}`
-                }
-              } else {
-                userError = `User not found and could not be created. Wallet: ${walletError?.message}, Create: ${errorData.error}`
-              }
-            }
-          } catch (createErr: any) {
-            userError = `Failed to create user: ${createErr.message}`
-          }
-        }
-      } else if (emailUser?.profile) {
-        console.log("Debug: Using email authentication")
-        // Email user - use profile ID directly
-        userId = emailUser.profile.id
-        console.log("Debug: Found user by email profile:", userId)
-      } else {
-        userError = "No authenticated user found"
-        console.log("Debug: No authenticated user found")
-      }
-
-      if (!userId) {
-        console.error("User lookup failed:", {
-          walletUser,
-          emailUser,
-          userError
-        })
-        throw new Error(userError || "User not found. Please sign in again.")
-      }
-
-      console.log("Debug: User ID:", userId)
+      // Use the authenticated user ID directly
+      const userId = user.id
+      console.log("Debug: Using user ID:", userId)
 
       // Check if user owns the project for this quest
       if (quest.id !== 'new') {
@@ -164,15 +71,9 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
         if (projectData.owner_id !== userId) {
           throw new Error("You don't have permission to edit this quest")
         }
-      }
-
-      if (quest.id === 'new') {
-        // Create new quest - need to ensure user owns the project
-        if (!quest.project_id) {
-          throw new Error("Project ID is required to create a quest")
-        }
-        
-        // Verify user owns the project
+      } else {
+        // For new quests, check if user owns the project
+        console.log("Debug: Checking project ownership for new quest")
         const { data: projectData, error: projectError } = await supabase
           .from("projects")
           .select("owner_id")
@@ -186,7 +87,9 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
         if (projectData.owner_id !== userId) {
           throw new Error("You don't have permission to create quests for this project")
         }
+      }
 
+      if (quest.id === 'new') {
         // Create new quest
         const { data: newQuest, error: insertError } = await supabase
           .from("quests")
@@ -291,6 +194,18 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
       style={{ scrollbarGutter: 'stable' }}
       onSubmit={e => { e.preventDefault(); handleSave(); }}
     >
+      {authLoading && (
+        <Alert variant="default">
+          <AlertDescription>Loading authentication...</AlertDescription>
+        </Alert>
+      )}
+      
+      {!user && !authLoading && (
+        <Alert variant="destructive">
+          <AlertDescription>You must be signed in to create or edit quests</AlertDescription>
+        </Alert>
+      )}
+      
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -311,6 +226,7 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
             className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
             placeholder="Enter quest title"
             required 
+            disabled={authLoading || !user}
           />
         </div>
         <div className="space-y-2">
@@ -321,13 +237,14 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
             className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-green-500" 
             rows={3}
             placeholder="Describe the quest"
+            disabled={authLoading || !user}
           />
         </div>
         {/* Removed quest image upload section as it's not supported in the database */}
         {/* Removed Total XP input as total_xp is now calculated automatically from tasks */}
         <div className="space-y-2">
           <label className="text-white block mb-1 font-medium">Status</label>
-          <Select value={status} onValueChange={setStatus}>
+          <Select value={status} onValueChange={setStatus} disabled={authLoading || !user}>
             <SelectTrigger className="bg-white/10 border-white/20 text-white focus:ring-2 focus:ring-green-500">
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
@@ -346,19 +263,18 @@ export default function EditQuestForm({ quest, onSave }: EditQuestFormProps) {
             <Button 
               type="button" 
               variant="destructive" 
-              onClick={handleDelete} 
-              disabled={saving}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDelete}
+              disabled={authLoading || !user || saving}
             >
-              {saving ? "Deleting..." : "Delete Quest"}
+              Delete Quest
             </Button>
           )}
           <Button 
             type="submit" 
-            disabled={saving} 
-            className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 hover:from-green-600 hover:to-emerald-600"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
+            disabled={authLoading || !user || saving}
           >
-            {saving ? "Saving..." : quest.id === 'new' ? "Create Quest" : "Save Changes"}
+            {saving ? "Saving..." : quest.id === 'new' ? "Create Quest" : "Update Quest"}
           </Button>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { Inter } from 'next/font/google'
 import Navigation from '@/components/navigation'
+import MobileNavigation from '@/components/mobile-navigation'
 import LoadingSpinner from '@/components/loading-spinner'
 import { useAuth, AuthProvider } from '@/components/auth-provider-wrapper'
 import { useToast } from '@/hooks/use-toast'
@@ -44,13 +45,16 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   // Memoized main content to prevent unnecessary re-renders
   const mainContent = useMemo(() => (
     <div className={`${inter.className} min-h-screen bg-[#111111] flex`}>
-      {/* Navigation */}
+      {/* Desktop Navigation */}
       <Navigation />
       
       {/* Main Content */}
-      <div className="flex-1 md:ml-64">
+      <div className="flex-1 md:ml-64 pb-16 md:pb-0">
         {children}
       </div>
+      
+      {/* Mobile Navigation */}
+      <MobileNavigation />
     </div>
   ), [children]);
 

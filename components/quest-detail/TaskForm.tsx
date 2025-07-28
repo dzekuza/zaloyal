@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { X, Plus, Trash2 } from "lucide-react"
+import { FileUpload } from "@/components/ui/file-upload"
 import { Task } from "./types"
 import { supabase } from "@/lib/supabase"
 
@@ -129,6 +130,10 @@ const useUserSocialAccounts = () => {
 
 export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
   const { socialAccounts, loading } = useUserSocialAccounts()
+  
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null)
+  
   const [formData, setFormData] = useState<Partial<Task>>({
     type: 'social',
     title: '',
@@ -215,6 +220,42 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit(formData)
+  }
+
+  const handleFileUpload = async (file: File) => {
+    setUploadedFile(file)
+    
+    // Upload file to Supabase Storage
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}.${fileExt}`
+      const filePath = `downloads/${fileName}`
+      
+      const { data, error } = await supabase.storage
+        .from('task-files')
+        .upload(filePath, file)
+      
+      if (error) {
+        console.error('Error uploading file:', error)
+        return
+      }
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('task-files')
+        .getPublicUrl(filePath)
+      
+      setUploadedFileUrl(publicUrl)
+      setFormData(prev => ({ ...prev, download_url: publicUrl }))
+    } catch (error) {
+      console.error('Error uploading file:', error)
+    }
+  }
+
+  const handleFileRemove = () => {
+    setUploadedFile(null)
+    setUploadedFileUrl(null)
+    setFormData(prev => ({ ...prev, download_url: null }))
   }
 
   const renderSocialFields = () => (
@@ -341,26 +382,6 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="visit_title" className="text-sm font-medium text-gray-200">Title</Label>
-        <Input
-          id="visit_title"
-          placeholder="Visit title"
-          value={formData.visit_title || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, visit_title: e.target.value }))}
-          className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="visit_description" className="text-sm font-medium text-gray-200">Description</Label>
-        <Textarea
-          id="visit_description"
-          placeholder="Visit description"
-          value={formData.visit_description || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, visit_description: e.target.value }))}
-          className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500 min-h-[80px]"
-        />
-      </div>
-      <div className="space-y-2">
         <Label htmlFor="visit_duration_seconds" className="text-sm font-medium text-gray-200">Duration (seconds)</Label>
         <Input
           id="visit_duration_seconds"
@@ -413,14 +434,14 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
   const renderDownloadFields = () => (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="download_url" className="text-sm font-medium text-gray-200">Download URL</Label>
-        <Input
-          id="download_url"
-          type="url"
-          placeholder="https://..."
-          value={formData.download_url || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, download_url: e.target.value }))}
-          className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
+        <Label className="text-sm font-medium text-gray-200">Upload File</Label>
+        <FileUpload
+          onFileUpload={handleFileUpload}
+          onFileRemove={handleFileRemove}
+          uploadedFile={uploadedFile}
+          uploadedFileUrl={uploadedFileUrl || formData.download_url}
+          accept="*/*"
+          maxSize={50 * 1024 * 1024} // 50MB
         />
       </div>
       <div className="space-y-2">

@@ -53,48 +53,48 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
           <TabsContent value="overview" className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30 backdrop-blur-sm">
+              <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-green-200 text-sm">Total XP</p>
-                      <p className="text-2xl font-bold text-white">{profile?.total_xp}</p>
+                      <p className="text-2xl font-bold text-white">{profile?.total_xp || 0}</p>
                     </div>
                     <Zap className="w-8 h-8 text-green-400" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30 backdrop-blur-sm">
+              <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-green-200 text-sm">Global Rank</p>
-                      <p className="text-2xl font-bold text-white">#{profile?.rank}</p>
+                      <p className="text-2xl font-bold text-white">#{profile?.rank || 'N/A'}</p>
                     </div>
                     <Trophy className="w-8 h-8 text-green-400" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30 backdrop-blur-sm">
+              <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-green-200 text-sm">Completed</p>
-                      <p className="text-2xl font-bold text-white">{profile?.completedQuests}</p>
+                      <p className="text-2xl font-bold text-white">{profile?.completedQuests || 0}</p>
                     </div>
                     <CheckCircle className="w-8 h-8 text-green-400" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30 backdrop-blur-sm">
+              <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-green-200 text-sm">Current Level</p>
-                      <p className="text-2xl font-bold text-white">{profile?.level}</p>
+                      <p className="text-2xl font-bold text-white">{profile?.level || 1}</p>
                     </div>
                     <Star className="w-8 h-8 text-green-400" />
                   </div>
@@ -103,7 +103,7 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
             </div>
 
             {/* Badges Section */}
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-white">Badges</CardTitle>
                 <CardDescription className="text-gray-300">Your earned badges and achievements</CardDescription>
@@ -150,7 +150,7 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
                 return (
                   <Card
                     key={achievement.id}
-                    className={`bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm ${achievement.unlocked ? "border-green-500/30" : "border-gray-500/30"}`}
+                    className={`bg-[#111111] border-[#282828] backdrop-blur-sm ${achievement.unlocked ? "border-green-500/30" : "border-gray-500/30"}`}
                   >
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4">
@@ -183,7 +183,7 @@ export default function DashboardClient({ profile, activeQuests, completedQuests
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">
-            <Card className="bg-gradient-to-br from-white/10 to-white/5 border-white/20 backdrop-blur-sm">
+            <Card className="bg-[#111111] border-[#282828] backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-white">Completed Quests</CardTitle>
                 <CardDescription className="text-gray-300">Your quest completion history</CardDescription>

@@ -67,20 +67,46 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   try {
     const { id: projectId } = await params
     
+    console.log('DEBUG: Loading project details for ID:', projectId)
+    
     // Fetch project and quests in parallel
     const [project, quests] = await Promise.all([
       getProject(projectId),
       getQuests(projectId)
     ])
 
+    console.log('DEBUG: Project loaded successfully:', project?.name)
+    console.log('DEBUG: Quests loaded successfully:', quests?.length || 0, 'quests')
+
     return <ProjectDetailClient project={project} quests={quests} />
-  } catch (error) {
-    console.error("Error loading project:", error)
+  } catch (error: any) {
+    console.error("Error loading project:", {
+      error: error,
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint
+    })
+    
+    // Provide more specific error messages
+    let errorMessage = "The project you're looking for doesn't exist or has been removed."
+    if (error?.code === 'PGRST116') {
+      errorMessage = "Project not found. Please check the URL and try again."
+    } else if (error?.code === '42703') {
+      errorMessage = "Database schema issue. Please contact support."
+    }
+    
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-4">Project Not Found</h1>
-          <p className="text-gray-300 mb-6">The project you're looking for doesn't exist or has been removed.</p>
+          <p className="text-gray-300 mb-6">{errorMessage}</p>
+          <a 
+            href="/project" 
+            className="inline-block bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            Browse All Projects
+          </a>
         </div>
       </div>
     )

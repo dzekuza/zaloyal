@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import TelegramLoginWidget from '@/components/telegram-login-widget';
 import { FileText, Trash, Twitter, MessageCircle, MessageSquare, ExternalLink, Download, BookOpen } from 'lucide-react';
 import type { Task } from './types';
+import { supabase } from '@/lib/supabase';
 
 interface TaskListProps {
   tasks: Task[];
@@ -68,16 +69,20 @@ function getTaskHeadingAndDescription(task: Task) {
 function getTaskIcon(task: Task) {
   switch (task.type) {
     case 'social':
-      if (task.social_platform === 'twitter') return <Twitter className="w-4 h-4" />;
-      if (task.social_platform === 'discord') return <MessageCircle className="w-4 h-4" />;
-      if (task.social_platform === 'telegram') return <MessageSquare className="w-4 h-4" />;
-      return <ExternalLink className="w-4 h-4" />;
+      if (task.social_platform === 'twitter') return <Twitter className="w-4 h-4 text-blue-400" />;
+      if (task.social_platform === 'discord') return <MessageCircle className="w-4 h-4 text-indigo-400" />;
+      if (task.social_platform === 'telegram') return <MessageSquare className="w-4 h-4 text-blue-500" />;
+      return <ExternalLink className="w-4 h-4 text-gray-400" />;
     case 'download':
-      return <Download className="w-4 h-4" />;
+      return <Download className="w-4 h-4 text-green-400" />;
+    case 'visit':
+      return <ExternalLink className="w-4 h-4 text-purple-400" />;
+    case 'form':
+      return <FileText className="w-4 h-4 text-orange-400" />;
     case 'learn':
-      return <BookOpen className="w-4 h-4" />;
+      return <BookOpen className="w-4 h-4 text-yellow-400" />;
     default:
-      return <FileText className="w-4 h-4" />;
+      return <FileText className="w-4 h-4 text-gray-400" />;
   }
 }
 
@@ -114,22 +119,69 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
     );
   }
 
+  // Helper to track task completion
+  const trackTaskCompletion = async (task: Task, action: string, metadata?: any) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        return
+      }
+
+      const trackData = {
+        taskId: task.id,
+        userId: session.user.id,
+        questId: task.quest_id,
+        action: action,
+        taskType: task.type,
+        socialPlatform: task.social_platform,
+        socialAction: task.social_action,
+        visitUrl: task.visit_url,
+        downloadUrl: task.download_url,
+        quizAnswers: metadata?.quizAnswers,
+        duration: metadata?.duration,
+        metadata: metadata
+      }
+
+      await fetch('/api/track-task-completion', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(trackData)
+      })
+    } catch (error) {
+      console.error('Error tracking task completion:', error)
+    }
+  }
+
   // Helper to handle 'Complete Task' click
-  const handleCompleteTask = (task: Task) => {
+  const handleCompleteTask = async (task: Task) => {
     if (task.type === 'learn') {
       setShowQuiz(s => ({ ...s, [task.id]: true }));
       setCompletedTasks(prev => ({ ...prev, [task.id]: true }));
+      await trackTaskCompletion(task, 'started_quiz')
       return;
     }
+    
     // Social, visit, form, download: open URL if present
     let url = '';
     if (task.type === 'social' && task.social_url) url = getAbsoluteUrl(task.social_url);
     if (task.type === 'visit' && task.visit_url) url = getAbsoluteUrl(task.visit_url);
     if (task.type === 'form' && task.form_url) url = getAbsoluteUrl(task.form_url);
     if (task.type === 'download' && task.download_url) url = getAbsoluteUrl(task.download_url);
+    
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
       setCompletedTasks(prev => ({ ...prev, [task.id]: true }));
+      
+      // Track the completion based on task type
+      const action = task.type === 'download' ? 'downloaded' : 
+                    task.type === 'visit' ? 'visited' : 
+                    task.type === 'form' ? 'form_submitted' : 'completed'
+      
+      await trackTaskCompletion(task, action, { url })
     }
   };
 
@@ -244,6 +296,37 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
         }
         break;
       
+      case 'download':
+        if (task.download_url) {
+          return (
+            <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
+              <div className="flex items-center gap-2 mb-2">
+                <Download className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-gray-300">Download Task</span>
+              </div>
+              <div className="space-y-2">
+                {task.download_title && (
+                  <p className="text-sm text-gray-300 font-medium">{task.download_title}</p>
+                )}
+                {task.download_description && (
+                  <p className="text-sm text-gray-300">{task.download_description}</p>
+                )}
+                <a 
+                  href={getAbsoluteUrl(task.download_url)} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 text-sm break-all"
+                  onClick={() => trackTaskCompletion(task, 'downloaded', { url: task.download_url })}
+                >
+                  <Download className="w-4 h-4" />
+                  Download File
+                </a>
+              </div>
+            </div>
+          );
+        }
+        break;
+      
       case 'learn':
         if (task.learn_content) {
           return (
@@ -325,8 +408,9 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                               Complete Task
                             </Button>
                             <Button
-                              onClick={() => {
+                              onClick={async () => {
                                 console.log('DEBUG: Verify Task button clicked for task:', task.id);
+                                await trackTaskCompletion(task, 'verification_attempted');
                                 handleTaskVerification(task);
                               }}
                               disabled={isVerifying}

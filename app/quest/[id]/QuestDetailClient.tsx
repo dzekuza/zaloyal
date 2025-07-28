@@ -31,6 +31,7 @@ import {
   Plus,
   Target,
   Edit,
+  FileDown,
 } from "lucide-react"
 import Link from "next/link"
 import type { Database } from "@/lib/supabase"
@@ -67,7 +68,7 @@ type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
 }
 
 // Memoized quest header component to prevent unnecessary re-renders
-const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask }: { quest: Quest, isAdminOrCreator: () => boolean, onAddTask: () => void }) => {
+const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport }: { quest: Quest, isAdminOrCreator: () => boolean, onAddTask: () => void, onExport: () => void }) => {
   const adminStatus = isAdminOrCreator()
   
   return (
@@ -138,6 +139,10 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask }: { quest:
               <Plus className="w-4 h-4 mr-2" />
               Add Task
             </Button>
+            <Button onClick={onExport} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
+              <FileDown className="w-4 h-4 mr-2" />
+              Export Submissions
+            </Button>
             <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
               <Edit className="w-4 h-4 mr-2" />
               Edit Quest
@@ -162,6 +167,89 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+
+  // Export submissions function
+  const handleExportSubmissions = async () => {
+    try {
+      // Fetch all submissions for this quest
+      const { data: submissions, error } = await supabase
+        .from('user_task_submissions')
+        .select(`
+          *,
+          users:user_id (*),
+          tasks:task_id (*)
+        `)
+        .eq('quest_id', quest.id)
+
+      if (error) {
+        console.error('Error fetching submissions:', error)
+        toast({
+          title: 'Export failed',
+          description: 'Failed to fetch submissions data',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      console.log('DEBUG: Fetched submissions:', submissions)
+
+      // Transform data for CSV export
+      const csvData = submissions?.map(submission => ({
+        'User ID': submission.user_id || 'Unknown',
+        'Username': submission.users?.username || submission.users?.email || 'Unknown',
+        'Wallet Address': submission.users?.wallet_address || 'N/A',
+        'Task Title': submission.tasks?.title || 'Unknown Task',
+        'Task Type': submission.tasks?.type || 'Unknown',
+        'XP Earned': submission.xp_earned || 0,
+        'Submission Date': submission.submitted_at || submission.created_at || 'N/A',
+        'Verification Date': submission.verified_at || 'N/A',
+        'Social Username': submission.social_username || 'N/A',
+        'Social Post URL': submission.social_post_url || 'N/A',
+        'Quiz Answers': submission.quiz_answers ? JSON.stringify(submission.quiz_answers) : 'N/A',
+        'Manual Verification Note': submission.manual_verification_note || 'N/A',
+        'XP Removal Reason': submission.xp_removal_reason || 'N/A',
+      })) || []
+
+      if (csvData.length === 0) {
+        toast({
+          title: 'No data to export',
+          description: 'No submissions found for this quest',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      // Convert to CSV
+      const headers = Object.keys(csvData[0])
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => headers.map(header => `"${String(row[header as keyof typeof row])}"`).join(','))
+      ].join('\n')
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `${quest.title}_submissions_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast({
+        title: 'Export successful',
+        description: `Exported ${csvData.length} submissions`,
+      })
+    } catch (error) {
+      console.error('Error exporting submissions:', error)
+      toast({
+        title: 'Export failed',
+        description: 'An error occurred while exporting',
+        variant: 'destructive',
+      })
+    }
+  }
 
   // Check authentication status
   useEffect(() => {
@@ -475,9 +563,81 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           message = 'Quiz verification not implemented yet'
           break
 
+        case 'download':
+          // For download tasks, we'll implement download tracking
+          try {
+            const response = await fetch('/api/verify/download-completion', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({
+                taskId: task.id,
+                userId: currentUserUUID,
+                questId: quest.id,
+                downloadUrl: task.download_url,
+                metadata: {
+                  task_title: task.title,
+                  task_description: task.description,
+                  download_title: task.download_title,
+                  download_description: task.download_description
+                }
+              })
+            })
+
+            const result = await response.json()
+            
+            if (result.success && result.verified) {
+              verified = true
+              message = result.message
+            } else {
+              verified = false
+              message = result.message || 'Download verification failed'
+            }
+          } catch (error) {
+            console.error('Error verifying download task:', error)
+            verified = false
+            message = 'Download verification failed due to network error'
+          }
+          break
+
         case 'visit':
-          // For visit tasks, we'll implement visit tracking later
-          message = 'Visit verification not implemented yet'
+          // For visit tasks, we'll implement visit tracking
+          try {
+            const response = await fetch('/api/verify/visit-completion', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({
+                taskId: task.id,
+                userId: currentUserUUID,
+                questId: quest.id,
+                visitUrl: task.visit_url,
+                duration: task.visit_duration_seconds || 10,
+                metadata: {
+                  task_title: task.title,
+                  task_description: task.description
+                }
+              })
+            })
+
+            const result = await response.json()
+            
+            if (result.success && result.verified) {
+              verified = true
+              message = result.message
+            } else {
+              verified = false
+              message = result.message || 'Visit verification failed'
+            }
+          } catch (error) {
+            console.error('Error verifying visit task:', error)
+            verified = false
+            message = 'Visit verification failed due to network error'
+          }
           break
 
         default:
@@ -757,6 +917,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           quest={quest} 
           isAdminOrCreator={isAdminOrCreator}
           onAddTask={() => setShowEditTask(true)}
+          onExport={handleExportSubmissions}
         />
         
         <TaskList
@@ -772,6 +933,17 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           walletUser={walletUser}
           isAuthenticated={isAuthenticated}
         />
+
+        {/* Quest Responses Viewer for Admins */}
+        {isAdminOrCreator() && (
+          <div className="mt-8">
+            <QuestResponsesViewer 
+              quest={quest} 
+              tasks={tasks} 
+              isAdmin={true} 
+            />
+          </div>
+        )}
 
         {/* Add/Edit Task Dialog */}
         <Dialog open={showEditTask} onOpenChange={setShowEditTask}>

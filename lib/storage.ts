@@ -87,16 +87,20 @@ export class StorageService {
       }
 
       // Check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (!user) {
         console.error("User not authenticated for upload")
         return null
       }
 
+      console.log('DEBUG: Uploading project cover for user:', user.id, 'project:', projectId)
+
       // Use a temporary path for new projects
       const fileName = projectId === "temp" 
         ? `temp/${user.id}/${Date.now()}-cover.${file.name.split(".").pop()?.toLowerCase()}`
         : `projects/${projectId}/cover.${file.name.split(".").pop()?.toLowerCase()}`
+
+      console.log('DEBUG: Uploading to path:', fileName, 'bucket:', this.BUCKETS.PROJECT_COVERS)
 
       const { data, error } = await supabase.storage
         .from(this.BUCKETS.PROJECT_COVERS)
@@ -106,17 +110,29 @@ export class StorageService {
         })
 
       if (error) {
-        console.error("Project cover upload error:", error)
+        console.error("Project cover upload error:", {
+          error: error,
+          message: error.message,
+          name: error.name,
+          bucket: this.BUCKETS.PROJECT_COVERS,
+          fileName: fileName,
+          fileSize: file.size,
+          fileType: file.type
+        })
         return null
       }
+
+      console.log('DEBUG: Project cover uploaded successfully:', data)
 
       const { data: { publicUrl } } = supabase.storage
         .from(this.BUCKETS.PROJECT_COVERS)
         .getPublicUrl(fileName)
 
+      console.log('DEBUG: Project cover public URL:', publicUrl)
+
       return publicUrl
     } catch (error) {
-      console.error("Project cover upload error:", error)
+      console.error("Project cover upload exception:", error)
       return null
     }
   }
@@ -131,16 +147,20 @@ export class StorageService {
       }
 
       // Check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (!user) {
         console.error("User not authenticated for upload")
         return null
       }
 
+      console.log('DEBUG: Uploading project logo for user:', user.id, 'project:', projectId)
+
       // Use a temporary path for new projects
       const fileName = projectId === "temp" 
         ? `temp/${user.id}/${Date.now()}-logo.${file.name.split(".").pop()?.toLowerCase()}`
         : `projects/${projectId}/logo.${file.name.split(".").pop()?.toLowerCase()}`
+
+      console.log('DEBUG: Uploading to path:', fileName, 'bucket:', this.BUCKETS.PROJECT_LOGOS)
 
       const { data, error } = await supabase.storage
         .from(this.BUCKETS.PROJECT_LOGOS)
@@ -150,17 +170,29 @@ export class StorageService {
         })
 
       if (error) {
-        console.error("Project logo upload error:", error)
+        console.error("Project logo upload error:", {
+          error: error,
+          message: error.message,
+          name: error.name,
+          bucket: this.BUCKETS.PROJECT_LOGOS,
+          fileName: fileName,
+          fileSize: file.size,
+          fileType: file.type
+        })
         return null
       }
+
+      console.log('DEBUG: Project logo uploaded successfully:', data)
 
       const { data: { publicUrl } } = supabase.storage
         .from(this.BUCKETS.PROJECT_LOGOS)
         .getPublicUrl(fileName)
 
+      console.log('DEBUG: Project logo public URL:', publicUrl)
+
       return publicUrl
     } catch (error) {
-      console.error("Project logo upload error:", error)
+      console.error("Project logo upload exception:", error)
       return null
     }
   }

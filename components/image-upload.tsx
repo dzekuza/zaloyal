@@ -152,12 +152,14 @@ export default function ImageUpload({
           if (!entityId) {
             throw new Error("Project ID is required for project cover upload")
           }
+          console.log('DEBUG: Starting project cover upload for entity:', entityId)
           imageUrl = await storageService.uploadProjectCover(file, entityId)
           break
         case "project-logo":
           if (!entityId) {
             throw new Error("Project ID is required for project logo upload")
           }
+          console.log('DEBUG: Starting project logo upload for entity:', entityId)
           imageUrl = await storageService.uploadProjectLogo(file, entityId)
           break
         case "user-avatar":
@@ -180,12 +182,21 @@ export default function ImageUpload({
       setUploadProgress(100)
 
       if (imageUrl) {
+        console.log('DEBUG: Upload successful, URL:', imageUrl)
         onImageUploaded(imageUrl)
         setTimeout(() => {
           setUploadProgress(0)
         }, 1000)
       } else {
-        setError("Upload failed. Please ensure you are signed in and try again.")
+        console.error('DEBUG: Upload failed - no URL returned')
+        
+        // Try to provide more specific error message
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setError("Upload failed. Please ensure you are signed in and try again.")
+        } else {
+          setError("Upload failed. Please check your file size and format, then try again.")
+        }
       }
     } catch (error) {
       console.error("Upload error:", error)
