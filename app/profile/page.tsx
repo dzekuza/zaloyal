@@ -575,6 +575,9 @@ function ProfileContent() {
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          userEmail: user.email
+        }),
       });
 
       const data = await response.json();
@@ -585,9 +588,9 @@ function ProfileContent() {
 
       // Show verification instructions
       toast({
-        title: "Telegram Verification",
-        description: `Verification code: ${data.verificationCode}\n\n1. Open Telegram and search for @belinkverify_bot\n2. Start a chat with the bot\n3. Send the verification code: ${data.verificationCode}`,
-        duration: 10000,
+        title: "Telegram Group Verification",
+        description: `Verification code: ${data.verificationCode}\n\n1. Add @belinkverify_bot to your Telegram group or channel\n2. Send the verification code: ${data.verificationCode} in the group/channel\n3. The bot will link your group/channel to your profile`,
+        duration: 15000,
       });
 
     } catch (error) {

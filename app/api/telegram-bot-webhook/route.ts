@@ -18,8 +18,16 @@ export async function POST(request: NextRequest) {
       const userId = message.from.id
       const username = message.from.username
       const text = message.text
+      const chatType = message.chat.type // 'private', 'group', 'supergroup', 'channel'
 
-      console.log('Telegram message received:', { chatId, userId, username, text })
+      console.log('Telegram message received:', { 
+        chatId, 
+        userId, 
+        username, 
+        text, 
+        chatType,
+        chatTitle: message.chat.title || 'Private Chat'
+      })
 
       // Handle /start command with verification code
       if (text && text.startsWith('/start')) {
@@ -33,6 +41,7 @@ export async function POST(request: NextRequest) {
             .select('*')
             .eq('verification_code', verificationCode)
             .gte('expires_at', new Date().toISOString())
+            .is('used_at', null)
             .single()
 
           if (codeError || !codeData) {
@@ -40,33 +49,48 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: true })
           }
 
-          // Store the Telegram account information
+          // Check if this group/channel is already linked
+          const { data: existingGroups } = await supabaseAdmin
+            .from('social_accounts')
+            .select('*')
+            .eq('telegram_chat_id', chatId.toString())
+            .eq('platform', 'telegram');
+
+          if (existingGroups && existingGroups.length > 0) {
+            await sendTelegramMessage(chatId, "❌ This group/channel is already linked to another profile.")
+            return NextResponse.json({ success: true })
+          }
+
+          // Store the Telegram group/channel information
           const { error: insertError } = await supabaseAdmin
             .from('social_accounts')
             .insert({
-              user_id: codeData.user_id,
+              user_id: codeData.user_id || 'anonymous',
               platform: 'telegram',
-              telegram_account_id: userId,
+              telegram_chat_id: chatId.toString(),
+              telegram_chat_title: message.chat.title || 'Private Chat',
+              telegram_chat_type: chatType,
+              telegram_account_id: userId, // The user who added the bot
               telegram_username: username,
               created_at: new Date().toISOString()
             })
 
           if (insertError) {
-            console.error('Error storing Telegram account:', insertError)
-            await sendTelegramMessage(chatId, "❌ Failed to link your Telegram account. Please try again.")
+            console.error('Error storing Telegram group:', insertError)
+            await sendTelegramMessage(chatId, "❌ Failed to link your Telegram group. Please try again.")
             return NextResponse.json({ success: true })
           }
 
-          // Delete the verification code
+          // Mark the verification code as used
           await supabaseAdmin
             .from('telegram_verification_codes')
-            .delete()
+            .update({ used_at: new Date().toISOString() })
             .eq('verification_code', verificationCode)
 
-          await sendTelegramMessage(chatId, "✅ Your Telegram account has been successfully linked to your BeLink profile!")
+          await sendTelegramMessage(chatId, "✅ Your Telegram group/channel has been successfully linked to your BeLink profile!")
           return NextResponse.json({ success: true })
         } else {
-          await sendTelegramMessage(chatId, "👋 Welcome to BeLink Verification Bot!\n\nTo link your Telegram account, please use the verification code from your BeLink profile.")
+          await sendTelegramMessage(chatId, "👋 Welcome to BeLink Verification Bot!\n\nTo link your Telegram group/channel, please use the verification code from your BeLink profile.")
           return NextResponse.json({ success: true })
         }
       }
@@ -81,6 +105,7 @@ export async function POST(request: NextRequest) {
           .select('*')
           .eq('verification_code', verificationCode)
           .gte('expires_at', new Date().toISOString())
+          .is('used_at', null)
           .single()
 
         if (codeError || !codeData) {
@@ -88,35 +113,50 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ success: true })
         }
 
-        // Store the Telegram account information
+        // Check if this group/channel is already linked
+        const { data: existingGroups } = await supabaseAdmin
+          .from('social_accounts')
+          .select('*')
+          .eq('telegram_chat_id', chatId.toString())
+          .eq('platform', 'telegram');
+
+        if (existingGroups && existingGroups.length > 0) {
+          await sendTelegramMessage(chatId, "❌ This group/channel is already linked to another profile.")
+          return NextResponse.json({ success: true })
+        }
+
+        // Store the Telegram group/channel information
         const { error: insertError } = await supabaseAdmin
           .from('social_accounts')
           .insert({
-            user_id: codeData.user_id,
+            user_id: codeData.user_id || 'anonymous',
             platform: 'telegram',
-            telegram_account_id: userId,
+            telegram_chat_id: chatId.toString(),
+            telegram_chat_title: message.chat.title || 'Private Chat',
+            telegram_chat_type: chatType,
+            telegram_account_id: userId, // The user who sent the code
             telegram_username: username,
             created_at: new Date().toISOString()
           })
 
         if (insertError) {
-          console.error('Error storing Telegram account:', insertError)
-          await sendTelegramMessage(chatId, "❌ Failed to link your Telegram account. Please try again.")
+          console.error('Error storing Telegram group:', insertError)
+          await sendTelegramMessage(chatId, "❌ Failed to link your Telegram group. Please try again.")
           return NextResponse.json({ success: true })
         }
 
-        // Delete the verification code
+        // Mark the verification code as used
         await supabaseAdmin
           .from('telegram_verification_codes')
-          .delete()
+          .update({ used_at: new Date().toISOString() })
           .eq('verification_code', verificationCode)
 
-        await sendTelegramMessage(chatId, "✅ Your Telegram account has been successfully linked to your BeLink profile!")
+        await sendTelegramMessage(chatId, "✅ Your Telegram group/channel has been successfully linked to your BeLink profile!")
         return NextResponse.json({ success: true })
       }
 
       // Handle other messages
-      await sendTelegramMessage(chatId, "Please send your verification code to link your Telegram account to BeLink.")
+      await sendTelegramMessage(chatId, "Please send your verification code to link your Telegram group/channel to BeLink.")
     }
 
     return NextResponse.json({ success: true })
