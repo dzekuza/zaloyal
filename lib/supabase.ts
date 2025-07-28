@@ -14,17 +14,17 @@ if (!supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
+    persistSession: true,         // 🔑 critical
+    autoRefreshToken: true,       // 🌀 for refresh
+    detectSessionInUrl: true,     // ✅ for OAuth flows
+    storage: typeof localStorage !== 'undefined' ? localStorage : undefined  }
 });
 
 // Discord OAuth configuration
 export const discordAuthConfig = {
-  clientId: '1397282925849874492',
-  redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-  scopes: 'identify connections guilds.join guilds.channels.read email guilds.members.read gdm.join'
+  clientId: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || '1397282925849874492',
+  redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/callback`,
+  scopes: 'identify email'
 }
 
 // Database types - Updated to remove old social media fields from users table

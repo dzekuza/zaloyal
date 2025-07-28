@@ -99,7 +99,17 @@ const config: Config = {
     }
   },
   // Performance optimizations
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    // Use dynamic import to handle potential module resolution issues
+    (() => {
+      try {
+        return require("tailwindcss-animate");
+      } catch (error) {
+        console.warn("tailwindcss-animate not found, skipping animation plugin");
+        return () => {};
+      }
+    })()
+  ],
 } satisfies Config;
 
 export default config;

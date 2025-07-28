@@ -3,7 +3,7 @@ import { createServerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   // Check if credentials are available
-  if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
+  if (!process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
     return NextResponse.redirect(new URL('/profile?error=credentials_not_configured', request.url));
   }
 
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: process.env.DISCORD_CLIENT_ID!,
+        client_id: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID!,
         client_secret: process.env.DISCORD_CLIENT_SECRET!,
         grant_type: 'authorization_code',
         code: code,
@@ -105,11 +105,12 @@ export async function GET(request: NextRequest) {
       .upsert({
         user_id: user.id,
         platform: 'discord',
-        platform_user_id: userData.id,
+        account_id: userData.id,
+        username: userData.username,
         platform_username: userData.username,
         access_token: access_token,
         refresh_token: refresh_token,
-        token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
+        expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
         profile_data: userData,
         verified: true,
         created_at: new Date().toISOString(),

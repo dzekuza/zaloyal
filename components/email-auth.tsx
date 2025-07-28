@@ -69,26 +69,8 @@ export default function EmailAuth({ onSuccess, onError, onNavigate }: EmailAuthP
         }
 
       // Email is verified - proceed with normal login
-      // Always upsert user profile after login
-      let { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
-      await supabase.from("users").upsert({
-        id: user.id,
-        user_id: user.id,
-        email: user.email,
-        // Only set username if it exists in user_metadata or profile
-        ...(user.user_metadata?.username
-          ? { username: user.user_metadata.username }
-          : profile?.username
-          ? { username: profile.username }
-          : {}),
-        // Do not overwrite email_verified blindly
-        total_xp: profile?.total_xp || 0,
-        level: profile?.level || 1,
-        completed_quests: profile?.completed_quests || 0,
-        role: profile?.role || "participant",
-      });
-      // Fetch the up-to-date profile by user ID
-      ({ data: profile } = await supabase.from("users").select("*").eq("id", user.id).single());
+      // Let the database trigger handle user profile updates automatically
+      const { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
 
       onSuccess({ ...data.user, profile })
       // Let parent component handle navigation

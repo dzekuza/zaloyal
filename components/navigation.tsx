@@ -1,49 +1,69 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User, LogOut, Trophy, Building2, Home, BarChart3, Users, Copy, Check, Info } from "lucide-react"
-import { supabase } from "@/lib/supabase"
-import { useRouter, usePathname } from "next/navigation"
-import Image from "next/image";
-import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useAuth } from "@/components/auth-provider-wrapper";
+import { useState } from 'react'
+import { usePathname } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
+import { LogOut, User, Settings, Home, Search, Trophy, Plus, Users, BarChart3, Info, Copy, Check, Building2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import AuthDialog from './auth-dialog'
 
-interface NavigationProps {
-  onAuthClick: () => void
+// Safe auth hook with fallback
+function useSafeAuth() {
+  try {
+    // Dynamic import to avoid SSR issues
+    const { useAuth } = require('./auth-provider-wrapper')
+    return useAuth()
+  } catch (error) {
+    console.warn('Auth context not available:', error)
+    return { 
+      user: null, 
+      loading: false, 
+      signOut: async () => {},
+      signInWithX: async () => {},
+      signInWithDiscord: async () => {}
+    }
+  }
 }
 
-export default function Navigation({ onAuthClick }: NavigationProps) {
+export default function Navigation() {
+  const [showAuthDialog, setShowAuthDialog] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const router = useRouter()
-  const pathname = usePathname();
-  const { toast } = useToast();
-  const { user, loading } = useAuth();
+  const pathname = usePathname()
+  const { toast } = useToast()
+
+  // Use safe auth hook
+  const { user, loading, signOut } = useSafeAuth()
 
   const handleSignOut = async () => {
-    if (user) {
-      await supabase.auth.signOut()
+    try {
+      await signOut()
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully.",
+      })
+    } catch (error) {
+      console.error('Sign out error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      })
     }
-    window.location.reload()
   }
 
-  const displayName = user?.username || "User"
+  const displayName = user?.username || user?.email || "User"
 
   const handleCopyAddress = async (address: string, e?: React.MouseEvent | React.KeyboardEvent) => {
     if (e) {
-      e.stopPropagation();
-      e.preventDefault();
+      e.stopPropagation()
+      e.preventDefault()
     }
     try {
       await navigator.clipboard.writeText(address)
@@ -52,30 +72,46 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
         title: "Copied!",
         description: "Wallet address copied to clipboard.",
         duration: 1200,
-      });
+      })
       setTimeout(() => setCopied(false), 1200)
     } catch (error) {
       console.error('Failed to copy address:', error)
     }
   }
 
-
-
   // Only render sign-in/profile button after loading is false
+  if (loading) {
+    return (
+      <div className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-full md:w-64 bg-[#111111]/80 backdrop-blur-md border-r border-[#282828] z-40">
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full border-b-2 border-green-500 h-8 w-8"></div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       {/* Sidebar Navigation */}
       <div className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-full md:w-64 bg-[#111111]/80 backdrop-blur-md border-r border-[#282828] z-40">
         <div className="flex items-center justify-start py-4 pl-4">
           <Link href="/">
-            <Image src="/belinklogo.svg" alt="Belink Logo" width={32} height={32} className="h-8 w-auto" priority />
+            <Image src="/belinklogo.svg" alt="Belink Logo" width={32} height={32} className="h-8 w-8" priority />
           </Link>
         </div>
         <nav className="flex flex-col flex-1 px-4 py-6">
-          <Link href="/" className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${pathname === "/" ? "text-green-500" : "text-gray-300"}`}> <Home className="w-4 h-4" /> Home </Link>
-          <Link href="/project" className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${pathname.startsWith("/project") ? "text-green-500" : "text-gray-300"}`}> <Users className="w-4 h-4" /> My Projects </Link>
-          <Link href="/dashboard" className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${pathname === "/dashboard" ? "text-green-500" : "text-gray-300"}`}> <BarChart3 className="w-4 h-4" /> Dashboard </Link>
-          <Link href="/leaderboard" className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${pathname === "/leaderboard" ? "text-green-500" : "text-gray-300"}`}> <Trophy className="w-4 h-4" /> Leaderboard </Link>
+          <Link href="/" className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${pathname === "/" ? "text-green-500" : "text-gray-300"}`}>
+            <Home className="w-4 h-4" /> Home
+          </Link>
+          <Link href="/project" className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${pathname.startsWith("/project") ? "text-green-500" : "text-gray-300"}`}>
+            <Users className="w-4 h-4" /> My Projects
+          </Link>
+          <Link href="/dashboard" className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${pathname === "/dashboard" ? "text-green-500" : "text-gray-300"}`}>
+            <BarChart3 className="w-4 h-4" /> Dashboard
+          </Link>
+          <Link href="/leaderboard" className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${pathname === "/leaderboard" ? "text-green-500" : "text-gray-300"}`}>
+            <Trophy className="w-4 h-4" /> Leaderboard
+          </Link>
           <button
             type="button"
             className="flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-gray-300 hover:text-green-500 focus:outline-none mt-2"
@@ -94,20 +130,28 @@ export default function Navigation({ onAuthClick }: NavigationProps) {
               onCopyAddress={handleCopyAddress}
             />
           ) : (
-            <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={onAuthClick}>
+            <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowAuthDialog(true)}>
               Log In
             </Button>
           )}
         </div>
       </div>
+
+      {/* Auth Dialog */}
+      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
+
       {/* Onboarding Modal */}
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-[#111111] border-[#282828]">
           <DialogHeader>
-            <DialogTitle>Setup Guide</DialogTitle>
+            <DialogTitle className="text-white">Setup Guide</DialogTitle>
           </DialogHeader>
-          <div className="text-gray-300 text-center py-4">Follow the steps in the onboarding bar at the bottom right to get started.</div>
-          <Button className="mx-auto mt-2" onClick={() => setShowOnboarding(false)}>Got it</Button>
+          <div className="text-gray-300 text-center py-4">
+            Follow the steps in the onboarding bar at the bottom right to get started.
+          </div>
+          <Button className="mx-auto mt-2 bg-green-600 hover:bg-green-700" onClick={() => setShowOnboarding(false)}>
+            Got it
+          </Button>
         </DialogContent>
       </Dialog>
     </>
@@ -121,11 +165,11 @@ function ProfileDropdown({
   copied,
   onCopyAddress,
 }: {
-  displayName: string;
-  user: any;
-  handleSignOut: () => void;
-  copied: boolean;
-  onCopyAddress: (address: string, e?: React.MouseEvent | React.KeyboardEvent) => void;
+  displayName: string
+  user: any
+  handleSignOut: () => void
+  copied: boolean
+  onCopyAddress: (address: string, e?: React.MouseEvent | React.KeyboardEvent) => void
 }) {
   const displayAddress = user?.walletAddress
     ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
@@ -152,8 +196,8 @@ function ProfileDropdown({
                   onClick={(e) => onCopyAddress(user.walletAddress, e)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onCopyAddress(user.walletAddress, e);
+                      e.preventDefault()
+                      onCopyAddress(user.walletAddress, e)
                     }
                   }}
                   className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
@@ -182,8 +226,8 @@ function ProfileDropdown({
                 onClick={(e) => onCopyAddress(user.walletAddress, e)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onCopyAddress(user.walletAddress, e);
+                    e.preventDefault()
+                    onCopyAddress(user.walletAddress, e)
                   }
                 }}
                 className="ml-1 p-1 rounded hover:bg-white/10 focus:outline-none cursor-pointer"
@@ -221,5 +265,5 @@ function ProfileDropdown({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }

@@ -30,9 +30,9 @@ import {
   Trash,
   Plus,
   Target,
+  Edit,
 } from "lucide-react"
 import Link from "next/link"
-import { walletAuth, type WalletUser } from "@/lib/wallet-auth"
 import type { Database } from "@/lib/supabase"
 import TelegramLoginWidget from "@/components/telegram-login-widget"
 import QuestStatsBar from "@/components/QuestStatsBar"
@@ -41,11 +41,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import QuestResponsesViewer from "@/components/quest-responses-viewer"
 import { Skeleton } from "@/components/ui/skeleton"
-import { toast } from "sonner"
+import { useToast } from "@/hooks/use-toast"
 import TaskList from '@/components/quest-detail/TaskList';
 import type { Task } from '@/components/quest-detail/types';
 import { extractTweetIdFromUrl } from "@/lib/twitter-utils"
 import PageContainer from "@/components/PageContainer";
+import TaskForm from "@/components/quest-detail/TaskForm";
+import QuizComponent from "@/components/quest-detail/QuizComponent";
+
+// Safe wallet auth import
+import { walletAuth, WalletUser } from "@/lib/wallet-auth"
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
   project_id?: string | null
@@ -54,7 +59,6 @@ type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
     name?: string
     logo_url?: string
   } | null
-  // Add missing properties that might be used in the component
   creator_id?: string | null
   participant_count?: string | null
   featured?: boolean | null
@@ -63,354 +67,400 @@ type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
 }
 
 // Memoized quest header component to prevent unnecessary re-renders
-const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask }: { quest: Quest, isAdminOrCreator: () => boolean, onAddTask: () => void }) => (
-  <div className="space-y-6">
-    {/* Quest Image */}
-    {quest.image_url && (
-      <div className="relative w-full h-48 rounded-lg overflow-hidden bg-[#111111] border border-[#282828]">
-        <img 
-          src={quest.image_url} 
-          alt={quest.title}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    )}
-    
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-2">
-          <Link href={`/project/${quest.project_id}`} className="text-gray-400 hover:text-white transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <Badge variant="secondary" className="bg-green-600 text-white">
-            {quest.status}
-          </Badge>
-          {quest.featured && (
-            <Badge variant="outline" className="border-yellow-500 text-yellow-500">
-              Featured
-            </Badge>
-          )}
+const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask }: { quest: Quest, isAdminOrCreator: () => boolean, onAddTask: () => void }) => {
+  const adminStatus = isAdminOrCreator()
+  
+  return (
+    <div className="space-y-6">
+      {/* Quest Image */}
+      {quest.image_url && (
+        <div className="relative w-full h-48 rounded-lg overflow-hidden bg-[#111111] border border-[#282828]">
+          <img 
+            src={quest.image_url} 
+            alt={quest.title}
+            className="w-full h-full object-cover"
+          />
         </div>
-        <h1 className="text-3xl font-bold text-white mb-2">{quest.title}</h1>
-        <p className="text-gray-300 mb-4">{quest.description}</p>
-        
-        {/* Project Information */}
-        {quest.projects?.name && (
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-full bg-[#111111] border border-[#282828] flex items-center justify-center">
-              {quest.projects.logo_url ? (
-                <img 
-                  src={quest.projects.logo_url} 
-                  alt={quest.projects.name}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                <span className="text-white text-sm font-medium">
-                  {quest.projects.name.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
-            <div>
-              <p className="text-white text-sm font-medium">Project: {quest.projects.name}</p>
-            </div>
+      )}
+      
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <Link href={`/project/${quest.project_id}`} className="text-gray-400 hover:text-white transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <Badge variant="secondary" className="bg-green-600 text-white">
+              {quest.status}
+            </Badge>
+            {quest.featured && (
+              <Badge variant="outline" className="border-yellow-500 text-yellow-500">
+                Featured
+              </Badge>
+            )}
           </div>
-        )}
-        
-        <div className="flex items-center gap-4 text-sm text-gray-400">
-          <div className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />
-            <span>Created {new Date(quest.created_at).toLocaleDateString()}</span>
-          </div>
-          {quest.participant_count !== null && (
+          <h1 className="text-3xl font-bold text-white mb-2">{quest.title}</h1>
+          <p className="text-gray-300 mb-4">{quest.description}</p>
+          
+          {/* Project Information */}
+          {quest.projects?.name && (
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-full bg-[#111111] border border-[#282828] flex items-center justify-center">
+                {quest.projects.logo_url ? (
+                  <img 
+                    src={quest.projects.logo_url} 
+                    alt={quest.projects.name}
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <FileText className="w-4 h-4 text-gray-400" />
+                )}
+              </div>
+              <span className="text-gray-300">{quest.projects.name}</span>
+            </div>
+          )}
+          
+          {/* Quest Stats */}
+          <div className="flex items-center gap-4 text-sm text-gray-400">
             <div className="flex items-center gap-1">
               <Target className="w-4 h-4" />
-              <span>{quest.participant_count} participants</span>
+              <span>{quest.total_xp || 0} XP</span>
             </div>
-          )}
+            <div className="flex items-center gap-1">
+              <Eye className="w-4 h-4" />
+              <span>{quest.participant_count || 0} participants</span>
+            </div>
+          </div>
         </div>
+        
+        {adminStatus && (
+          <div className="flex gap-2">
+            <Button onClick={onAddTask} className="bg-green-600 hover:bg-green-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Task
+            </Button>
+            <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Quest
+            </Button>
+          </div>
+        )}
       </div>
-      {isAdminOrCreator() && (
-        <Button
-          onClick={onAddTask}
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Task
-        </Button>
-      )}
     </div>
-  </div>
-))
-QuestHeader.displayName = 'QuestHeader'
-
-// Memoized quest stats component
-const QuestStats = React.memo(({ quest, tasks }: { quest: Quest, tasks: Task[] }) => {
-  const totalTasks = tasks.length
-  const completedTasks = tasks.filter(task => task.status === 'completed').length
-  const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
-  
-  // Calculate total XP from tasks if not available on quest
-  const totalXP = quest.total_xp || tasks.reduce((sum, task) => sum + (task.xp_reward || 0), 0)
-
-  return (
-    <Card className="mb-6 bg-[#111111] border-[#282828]">
-      <CardContent className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white">{totalTasks}</div>
-            <div className="text-sm text-gray-400">Total Tasks</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-500">{completedTasks}</div>
-            <div className="text-sm text-gray-400">Completed</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white">{totalXP}</div>
-            <div className="text-sm text-gray-400">Total XP</div>
-          </div>
-        </div>
-        <div className="mt-4">
-          <div className="flex justify-between text-sm text-gray-400 mb-1">
-            <span>Progress</span>
-            <span>{Math.round(progressPercentage)}%</span>
-          </div>
-          <Progress value={progressPercentage} className="h-2" />
-        </div>
-      </CardContent>
-    </Card>
   )
 })
-QuestStats.displayName = 'QuestStats'
 
 export default function QuestDetailClient({ quest, tasks: initialTasks }: { quest: Quest, tasks: Task[] }) {
-  // All hooks must be called at the top level, before any conditional logic
-  const [mounted, setMounted] = useState(false)
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
-  const [showAddTask, setShowAddTask] = useState(false)
+  const [verifyingTask, setVerifyingTask] = useState<string | null>(null)
+  const [submissionData, setSubmissionData] = useState<Record<string, any>>({})
   const [showEditTask, setShowEditTask] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [creatingTask, setCreatingTask] = useState(false)
-  const [updatingTask, setUpdatingTask] = useState(false)
-  const [createTaskError, setCreateTaskError] = useState("")
-  const [verifyingTask, setVerifyingTask] = useState<string | null>(null)
   const [showQuiz, setShowQuiz] = useState<Record<string, boolean>>({})
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, number[]>>({})
-  const [submissionData, setSubmissionData] = useState<Record<string, any>>({})
   const [currentUserUUID, setCurrentUserUUID] = useState<string | null>(null)
-  const [walletUser, setWalletUser] = useState<WalletUser | null>(null)
+  const [walletUser, setWalletUser] = useState<any>(null)
   const [emailUser, setEmailUser] = useState<any>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [questCompleted, setQuestCompleted] = useState(false)
-  const [updateTaskError, setUpdateTaskError] = useState("")
-  const [showResponsesViewer, setShowResponsesViewer] = useState(false)
-  const [newTask, setNewTask] = useState<any>({
-    type: "",
-    title: "",
-    description: "",
-    xp_reward: 100,
-    // Social task fields
-    social_platform: "",
-    social_action: "",
-    social_url: "",
-    social_username: "",
-    social_post_id: "",
-    // Quiz task fields
-    learn_content: "",
-    learn_questions: null,
-    learn_passing_score: 70,
-    // URL view task fields
-    visit_url: "",
-    visit_title: "",
-    visit_description: "",
-    visit_duration_seconds: 30,
-  })
+  const { toast } = useToast()
 
-  // Add new state for project data
-  const [projectData, setProjectData] = useState<any>(null)
-
-  // Debug logging
+  // Check authentication status
   useEffect(() => {
-    console.log('QuestDetailClient - Quest:', quest)
-    console.log('QuestDetailClient - Initial Tasks:', initialTasks)
-    console.log('QuestDetailClient - Tasks State:', tasks)
-  }, [quest, initialTasks, tasks])
+    const checkAuth = async () => {
+      try {
+        // Check for wallet authentication
+        const walletAuthResult = await walletAuth.getCurrentUser()
+        if (walletAuthResult) {
+          setWalletUser(walletAuthResult)
+          setCurrentUserUUID(walletAuthResult.walletAddress)
+          setIsAuthenticated(true)
+        }
 
-  // Memoized auth check function
-  const checkAuth = useCallback(async () => {
-    try {
-      // Check wallet auth
-      const walletUser = await walletAuth.getCurrentUser()
-      setWalletUser(walletUser)
+        // Check for email authentication
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setEmailUser(session.user)
+          setCurrentUserUUID(session.user.id)
+          setIsAuthenticated(true)
+        }
 
-      // Check email auth
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setEmailUser(user)
-        setCurrentUserUUID(user.id)
+        setLoading(false)
+      } catch (error) {
+        console.error('Error checking authentication:', error)
+        setLoading(false)
       }
-
-      setIsAuthenticated(!!walletUser || !!user)
-      setLoading(false)
-    } catch (error) {
-      console.error('Error checking auth:', error)
-      setLoading(false)
     }
+
+    checkAuth()
   }, [])
 
-  // Memoized project data fetch
-  const fetchProjectData = useCallback(async () => {
-    if (!quest.project_id) return
-
-    try {
-      const { data: project, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', quest.project_id)
-        .single()
-
-      if (!error && project) {
-        setProjectData(project)
-        // Remove the project owner fetch since it's causing 406 errors
-        // The owner_id is already available in quest.projects?.owner_id
-      }
-    } catch (error) {
-      console.error('Error fetching project data:', error)
-    }
-  }, [quest.project_id])
-
-  // Memoized isAdminOrCreator function
+  // Check if user is admin or creator
   const isAdminOrCreator = useCallback(() => {
-    if (!currentUserUUID) return false
-    return currentUserUUID === quest.creator_id || currentUserUUID === quest.projects?.owner_id
-  }, [currentUserUUID, quest.creator_id, quest.projects?.owner_id])
+    if (!currentUserUUID) {
+      return false
+    }
+    
+    // Check if user is the project owner (quest creator)
+    const isCreator = currentUserUUID === quest.projects?.owner_id
+    // Check if user has admin role
+    const isAdmin = (emailUser?.user_metadata?.role === 'admin') || (emailUser?.app_metadata?.role === 'admin')
+    
+    return isCreator || isAdmin
+  }, [currentUserUUID, quest.projects?.owner_id, emailUser])
 
   // Memoized task verification handler
   const handleTaskVerification = useCallback(async (task: Task) => {
+    console.log('DEBUG: handleTaskVerification called for task:', task.id, task);
+    
     if (!currentUserUUID) {
-      toast.error('Please sign in to verify tasks')
+      console.log('DEBUG: No currentUserUUID');
+      toast({
+        title: 'Please sign in to verify tasks',
+        description: 'Please sign in to verify tasks',
+        variant: 'destructive',
+      })
       return
     }
 
     // Check if user is authenticated
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    console.log('DEBUG: Session check:', { 
-      hasSession: !!session, 
-      sessionError, 
-      currentUserUUID 
-    })
-
+    
+    console.log('DEBUG: Session check:', { session: !!session, sessionError });
+    
     if (!session) {
-      toast.error('Please sign in to verify tasks')
+      console.log('DEBUG: No session found');
+      toast({
+        title: 'Please sign in to verify tasks',
+        description: 'Please sign in to verify tasks',
+        variant: 'destructive',
+      })
       return
     }
 
     setVerifyingTask(task.id)
+    console.log('DEBUG: Starting verification process for task:', task.id);
     try {
-      // Get user's social accounts for verification
-      const { data: userSocialAccounts, error: socialError } = await supabase
-        .from('social_accounts')
-        .select('platform, platform_username, access_token')
-        .eq('user_id', currentUserUUID)
-
-      if (socialError) {
-        console.error('Error fetching user social accounts:', socialError)
-        toast.error('Failed to fetch social accounts')
-        return
-      }
-
       let verified = false
       let message = ""
 
-      // Verify based on task type
+      // Verify based on task type using new auth.users data
       switch (task.type) {
         case 'social':
           if (task.social_platform === 'twitter') {
-            console.log('DEBUG: Starting Twitter verification for task:', task.id)
-            // Use the existing X API verification endpoint
+            
+            // Get user's X data from auth.users
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
+            
+            console.log('DEBUG: User data:', user);
+            console.log('DEBUG: User app_metadata:', (user as any)?.app_metadata);
+            console.log('DEBUG: User user_metadata:', (user as any)?.user_metadata);
+            
+            if (userError || !user) {
+              console.log('DEBUG: User error or no user:', userError);
+              toast({
+                title: 'Authentication error',
+                description: 'Please sign in again to verify tasks',
+                variant: 'destructive',
+              })
+              return
+            }
+
+            // Check if user has X authentication - try multiple methods
+            const hasXAuth = (user as any)?.app_metadata?.providers?.includes('twitter') || 
+                           (user as any)?.user_metadata?.provider === 'twitter' ||
+                           (user as any)?.identities?.some((identity: any) => identity.provider === 'twitter')
+            
+            console.log('DEBUG: Has X auth check:', hasXAuth);
+            console.log('DEBUG: User identities:', (user as any)?.identities);
+            
+            if (!hasXAuth) {
+              console.log('DEBUG: No X authentication found');
+              toast({
+                title: 'X account not connected',
+                description: 'Please connect your X account in your profile to verify tasks',
+                variant: 'destructive',
+              })
+              return
+            }
+
+            // Get X user ID from user metadata
+            const xUserId = (user as any)?.user_metadata?.provider_id || (user as any)?.user_metadata?.sub
+            if (!xUserId) {
+              toast({
+                title: 'X account data not found',
+                description: 'Please reconnect your X account in your profile',
+                variant: 'destructive',
+              })
+              return
+            }
+
+            // Determine the action based on task
+            let action = 'follow'
+            let targetId = null
+            let tweetId = null
+
+            if (task.social_action === 'follow') {
+              action = 'follow'
+              // Extract target account ID from social_url or social_username
+              targetId = task.social_url?.match(/twitter\.com\/([^\/\?]+)/)?.[1] || 
+                        task.social_username || 
+                        task.social_url?.match(/x\.com\/([^\/\?]+)/)?.[1]
+            } else if (task.social_action === 'like') {
+              action = 'like'
+              tweetId = task.social_url?.match(/status\/(\d+)/)?.[1]
+            } else if (task.social_action === 'retweet') {
+              action = 'retweet'
+              tweetId = task.social_url?.match(/status\/(\d+)/)?.[1]
+            }
+
+            if (!targetId && action === 'follow') {
+              toast({
+                title: 'Invalid task configuration',
+                description: 'Target account not specified for follow task',
+                variant: 'destructive',
+              })
+              return
+            }
+
+            if (!tweetId && (action === 'like' || action === 'retweet')) {
+              toast({
+                title: 'Invalid task configuration',
+                description: 'Tweet ID not found for like/retweet task',
+                variant: 'destructive',
+              })
+              return
+            }
+
+            console.log('DEBUG: Starting X verification for task:', task.id);
+            console.log('DEBUG: User ID:', currentUserUUID);
+            console.log('DEBUG: Task data:', task);
+            
+            // 🔥 BEST PRACTICE: Call the simplified X verification API
             const response = await fetch('/api/verify/twitter-follow-real', {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
-                // Include authentication headers
-                'Authorization': `Bearer ${session?.access_token || ''}`
+                'Authorization': `Bearer ${session.access_token}`
               },
-              credentials: 'include', // Include cookies for session
+              credentials: 'include',
               body: JSON.stringify({
-                taskId: task.id,
-                userId: currentUserUUID // Pass the user ID for wallet auth
+                taskId: task.id
               })
             })
-
-            console.log('DEBUG: Twitter verification response status:', response.status)
-            const result = await response.json()
-            console.log('DEBUG: Twitter verification result:', result)
             
-            if (response.status === 400 && result.action === 'connect_twitter') {
-              // User needs to connect Twitter account
-              toast.error(result.message || 'Please connect your Twitter account first')
-              // Show a toast with a link to profile page
-              toast.error('Please connect your Twitter account to verify tasks. Go to your profile to connect your account.', {
-                action: {
-                  label: 'Go to Profile',
-                  onClick: () => window.location.href = '/profile'
-                }
-              })
+            console.log('DEBUG: X verification response status:', response.status);
+
+            const result = await response.json()
+            console.log('DEBUG: X verification response:', result);
+            
+            if (!response.ok) {
+              if (response.status === 400 && result.action === 'connect_twitter') {
+                toast({
+                  title: 'X account not connected',
+                  description: 'Please connect your X account in your profile to verify tasks',
+                  variant: 'destructive',
+                })
+              } else {
+                toast({
+                  title: 'Verification failed',
+                  description: result.error || result.message || 'Failed to verify task',
+                  variant: 'destructive',
+                })
+              }
               return
             }
             
             verified = result.verified
-            message = result.message || (verified ? 'Task verified!' : 'Verification failed')
+            message = result.message || (verified ? 'Task verified successfully!' : 'Task verification failed. Please complete the task and try again.')
           } else if (task.social_platform === 'discord') {
-            // For Discord, redirect to OAuth flow
+            // For Discord verification
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
+            
+            if (userError || !user) {
+              toast({
+                title: 'Authentication error',
+                description: 'Please sign in again to verify tasks',
+                variant: 'destructive',
+              })
+              return
+            }
+
+            // Check if user has Discord authentication
+            const hasDiscordAuth = (user as any)?.app_metadata?.providers?.includes('discord')
+            if (!hasDiscordAuth) {
+              toast({
+                title: 'Discord account not connected',
+                description: 'Please connect your Discord account in your profile to verify tasks',
+                variant: 'destructive',
+              })
+              return
+            }
+
+            // Extract guild ID from Discord invite URL
             const guildId = task.social_url?.match(/discord\.gg\/([a-zA-Z0-9]+)/)?.[1] || 
                            task.social_url?.match(/discord\.com\/invite\/([a-zA-Z0-9]+)/)?.[1]
             
-            if (guildId) {
-              // Redirect to Discord OAuth with state containing task info
-              const state = `${guildId}:${task.id}`
-              const discordClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
-              if (!discordClientId) {
-                toast.error('Discord integration not configured')
-                return
-              }
-              const authUrl = `https://discord.com/oauth2/authorize?client_id=${discordClientId}&response_type=code&redirect_uri=${encodeURIComponent(window.location.origin + '/discord-callback')}&scope=identify%20guilds.members.read&state=${state}`
-              window.location.href = authUrl
-              return // Don't show toast since we're redirecting
-            } else {
-              message = 'Invalid Discord server URL'
+            if (!guildId) {
+              toast({
+                title: 'Invalid Discord invite',
+                description: 'Discord invite URL not found in task',
+                variant: 'destructive',
+              })
+              return
             }
+
+            // Call Discord verification API
+            const response = await fetch('/api/verify/discord-join', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: currentUserUUID,
+                guildId
+              })
+            })
+
+            const result = await response.json()
+            
+            if (!response.ok) {
+              toast({
+                title: 'Discord verification not available',
+                description: result.error || 'Discord verification requires additional setup',
+                variant: 'destructive',
+              })
+              return
+            }
+            
+            verified = result.success
+            message = verified ? 'Discord task verified successfully!' : 'Discord task verification failed. Please join the server and try again.'
           } else if (task.social_platform === 'telegram') {
-            console.log('DEBUG: Starting Telegram verification for task:', task.id)
             // For Telegram, use the existing verification endpoint
             const response = await fetch('/api/verify/telegram-join-real', {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
-                // Include authentication headers
                 'Authorization': `Bearer ${session?.access_token || ''}`
               },
-              credentials: 'include', // Include cookies for session
+              credentials: 'include',
               body: JSON.stringify({
                 taskId: task.id,
-                userId: currentUserUUID, // Pass the user ID for wallet auth
+                userId: currentUserUUID,
                 channelId: task.social_url?.match(/t\.me\/([a-zA-Z0-9_]+)/)?.[1] || task.social_username
               })
             })
 
-            console.log('DEBUG: Telegram verification response status:', response.status)
             const result = await response.json()
-            console.log('DEBUG: Telegram verification result:', result)
             
             if (response.status === 400 && result.action === 'connect_telegram') {
-              // User needs to connect Telegram account
-              toast.error(result.message || 'Please connect your Telegram account first')
-              // Show a toast with a link to profile page
-              toast.error('Please connect your Telegram account to verify tasks. Go to your profile to connect your account.', {
-                action: {
-                  label: 'Go to Profile',
-                  onClick: () => window.location.href = '/profile'
-                }
+              toast({
+                title: result.message || 'Please connect your Telegram account first',
+                description: result.message || 'Please connect your Telegram account first',
+                variant: 'destructive',
+              })
+              toast({
+                title: 'Please connect your Telegram account to verify tasks. Go to your profile to connect your account.',
+                description: 'Please connect your Telegram account to verify tasks. Go to your profile to connect your account.',
+                variant: 'destructive',
               })
               return
             }
@@ -466,641 +516,315 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
         if (submissionError) {
           console.error('Error creating submission:', submissionError)
-          toast.error('Failed to record task completion')
+          toast({
+            title: 'Failed to record task completion',
+            description: 'Failed to record task completion',
+            variant: 'destructive',
+          })
           return
         }
 
-        // Update the task status in the UI
-        setTasks(prev => prev.map(t => 
-          t.id === task.id 
-            ? { ...t, user_task_submissions: submissionData }
-            : t
-        ))
+        toast({
+          title: 'Task completed!',
+          description: message,
+        })
 
-        toast.success(`Task verified! You earned ${task.xp_reward} XP`)
+        // Refresh tasks to show completion status
+        // You might want to implement a way to refresh the task list here
       } else {
-        toast.error(message || 'Verification failed')
+        toast({
+          title: 'Verification failed',
+          description: message,
+          variant: 'destructive',
+        })
       }
-
     } catch (error) {
       console.error('Error verifying task:', error)
-      toast.error('Failed to verify task')
+      toast({
+        title: 'Error',
+        description: 'An error occurred while verifying the task',
+        variant: 'destructive',
+      })
     } finally {
       setVerifyingTask(null)
     }
-  }, [currentUserUUID, quest.id, emailUser?.email, walletUser?.walletAddress])
+  }, [currentUserUUID, quest.id, toast])
 
-  // Memoized task deletion handler
+  // Handle task deletion
   const handleDeleteTask = useCallback(async (taskId: string) => {
+    if (!isAdminOrCreator()) {
+      toast({
+        title: 'Unauthorized',
+        description: 'Only admins can delete tasks',
+        variant: 'destructive',
+      })
+      return
+    }
+
     try {
       const { error } = await supabase
         .from('tasks')
         .delete()
         .eq('id', taskId)
 
-      if (error) throw error
-
-      setTasks(prev => prev.filter(task => task.id !== taskId))
-      toast.success('Task deleted successfully!')
-    } catch (error) {
-      console.error('Error deleting task:', error)
-      toast.error('Failed to delete task')
-    }
-  }, [])
-
-  // Memoized task creation handler
-  const handleCreateTask = useCallback(async () => {
-    if (!newTask.type) {
-      setCreateTaskError('Please select a task type')
-      return
-    }
-
-    setCreatingTask(true)
-    setCreateTaskError("")
-
-    try {
-      // Prepare task data based on type
-      const taskData: any = {
-        quest_id: quest.id,
-        xp_reward: newTask.xp_reward,
-        type: newTask.type,
-      }
-
-      // Generate dynamic title and description based on task type
-      switch (newTask.type) {
-        case 'social':
-          // Remove validation for non-existent database fields
-          // if (!newTask.social_platform || !newTask.social_action) {
-          //   setCreateTaskError('Please select both social network and action')
-          //   setCreatingTask(false)
-          //   return
-          // }
-
-          // Generate dynamic title and description
-          const platformNames: Record<string, string> = {
-            twitter: 'X',
-            discord: 'Discord',
-            telegram: 'Telegram'
-          }
-          
-          const actionNames: Record<string, string> = {
-            follow: 'Follow',
-            like: 'Like post',
-            retweet: 'Retweet post',
-            join: 'Join channel'
-          }
-
-          taskData.title = `${platformNames[newTask.social_platform]}`
-          taskData.description = `${actionNames[newTask.social_action]}`
-          
-          // For follow actions, automatically fetch admin's social account
-          if (newTask.social_action === 'follow') {
-            try {
-              // Get the project owner's social account for the platform
-              const { data: socialAccount, error: socialError } = await supabase
-                .from('social_accounts')
-                .select('username, account_id, platform')
-                .eq('platform', newTask.social_platform)
-                .eq('user_id', quest.projects?.owner_id)
-                .single()
-
-              if (socialAccount && !socialError) {
-                // Generate the appropriate URL based on platform
-                let socialUrl = ''
-                switch (newTask.social_platform) {
-                  case 'twitter':
-                    socialUrl = `https://x.com/${socialAccount.username}`
-                    break
-                  case 'discord':
-                    // For Discord, we need the server invite URL
-                    // TODO: Admins should update this with real invite URL in project settings
-                    socialUrl = '' // Empty string - admin needs to configure Discord invite URL
-                    break
-                  case 'telegram':
-                    socialUrl = `https://t.me/${socialAccount.username}`
-                    break
-                }
-                taskData.social_url = socialUrl
-                taskData.social_username = socialAccount.username
-              } else {
-                console.warn('No social account found for admin on platform:', newTask.social_platform)
-              }
-            } catch (error) {
-              console.error('Error fetching admin social account:', error)
-            }
-          }
-          
-          // Only add URL for actions that require it (like/retweet)
-          if ((newTask.social_platform === 'twitter' && (newTask.social_action === 'like' || newTask.social_action === 'retweet'))) {
-            if (!newTask.social_url) {
-              setCreateTaskError('Please provide the post URL')
-              setCreatingTask(false)
-              return
-            }
-            taskData.social_url = newTask.social_url
-          }
-          break
-
-        case 'learn':
-          if (!newTask.learn_content) {
-            setCreateTaskError('Please provide quiz content')
-            setCreatingTask(false)
-            return
-          }
-          
-          taskData.title = 'Quiz'
-          taskData.description = 'Complete the quiz'
-          taskData.learn_content = newTask.learn_content
-          taskData.learn_passing_score = newTask.learn_passing_score
-          taskData.learn_questions = newTask.learn_questions
-          break
-
-        case 'visit':
-          if (!newTask.visit_url) {
-            setCreateTaskError('Please provide the URL to visit')
-            setCreatingTask(false)
-            return
-          }
-          
-          taskData.title = 'Visit URL'
-          taskData.description = 'Visit the specified URL'
-          taskData.visit_url = newTask.visit_url
-          taskData.visit_duration_seconds = newTask.visit_duration_seconds
-          break
-      }
-
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert(taskData)
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setTasks(prev => [...prev, data])
-      setShowAddTask(false)
-      setNewTask({
-        type: "",
-        title: "",
-        description: "",
-        xp_reward: 100,
-        // Social task fields
-        social_platform: "",
-        social_action: "",
-        social_url: "",
-        social_username: "",
-        social_post_id: "",
-        // Quiz task fields
-        learn_content: "",
-        learn_questions: null,
-        learn_passing_score: 70,
-        // URL view task fields
-        visit_url: "",
-        visit_title: "",
-        visit_description: "",
-        visit_duration_seconds: 30,
-      })
-      toast.success('Task created successfully!')
-    } catch (error) {
-      console.error('Error creating task:', error)
-      setCreateTaskError('Failed to create task')
-    } finally {
-      setCreatingTask(false)
-    }
-  }, [newTask, quest.id, quest.projects?.owner_id])
-
-  // Memoized task update handler
-  const handleEditTask = useCallback(async () => {
-    if (!editingTask || !newTask.title || !newTask.type) {
-      setUpdateTaskError('Please fill in all required fields')
-      return
-    }
-
-    setUpdatingTask(true)
-    setUpdateTaskError("")
-
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          title: newTask.title,
-          description: newTask.description,
-          type: newTask.type,
-          xp_reward: newTask.xp_reward,
-          // Update other fields based on task type
+      if (error) {
+        console.error('Error deleting task:', error)
+        toast({
+          title: 'Failed to delete task',
+          description: 'Failed to delete task',
+          variant: 'destructive',
         })
-        .eq('id', editingTask.id)
-
-      if (error) throw error
-
-      setTasks(prev => prev.map(task => 
-        task.id === editingTask.id 
-          ? { ...task, ...newTask }
-          : task
-      ))
-      setShowEditTask(false)
-      setEditingTask(null)
-      toast.success('Task updated successfully!')
-    } catch (error) {
-      console.error('Error updating task:', error)
-      setUpdateTaskError('Failed to update task')
-    } finally {
-      setUpdatingTask(false)
-    }
-  }, [editingTask, newTask])
-
-  // Memoized social accounts fetch
-  const fetchCurrentUserSocialAccounts = useCallback(async () => {
-    if (!currentUserUUID) return
-
-    try {
-      const { data, error } = await supabase
-        .from('social_accounts')
-        .select('*')
-        .eq('user_id', currentUserUUID)
-
-      if (error) {
-        console.error('Error fetching social accounts:', error)
-      }
-    } catch (error) {
-      console.error('Error fetching social accounts:', error)
-    }
-  }, [currentUserUUID])
-
-  // Memoized user task submissions fetch
-  const fetchUserTaskSubmissions = useCallback(async () => {
-    if (!currentUserUUID || !quest.id) return
-
-    try {
-      const { data: submissions, error } = await supabase
-        .from('user_task_submissions')
-        .select('*')
-        .eq('user_id', currentUserUUID)
-        .eq('quest_id', quest.id)
-
-      if (error) {
-        console.error('Error fetching user task submissions:', error)
         return
       }
 
-      // Update tasks with submission data
-      if (submissions) {
-        setTasks(prev => prev.map(task => {
-          const submission = submissions.find(s => s.task_id === task.id)
-          return submission ? { ...task, user_task_submissions: submission } : task
-        }))
-      }
+      // Remove task from local state
+      setTasks(prev => prev.filter(task => task.id !== taskId))
+      
+      toast({
+        title: 'Task deleted',
+        description: 'Task has been deleted successfully',
+      })
     } catch (error) {
-      console.error('Error fetching user task submissions:', error)
+      console.error('Error deleting task:', error)
+      toast({
+        title: 'Error',
+        description: 'An error occurred while deleting the task',
+        variant: 'destructive',
+      })
     }
-  }, [currentUserUUID, quest.id])
+  }, [isAdminOrCreator, toast])
 
-  // Memoized user social username getter
-  const getUserSocialUsername = useCallback((platform: string) => {
-    // Implementation here
-    return ""
-  }, [])
+  // Handle adding new task
+  const handleAddTask = useCallback(async (taskData: Partial<Task>) => {
+    if (!isAdminOrCreator()) {
+      toast({
+        title: 'Unauthorized',
+        description: 'Only admins can add tasks',
+        variant: 'destructive',
+      })
+      return
+    }
 
-  // Memoized quiz modal renderer
-  const renderQuizModal = useCallback((task: Task) => {
-    if (task.type !== "learn" || !showQuiz[task.id]) return null;
-    
-    const quizData = task.learn_questions;
-    if (!quizData) return null;
-    
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+          quest_id: quest.id,
+          type: taskData.type || 'social',
+          title: taskData.title || '',
+          description: taskData.description || '',
+          xp_reward: taskData.xp_reward || 100,
+          status: 'pending',
+          social_platform: taskData.social_platform || null,
+          social_action: taskData.social_action || null,
+          social_url: taskData.social_url || null,
+          social_username: taskData.social_username || null,
+          social_post_id: taskData.social_post_id || null,
+          download_url: taskData.download_url || null,
+          download_title: taskData.download_title || null,
+          download_description: taskData.download_description || null,
+          form_url: taskData.form_url || null,
+          form_title: taskData.form_title || null,
+          form_description: taskData.form_description || null,
+          visit_url: taskData.visit_url || null,
+          visit_title: taskData.visit_title || null,
+          visit_description: taskData.visit_description || null,
+          visit_duration_seconds: taskData.visit_duration_seconds || null,
+          learn_content: taskData.learn_content || null,
+          learn_questions: taskData.learn_questions || null,
+          learn_passing_score: taskData.learn_passing_score || 80,
+          order_index: tasks.length
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding task:', error)
+        toast({
+          title: 'Failed to add task',
+          description: 'Failed to add task',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      // Add task to local state
+      setTasks(prev => [...prev, data])
+      setShowEditTask(false)
+      
+      toast({
+        title: 'Task added',
+        description: 'Task has been added successfully',
+      })
+    } catch (error) {
+      console.error('Error adding task:', error)
+      toast({
+        title: 'Error',
+        description: 'An error occurred while adding the task',
+        variant: 'destructive',
+      })
+    }
+  }, [isAdminOrCreator, quest.id, tasks.length, toast])
+
+  // Handle editing task
+  const handleEditTask = useCallback(async (taskId: string, taskData: Partial<Task>) => {
+    if (!isAdminOrCreator()) {
+      toast({
+        title: 'Unauthorized',
+        description: 'Only admins can edit tasks',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({
+          type: taskData.type,
+          title: taskData.title,
+          description: taskData.description,
+          xp_reward: taskData.xp_reward,
+          social_platform: taskData.social_platform,
+          social_action: taskData.social_action,
+          social_url: taskData.social_url,
+          social_username: taskData.social_username,
+          social_post_id: taskData.social_post_id,
+          download_url: taskData.download_url,
+          download_title: taskData.download_title,
+          download_description: taskData.download_description,
+          form_url: taskData.form_url,
+          form_title: taskData.form_title,
+          form_description: taskData.form_description,
+          visit_url: taskData.visit_url,
+          visit_title: taskData.visit_title,
+          visit_description: taskData.visit_description,
+          visit_duration_seconds: taskData.visit_duration_seconds,
+          learn_content: taskData.learn_content,
+          learn_questions: taskData.learn_questions,
+          learn_passing_score: taskData.learn_passing_score
+        })
+        .eq('id', taskId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating task:', error)
+        toast({
+          title: 'Failed to update task',
+          description: 'Failed to update task',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      // Update task in local state
+      setTasks(prev => prev.map(task => task.id === taskId ? data : task))
+      setShowEditTask(false)
+      setEditingTask(null)
+      
+      toast({
+        title: 'Task updated',
+        description: 'Task has been updated successfully',
+      })
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast({
+        title: 'Error',
+        description: 'An error occurred while updating the task',
+        variant: 'destructive',
+      })
+    }
+  }, [isAdminOrCreator, toast])
+
+  if (loading) {
     return (
-      <Dialog open={showQuiz[task.id]} onOpenChange={(open) => setShowQuiz(s => ({ ...s, [task.id]: open }))}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-white">{task.title}</DialogTitle>
-            <DialogDescription className="text-gray-300">{task.description}</DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {quizData.question && (
-              <div>
-                <h3 className="text-white font-semibold mb-2">{quizData.question}</h3>
-                {quizData.description && (
-                  <p className="text-gray-300 text-sm mb-4">{quizData.description}</p>
-                )}
-              </div>
-            )}
-            
-            {/* Quiz content would go here */}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }, [showQuiz]);
+      <PageContainer>
+        <div className="space-y-6">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </PageContainer>
+    )
+  }
 
-  // Memoized main content to prevent unnecessary re-renders
-  const mainContent = useMemo(() => (
+  return (
     <PageContainer>
-      <div className="max-w-4xl mx-auto">
-        <QuestHeader quest={quest} isAdminOrCreator={isAdminOrCreator} onAddTask={() => setShowAddTask(true)} />
+      <div className="space-y-6">
         
-        <QuestStats quest={quest} tasks={tasks} />
+        <QuestHeader 
+          quest={quest} 
+          isAdminOrCreator={isAdminOrCreator}
+          onAddTask={() => setShowEditTask(true)}
+        />
+        
+        <TaskList
+          tasks={tasks}
+          verifyingTask={verifyingTask}
+          submissionData={submissionData}
+          isAdminOrCreator={isAdminOrCreator}
+          setEditingTask={setEditingTask}
+          setShowEditTask={setShowEditTask}
+          setShowQuiz={setShowQuiz}
+          handleTaskVerification={handleTaskVerification}
+          handleDeleteTask={handleDeleteTask}
+          walletUser={walletUser}
+          isAuthenticated={isAuthenticated}
+        />
 
-        <Card className="bg-[#111111] border-[#282828]">
-          <CardHeader>
-            <CardTitle className="text-white">Tasks</CardTitle>
-            <CardDescription className="text-gray-400">
-              Complete tasks to earn XP and progress through this quest
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Debug info */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded text-yellow-300 text-xs">
-                <p>Debug: {tasks.length} tasks loaded</p>
-                <p>Quest ID: {quest.id}</p>
-                <p>Quest Title: {quest.title}</p>
-              </div>
-            )}
+        {/* Add/Edit Task Dialog */}
+        <Dialog open={showEditTask} onOpenChange={setShowEditTask}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingTask ? 'Edit Task' : 'Add New Task'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingTask ? 'Update the task details below.' : 'Create a new task for this quest.'}
+              </DialogDescription>
+            </DialogHeader>
             
-            <TaskList
-              tasks={tasks}
-              verifyingTask={verifyingTask}
-              submissionData={submissionData}
-              isAdminOrCreator={isAdminOrCreator}
-              setEditingTask={setEditingTask}
-              setShowEditTask={setShowEditTask}
-              setShowQuiz={setShowQuiz}
-              handleTaskVerification={handleTaskVerification}
-              handleDeleteTask={handleDeleteTask}
-              walletUser={walletUser}
-              isAuthenticated={!!walletUser || !!emailUser}
-              onSignIn={() => window.dispatchEvent(new CustomEvent('open-auth-dialog'))}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Quiz Modals */}
-        {tasks.map(task => (
-          <div key={task.id}>
-            {renderQuizModal(task)}
-          </div>
-        ))}
-
-        {/* View All Responses Button */}
-        {questCompleted && isAdminOrCreator() && (
-          <Card className="mt-6 bg-[#111111] border-[#282828]">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-white font-semibold text-lg mb-2">Quest Completed!</h3>
-                  <p className="text-gray-400 text-sm">
-                    All tasks have been completed. You can now view all user responses and manage XP distribution.
-                  </p>
-                </div>
-                <Button
-                  onClick={() => setShowResponsesViewer(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  View All Responses
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Add Task Dialog */}
-        <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Task</DialogTitle>
-              <DialogDescription>
-                Create a new task for this quest
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-white">Task Type</label>
-                <Select value={newTask.type} onValueChange={(value) => setNewTask({...newTask, type: value})}>
-                  <SelectTrigger className="bg-[#111111] border-[#282828] text-white">
-                    <SelectValue placeholder="Select task type" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#111111] border-[#282828]">
-                    <SelectItem value="social">Social Media</SelectItem>
-                    <SelectItem value="learn">Quiz</SelectItem>
-                    <SelectItem value="visit">URL View</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* XP Reward - Always shown */}
-              <div>
-                <label className="text-sm font-medium text-white">XP Reward</label>
-                <Input 
-                  type="number"
-                  value={newTask.xp_reward}
-                  onChange={(e) => setNewTask({...newTask, xp_reward: parseInt(e.target.value) || 0})}
-                  className="bg-[#111111] border-[#282828] text-white"
-                  placeholder="Enter XP reward"
-                />
-              </div>
-
-              {/* Social Media Task Fields */}
-              {newTask.type === 'social' && (
-                <>
-                  <div>
-                    <label className="text-sm font-medium text-white">Social Network</label>
-                    <Select value={newTask.social_platform} onValueChange={(value) => setNewTask({...newTask, social_platform: value})}>
-                      <SelectTrigger className="bg-[#111111] border-[#282828] text-white">
-                        <SelectValue placeholder="Select social network" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#111111] border-[#282828]">
-                        <SelectItem value="twitter">X (Twitter)</SelectItem>
-                        <SelectItem value="discord">Discord</SelectItem>
-                        <SelectItem value="telegram">Telegram</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-white">Action</label>
-                    <Select value={newTask.social_action} onValueChange={(value) => setNewTask({...newTask, social_action: value})}>
-                      <SelectTrigger className="bg-[#111111] border-[#282828] text-white">
-                        <SelectValue placeholder="Select action" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#111111] border-[#282828]">
-                        {newTask.social_platform === 'twitter' && (
-                          <>
-                            <SelectItem value="follow">Follow</SelectItem>
-                            <SelectItem value="like">Like post</SelectItem>
-                            <SelectItem value="retweet">Retweet post</SelectItem>
-                          </>
-                        )}
-                        {newTask.social_platform === 'discord' && (
-                          <SelectItem value="join">Join channel</SelectItem>
-                        )}
-                        {newTask.social_platform === 'telegram' && (
-                          <SelectItem value="join">Join channel</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* Show URL field only for X actions that require it */}
-                  {(newTask.social_platform === 'twitter' && (newTask.social_action === 'like' || newTask.social_action === 'retweet')) && (
-                    <div>
-                      <label className="text-sm font-medium text-white">Post URL</label>
-                      <Input 
-                        value={newTask.social_url}
-                        onChange={(e) => setNewTask({...newTask, social_url: e.target.value})}
-                        className="bg-[#111111] border-[#282828] text-white"
-                        placeholder="Enter post URL to like/retweet"
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Quiz Task Fields */}
-              {newTask.type === 'learn' && (
-                <>
-                  <div>
-                    <label className="text-sm font-medium text-white">Quiz Content</label>
-                    <Textarea 
-                      value={newTask.learn_content}
-                      onChange={(e) => setNewTask({...newTask, learn_content: e.target.value})}
-                      className="bg-[#111111] border-[#282828] text-white"
-                      placeholder="Enter quiz content or instructions"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-white">Passing Score (%)</label>
-                    <Input 
-                      type="number"
-                      value={newTask.learn_passing_score}
-                      onChange={(e) => setNewTask({...newTask, learn_passing_score: parseInt(e.target.value) || 70})}
-                      className="bg-[#111111] border-[#282828] text-white"
-                      placeholder="Enter passing score"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* URL View Task Fields */}
-              {newTask.type === 'visit' && (
-                <>
-                  <div>
-                    <label className="text-sm font-medium text-white">URL to Visit</label>
-                    <Input 
-                      value={newTask.visit_url}
-                      onChange={(e) => setNewTask({...newTask, visit_url: e.target.value})}
-                      className="bg-[#111111] border-[#282828] text-white"
-                      placeholder="Enter URL to visit"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-white">Visit Duration (seconds)</label>
-                    <Input 
-                      type="number"
-                      value={newTask.visit_duration_seconds}
-                      onChange={(e) => setNewTask({...newTask, visit_duration_seconds: parseInt(e.target.value) || 30})}
-                      className="bg-[#111111] border-[#282828] text-white"
-                      placeholder="Enter minimum visit duration"
-                    />
-                  </div>
-                </>
-              )}
-              
-              {createTaskError && (
-                <p className="text-red-400 text-sm">{createTaskError}</p>
-              )}
-              
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleCreateTask}
-                  disabled={creatingTask}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  {creatingTask ? 'Creating...' : 'Create Task'}
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => setShowAddTask(false)}
-                  className="border-[#282828] text-white hover:bg-[#1a1a1a]"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Responses Viewer Dialog */}
-        <Dialog open={showResponsesViewer} onOpenChange={setShowResponsesViewer}>
-          <DialogContent className="max-w-2xl max-h-[80vh]">
-            <DialogHeader>
-              <DialogTitle>Quest Responses</DialogTitle>
-              <DialogDescription>
-                View all user responses and manage XP distribution for completed tasks.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-4">
-              <QuestResponsesViewer
-                quest={quest}
-                tasks={tasks}
-                isAdmin={isAdminOrCreator()}
+            <div className="px-6 pb-6">
+              <TaskForm
+                task={editingTask}
+                onSubmit={editingTask ? 
+                  (data: Partial<Task>) => handleEditTask(editingTask.id, data) : 
+                  handleAddTask
+                }
+                onCancel={() => {
+                  setShowEditTask(false)
+                  setEditingTask(null)
+                }}
               />
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Quiz Dialog */}
+        {Object.entries(showQuiz).map(([taskId, isOpen]) => (
+          <Dialog key={taskId} open={isOpen} onOpenChange={(open) => setShowQuiz(prev => ({ ...prev, [taskId]: open }))}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Quiz</DialogTitle>
+                <DialogDescription>
+                  Answer the questions to complete this task.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="px-6 pb-6">
+                <QuizComponent
+                  task={tasks.find(t => t.id === taskId)}
+                  onComplete={() => {
+                    setShowQuiz(prev => ({ ...prev, [taskId]: false }))
+                    // Handle quiz completion
+                  }}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        ))}
       </div>
     </PageContainer>
-  ), [
-    quest, tasks, isAdminOrCreator, verifyingTask, submissionData,
-    handleTaskVerification, handleDeleteTask, walletUser, emailUser,
-    questCompleted, showResponsesViewer, setShowResponsesViewer, renderQuizModal,
-    showAddTask, setShowAddTask, newTask, createTaskError, creatingTask, handleCreateTask
-  ])
-
-  // Memoized loading content
-  const loadingContent = useMemo(() => (
-    <PageContainer>
-      <div className="flex items-center justify-center py-8">
-        <div className="text-white">Loading quest...</div>
-      </div>
-    </PageContainer>
-  ), [])
-
-  // Memoized skeleton content
-  const skeletonContent = useMemo(() => (
-    <PageContainer>
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-1/3" />
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    </PageContainer>
-  ), [])
-
-  useEffect(() => {
-    setMounted(true)
-    checkAuth()
-    fetchProjectData()
-  }, [checkAuth, fetchProjectData])
-
-  useEffect(() => {
-    if (mounted && quest.project_id && currentUserUUID) {
-      fetchCurrentUserSocialAccounts()
-      fetchUserTaskSubmissions()
-    }
-  }, [mounted, quest.project_id, currentUserUUID, fetchCurrentUserSocialAccounts, fetchUserTaskSubmissions])
-
-  // Show loading state while auth is being checked
-  if (!mounted) {
-    return skeletonContent
-  }
-
-  if (loading) {
-    return loadingContent
-  }
-
-  return mainContent
+  )
 } 

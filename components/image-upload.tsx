@@ -7,7 +7,23 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Upload, X, ImageIcon, Loader2 } from "lucide-react"
-import { storageService } from "@/lib/storage"
+
+// Safe storage service import
+let storageService: any = null
+try {
+  const { storageService: importedStorageService } = require("@/lib/storage")
+  storageService = importedStorageService
+} catch (error) {
+  console.warn('Storage service not available:', error)
+  // Create a fallback storage service
+  storageService = {
+    uploadQuestImage: async () => null,
+    uploadProjectCover: async () => null,
+    uploadProjectLogo: async () => null,
+    uploadUserAvatar: async () => null,
+    uploadQuestResponse: async () => null,
+  }
+}
 
 interface ImageUploadProps {
   onImageUploaded: (url: string) => void

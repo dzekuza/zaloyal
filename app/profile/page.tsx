@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter, useSearchParams } from "next/navigation"
-import { LogOut, Copy, ExternalLink, User, Link, AlertCircle } from "lucide-react"
+import { LogOut, Copy, ExternalLink, User, Link, AlertCircle, Wallet } from "lucide-react"
 import AvatarUpload from "@/components/avatar-upload"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import PageContainer from "@/components/PageContainer";
 import { useAuth } from "@/components/auth-provider-wrapper"
 import AuthRequired from "@/components/auth-required"
+import { walletAuth } from "@/lib/wallet-auth"
+import WalletIcon from "@/components/wallet-icon"
 
 // Simple icon components to avoid react-icons import issues
 const DiscordIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -31,6 +33,8 @@ const XIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
   </svg>
 )
+
+
 
 interface LinkedIdentity {
   id: string;
@@ -54,10 +58,20 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
-  const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
+
   const [linkedIdentities, setLinkedIdentities] = useState<LinkedIdentity[]>([]);
   const [isLinking, setIsLinking] = useState<string | null>(null);
   const [isUnlinking, setIsUnlinking] = useState<string | null>(null);
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const [passwordSetSuccess, setPasswordSetSuccess] = useState(false);
+
+  // Wallet linking state
+  const [walletUser, setWalletUser] = useState<any>(null);
+  const [isLinkingWallet, setIsLinkingWallet] = useState(false);
+  const [isUnlinkingWallet, setIsUnlinkingWallet] = useState(false);
 
   // Editable fields
   const [username, setUsername] = useState("")
@@ -82,16 +96,35 @@ export default function ProfilePage() {
     const initializePage = async () => {
       console.log('Initializing profile page...');
       try {
+        // Check if we have a valid user session first
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        if (!currentUser) {
+          console.log('No authenticated user found');
+          setLoading(false);
+          return;
+        }
+        
         if (user) {
           console.log('User authenticated:', user.id);
+          
+          // Initialize wallet auth and check for linked wallet
+          try {
+            const currentWalletUser = await walletAuth.getCurrentUser();
+            if (currentWalletUser) {
+              setWalletUser(currentWalletUser);
+              console.log('Wallet user found:', currentWalletUser.walletAddress.substring(0, 8) + '...');
+            }
+          } catch (walletError) {
+            console.log('No wallet linked or wallet error:', walletError);
+          }
           setProfile(user.profile);
           setAvatarUrl(user.avatar_url || "");
           setUsername(user.username || "");
           setBio(user.bio || "");
           setSocialLinks(user.social_links || {});
           
-          // Immediately fetch social accounts
-          await fetchSocialAccounts();
+          // Immediately fetch linked identities
           await fetchLinkedIdentities();
         }
         setLoading(false);
@@ -101,60 +134,71 @@ export default function ProfilePage() {
       }
     };
 
-    if (!authLoading) {
+    // Only initialize if we're not already loading
+    if (!loading) {
       initializePage();
     }
-  }, [user, authLoading]);
+  }, [user, loading]);
 
-  // Fetch social accounts when user changes
+  // Fetch linked identities when user changes
   useEffect(() => {
     if (user?.id) {
-      fetchSocialAccounts();
       fetchLinkedIdentities();
+      // Reset password success state when user changes
+      setPasswordSetSuccess(false);
     }
   }, [user?.id]);
 
-  // 3. Fetch social accounts using user ID
-  const fetchSocialAccounts = async () => {
-    if (!user?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from('social_accounts')
-        .select('*')
-        .eq('user_id', user.id);
-      if (!error && data) setSocialAccounts(data);
-    } catch (error) {
-      console.error('Error fetching social accounts:', error);
-    }
-  };
 
-  // Fetch linked identities from Supabase Auth
+
+  // 🔥 BEST PRACTICE: Fetch linked identities from Supabase Auth ONLY
   const fetchLinkedIdentities = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // For now, we'll use the social_accounts table instead of getUserIdentities
-      const { data: socialAccounts, error } = await supabase
-        .from('social_accounts')
-        .select('*')
-        .eq('user_id', user.id);
+      // 🔥 BEST PRACTICE: Get identities from Auth identities
+      const { data: identitiesData, error: identitiesError } = await supabase.auth.getUserIdentities();
       
-      if (!error && socialAccounts) {
-        // Convert social accounts to linked identities format
-        const identities = socialAccounts.map(account => ({
-          id: account.id,
-          user_id: account.user_id,
-          identity_id: account.account_id,
-          provider: account.platform, // This will be 'x', 'discord', 'solana', etc.
-          identity_data: {
-            user_name: account.username,
-            screen_name: account.username,
-            name: account.username,
-          }
-        }));
-        setLinkedIdentities(identities);
+      if (identitiesError) {
+        console.error('Error getting user identities:', identitiesError);
+        return;
       }
+
+      const identities: LinkedIdentity[] = [];
+      
+      // Process each identity from Auth
+      identitiesData?.identities?.forEach((identity: any) => {
+        if (identity.provider === 'discord') {
+          identities.push({
+            id: `discord-${user.id}`,
+            user_id: user.id,
+            identity_id: identity.identity_id,
+            provider: 'discord',
+            identity_data: {
+              user_name: identity.identity_data?.username || identity.identity_data?.name,
+              screen_name: identity.identity_data?.username || identity.identity_data?.name,
+              name: identity.identity_data?.name || identity.identity_data?.full_name,
+              avatar_url: identity.identity_data?.avatar_url || identity.identity_data?.picture,
+            }
+          });
+        } else if (identity.provider === 'twitter') {
+          identities.push({
+            id: `twitter-${user.id}`,
+            user_id: user.id,
+            identity_id: identity.identity_id,
+            provider: 'x', // Map twitter to 'x' for UI consistency
+            identity_data: {
+              user_name: identity.identity_data?.user_name || identity.identity_data?.screen_name,
+              screen_name: identity.identity_data?.screen_name || identity.identity_data?.user_name,
+              name: identity.identity_data?.name || identity.identity_data?.full_name,
+              avatar_url: identity.identity_data?.profile_image_url || identity.identity_data?.avatar_url,
+            }
+          });
+        }
+      });
+      
+      setLinkedIdentities(identities);
     } catch (error) {
       console.error('Error fetching linked identities:', error);
     }
@@ -166,6 +210,14 @@ export default function ProfilePage() {
     const success = searchParams.get('success');
     
     if (error) {
+      // Handle no_session error gracefully
+      if (error === 'no_session') {
+        console.log('No session detected, redirecting to auth');
+        // Don't show error toast for no_session, just redirect
+        router.replace('/profile');
+        return;
+      }
+      
       toast({
         title: "Error",
         description: `OAuth error: ${error}`,
@@ -177,9 +229,13 @@ export default function ProfilePage() {
         title: "Success",
         description: "Account linked successfully!",
       });
+      // Refresh linked identities after successful linking
+      setTimeout(() => {
+        fetchLinkedIdentities();
+      }, 1000);
       router.replace('/profile');
     }
-  }, [searchParams]);
+  }, [searchParams, router, toast]);
 
   const discordInfo = user?.profile?.discord_id ? {
     id: user.profile.discord_id,
@@ -192,27 +248,48 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Use social_accounts table instead of getUserIdentities
-      const { data: socialAccounts } = await supabase
-        .from('social_accounts')
-        .select('*')
-        .eq('user_id', user.id);
+      // 🔥 BEST PRACTICE: Get identities from Auth identities
+      const { data: identitiesData, error: identitiesError } = await supabase.auth.getUserIdentities();
       
-      // Update linked identities
-      if (socialAccounts) {
-        const identities = socialAccounts.map(account => ({
-          id: account.id,
-          user_id: account.user_id,
-          identity_id: account.account_id,
-          provider: account.platform,
-          identity_data: {
-            user_name: account.username,
-            screen_name: account.username,
-            name: account.username,
-          }
-        }));
-        setLinkedIdentities(identities);
+      if (identitiesError) {
+        console.error('Error getting user identities:', identitiesError);
+        return;
       }
+
+      const identities: LinkedIdentity[] = [];
+      
+      // Process each identity from Auth
+      identitiesData?.identities?.forEach((identity: any) => {
+        if (identity.provider === 'discord') {
+          identities.push({
+            id: `discord-${user.id}`,
+            user_id: user.id,
+            identity_id: identity.identity_id,
+            provider: 'discord',
+            identity_data: {
+              user_name: identity.identity_data?.username || identity.identity_data?.name,
+              screen_name: identity.identity_data?.username || identity.identity_data?.name,
+              name: identity.identity_data?.name || identity.identity_data?.full_name,
+              avatar_url: identity.identity_data?.avatar_url || identity.identity_data?.picture,
+            }
+          });
+        } else if (identity.provider === 'twitter') {
+          identities.push({
+            id: `twitter-${user.id}`,
+            user_id: user.id,
+            identity_id: identity.identity_id,
+            provider: 'x', // Map twitter to 'x' for UI consistency
+            identity_data: {
+              user_name: identity.identity_data?.user_name || identity.identity_data?.screen_name,
+              screen_name: identity.identity_data?.screen_name || identity.identity_data?.user_name,
+              name: identity.identity_data?.name || identity.identity_data?.full_name,
+              avatar_url: identity.identity_data?.profile_image_url || identity.identity_data?.avatar_url,
+            }
+          });
+        }
+      });
+
+      setLinkedIdentities(identities);
     } catch (error) {
       console.error('Error updating user with identities:', error);
     }
@@ -308,12 +385,23 @@ export default function ProfilePage() {
         return;
       }
 
-      // Use Supabase's native Discord OAuth
+      // Check if Discord is already linked
+      const existingDiscord = linkedIdentities.find(identity => identity.provider === 'discord');
+      if (existingDiscord) {
+        toast({
+          title: "Already Linked",
+          description: "Discord account is already linked to your profile.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Use Supabase's native Discord OAuth with basic scopes
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          scopes: 'identify connections guilds.join guilds.channels.read email guilds.members.read gdm.join'
+          redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/callback`,
+          scopes: 'identify email'
         }
       });
 
@@ -321,8 +409,7 @@ export default function ProfilePage() {
         throw error;
       }
 
-      // The redirect will happen automatically
-      console.log('Discord OAuth initiated successfully');
+      console.log('Discord OAuth initiated successfully for account linking');
     } catch (error) {
       console.error('Discord linking error:', error);
       toast({
@@ -485,6 +572,84 @@ export default function ProfilePage() {
     });
   };
 
+  // Link wallet to current user
+  const handleLinkWallet = async () => {
+    setIsLinkingWallet(true);
+    try {
+      // Check if user is authenticated
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in with your email first.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if wallet is already linked
+      if (walletUser) {
+        toast({
+          title: "Already Linked",
+          description: "Wallet is already linked to your profile.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Use wallet auth to link wallet
+      const walletAddress = await walletAuth.linkWalletToCurrentUser();
+      
+      // Update local state
+      setWalletUser({ walletAddress });
+      
+      toast({
+        title: "Success",
+        description: `Wallet ${walletAddress.substring(0, 8)}...${walletAddress.substring(-6)} linked successfully!`,
+      });
+
+    } catch (error) {
+      console.error('Wallet linking error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to link wallet. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLinkingWallet(false);
+    }
+  };
+
+  // Unlink wallet from current user
+  const handleUnlinkWallet = async () => {
+    setIsUnlinkingWallet(true);
+    try {
+      if (!walletUser) {
+        throw new Error('No wallet found to unlink');
+      }
+
+      // Use wallet auth to unlink wallet
+      await walletAuth.unlinkWalletFromCurrentUser();
+      
+      // Update local state
+      setWalletUser(null);
+      
+      toast({
+        title: "Success",
+        description: "Wallet unlinked successfully",
+      });
+
+    } catch (error) {
+      console.error('Wallet unlinking error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to unlink wallet. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUnlinkingWallet(false);
+    }
+  };
+
   // Unlink X (Twitter) account using Supabase Auth
   const handleUnlinkX = async () => {
     setIsUnlinking('x');
@@ -599,62 +764,7 @@ export default function ProfilePage() {
     }
   };
 
-  // 4. When linking/unlinking social accounts, always use user ID
-  const handleLinkSocialAccount = async (platform: string, accountData: any) => {
-    if (!user?.id) return;
-    await supabase.from('social_accounts').upsert({
-      user_id: user.id,
-      platform,
-      ...accountData,
-    }, { onConflict: 'user_id,platform' });
-    // Refresh
-    const { data } = await supabase
-      .from('social_accounts')
-      .select('*')
-      .eq('user_id', user.id);
-    setSocialAccounts(data || []);
-  };
 
-  // 5. Remove direct social fields from UI (discord_id, x_id, etc.)
-  //    Only show linked accounts from social_accounts and Supabase Auth identities
-  const handleUnlinkSocial = async (platform: string) => {
-    if (!user?.id) return;
-    try {
-      await supabase.from('social_accounts').delete().eq('user_id', user.id).eq('platform', platform);
-      // Remove any cached OAuth state for this platform
-      await supabase.from('oauth_states').delete().eq('user_id', user.id).eq('platform', platform);
-      setSocialAccounts((prev) => prev.filter(a => a.platform !== platform));
-      toast({
-        title: "Success",
-        description: `${platform.charAt(0).toUpperCase() + platform.slice(1)} account unlinked successfully`,
-      });
-    } catch (error) {
-      console.error('Error unlinking social account:', error);
-      toast({
-        title: "Error",
-        description: `Failed to unlink ${platform} account. Please try again.`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Connect social account (redirect to OAuth flow)
-  const handleConnectSocial = (platform: string) => {
-    if (platform === 'x') {
-      supabase.auth.linkIdentity({ provider: 'twitter' })
-        .then(({ data, error }) => {
-          if (error) {
-            // Optionally show a toast or error message
-            console.error('X linking error:', error);
-          }
-          // Optionally handle success (data contains the new identity)
-        });
-    } else if (platform === 'discord') {
-      window.location.href = '/api/connect-discord';
-    } else if (platform === 'telegram') {
-      window.location.href = '/api/connect-telegram';
-    }
-  };
 
   // Helper function to get identity display name
   const getIdentityDisplayName = (identity: LinkedIdentity) => {
@@ -670,34 +780,79 @@ export default function ProfilePage() {
     return user?.email_confirmed_at || user?.email_verified;
   };
 
-  // Debug function to check authentication state
-  const debugAuthState = async () => {
-    try {
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-      
-      console.log('=== DEBUG AUTH STATE ===');
-      console.log('Auth provider user:', user);
-      console.log('Supabase user:', supabaseUser);
-      console.log('Profile:', profile);
-      
-      const { data: socialAccounts } = await supabase
-        .from('social_accounts')
-        .select('*')
-        .eq('user_id', user?.id);
-      console.log('Social accounts:', socialAccounts);
-      
-      const { data: linkedIdentities } = await supabase.auth.getUserIdentities();
-      console.log('Linked identities:', linkedIdentities);
-      console.log('========================');
-      
+  // Helper function to check if user has email/password authentication
+  const hasEmailPasswordAuth = () => {
+    return (user as any)?.app_metadata?.provider === 'email' || (user as any)?.encrypted_password !== null;
+  };
+
+  // Helper function to check if user only has social auth
+  const hasOnlySocialAuth = () => {
+    const providers = (user as any)?.app_metadata?.providers || [];
+    const hasEmailPassword = hasEmailPasswordAuth();
+    return providers.length > 0 && !hasEmailPassword;
+  };
+
+  // Handle password setup for social auth users
+  const handleSetPassword = async () => {
+    if (!user?.email) {
       toast({
-        title: "Debug Info",
-        description: `User: ${user?.email}, Social Accounts: ${socialAccounts?.length || 0}, Identities: ${linkedIdentities?.identities?.length || 0}`,
+        title: "Error",
+        description: "Email is required to set up password authentication.",
+        variant: "destructive",
       });
-    } catch (error) {
-      console.error('Debug error:', error);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSettingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Password set successfully! You can now sign in with email and password.",
+      });
+      
+      setShowPasswordSetup(false);
+      setPassword('');
+      setConfirmPassword('');
+      setPasswordSetSuccess(true);
+    } catch (error: any) {
+      console.error('Error setting password:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to set password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSettingPassword(false);
     }
   };
+
+
 
   if (authLoading || loading) {
     return (
@@ -717,6 +872,23 @@ export default function ProfilePage() {
     )
   }
 
+  // Error state - if there's an error, show a simple error message
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#181818]">
+        <div className="text-center">
+          <div className="text-red-400 text-xl mb-4">Something went wrong</div>
+          <Button 
+            onClick={() => window.location.reload()}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <PageContainer>
       <Card className="bg-[#111111] border-[#282828]">
@@ -725,25 +897,6 @@ export default function ProfilePage() {
           <CardDescription className="text-gray-300">Manage your profile and connected accounts</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Debug button - remove after testing */}
-          <div className="mb-4 flex gap-2">
-            <Button 
-              onClick={debugAuthState}
-              variant="outline"
-              size="sm"
-              className="text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              Debug Auth State
-            </Button>
-            <Button 
-              onClick={clearAuthState}
-              variant="outline"
-              size="sm"
-              className="text-xs bg-red-600 hover:bg-red-700"
-            >
-              Clear Auth State
-            </Button>
-          </div>
           
           <Tabs defaultValue="profile" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-[#181818] border-[#282828]">
@@ -774,6 +927,75 @@ export default function ProfilePage() {
                       Please verify your email address to enable automatic account linking and improve security.
                     </AlertDescription>
                   </Alert>
+                )}
+
+                {/* Password Setup for Social Auth Users */}
+                {hasOnlySocialAuth() && !passwordSetSuccess && (
+                  <Alert className="bg-blue-500/20 border-blue-500/30">
+                    <AlertCircle className="h-4 w-4 text-blue-400" />
+                    <AlertDescription className="text-blue-400">
+                      You signed up with a social account. Set up a password to enable email/password sign-in.
+                    </AlertDescription>
+                    <div className="mt-3">
+                      <Button 
+                        onClick={() => setShowPasswordSetup(!showPasswordSetup)}
+                        variant="outline"
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                      >
+                        {showPasswordSetup ? 'Cancel' : 'Set Up Password'}
+                      </Button>
+                    </div>
+                  </Alert>
+                )}
+
+                {/* Password Set Success Message */}
+                {passwordSetSuccess && (
+                  <Alert className="bg-green-500/20 border-green-500/30">
+                    <AlertCircle className="h-4 w-4 text-green-400" />
+                    <AlertDescription className="text-green-400">
+                      ✅ Password set successfully! You can now sign in with your email and password.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Password Setup Form */}
+                {showPasswordSetup && hasOnlySocialAuth() && (
+                  <div className="space-y-4 p-4 bg-[#181818] rounded-lg border border-[#282828]">
+                    <h4 className="text-white font-medium">Set Up Password</h4>
+                    <p className="text-gray-400 text-sm">
+                      Create a password so you can sign in with your email address.
+                    </p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-white block mb-2 text-sm font-medium">New Password</label>
+                        <Input 
+                          type="password"
+                          value={password} 
+                          onChange={e => setPassword(e.target.value)} 
+                          className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400" 
+                          placeholder="Enter your new password"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-white block mb-2 text-sm font-medium">Confirm Password</label>
+                        <Input 
+                          type="password"
+                          value={confirmPassword} 
+                          onChange={e => setConfirmPassword(e.target.value)} 
+                          className="bg-[#181818] border-[#282828] text-white placeholder:text-gray-400" 
+                          placeholder="Confirm your new password"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleSetPassword}
+                        disabled={isSettingPassword || !password || !confirmPassword}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {isSettingPassword ? 'Setting Password...' : 'Set Password'}
+                      </Button>
+                    </div>
+                  </div>
                 )}
 
                 {/* Profile Image Upload */}
@@ -864,6 +1086,14 @@ export default function ProfilePage() {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">Connected Social Accounts</h3>
                 
+                {/* X Account Switching Help */}
+                <Alert className="bg-blue-500/20 border-blue-500/30">
+                  <AlertCircle className="h-4 w-4 text-blue-400" />
+                  <AlertDescription className="text-blue-400">
+                    <strong>Having trouble switching X accounts?</strong> If you're getting "request token" errors when trying to connect a different X account, click the "Clear OAuth State" button above, then try connecting again.
+                  </AlertDescription>
+                </Alert>
+                
                 {/* Email Verification Warning */}
                 {user?.email && !hasVerifiedEmail() && (
                   <Alert className="bg-yellow-500/20 border-yellow-500/30">
@@ -876,7 +1106,19 @@ export default function ProfilePage() {
 
                 {/* Linked Identities from Supabase Auth */}
                 <div className="space-y-4">
-                  <h4 className="text-md font-medium text-white">Authentication Methods</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-md font-medium text-white">Authentication Methods</h4>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        fetchLinkedIdentities();
+                      }}
+                      className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    >
+                      Refresh
+                    </Button>
+                  </div>
                   
                   {/* Email Account */}
                   {user?.email && (
@@ -896,45 +1138,45 @@ export default function ProfilePage() {
 
                   {/* Discord Account */}
                   {linkedIdentities.find(id => id.provider === 'discord') ? (
-                    <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
-                      <div className="flex items-center gap-3">
-                        <DiscordIcon className="w-8 h-8 text-[#5865F2]" />
-                        <div>
-                          <div className="text-white font-medium">
-                            {getIdentityDisplayName(linkedIdentities.find(id => id.provider === 'discord')!)}
+                      <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                        <div className="flex items-center gap-3">
+                          <DiscordIcon className="w-8 h-8 text-[#5865F2]" />
+                          <div>
+                            <div className="text-white font-medium">
+                              {getIdentityDisplayName(linkedIdentities.find(id => id.provider === 'discord')!)}
+                            </div>
+                            <div className="text-sm text-gray-400">Discord</div>
                           </div>
-                          <div className="text-sm text-gray-400">Discord</div>
                         </div>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={handleUnlinkDiscord}
+                          disabled={isUnlinking === 'discord'}
+                        >
+                          {isUnlinking === 'discord' ? 'Unlinking...' : 'Unlink'}
+                        </Button>
                       </div>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={handleUnlinkDiscord}
-                        disabled={isUnlinking === 'discord'}
-                      >
-                        {isUnlinking === 'discord' ? 'Unlinking...' : 'Unlink'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
-                      <div className="flex items-center gap-3">
-                        <DiscordIcon className="w-8 h-8 text-gray-400" />
-                        <div>
-                          <div className="text-white font-medium">Discord</div>
-                          <div className="text-sm text-gray-400">Not connected</div>
+                    ) : (
+                      <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                        <div className="flex items-center gap-3">
+                          <DiscordIcon className="w-8 h-8 text-gray-400" />
+                          <div>
+                            <div className="text-white font-medium">Discord</div>
+                            <div className="text-sm text-gray-400">Not connected</div>
+                          </div>
                         </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleLinkDiscord}
+                          disabled={isLinking === 'discord'}
+                          className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                        >
+                          {isLinking === 'discord' ? 'Connecting...' : 'Connect'}
+                        </Button>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleLinkDiscord}
-                        disabled={isLinking === 'discord'}
-                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                      >
-                        {isLinking === 'discord' ? 'Connecting...' : 'Connect'}
-                      </Button>
-                    </div>
-                  )}
+                    )}
 
                   {/* X (Twitter) Account */}
                   {linkedIdentities.find(id => id.provider === 'x') ? (
@@ -977,24 +1219,51 @@ export default function ProfilePage() {
                     </div>
                   )}
 
+                  {/* Wallet Account */}
+                  {walletUser ? (
+                    <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                      <div className="flex items-center gap-3">
+                        <WalletIcon className="text-green-400" size="lg" />
+                        <div>
+                          <div className="text-white font-medium">
+                            {walletUser.walletAddress.substring(0, 8)}...{walletUser.walletAddress.substring(-6)}
+                          </div>
+                          <div className="text-sm text-gray-400">Solana Wallet</div>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={handleUnlinkWallet}
+                        disabled={isUnlinkingWallet}
+                      >
+                        {isUnlinkingWallet ? 'Unlinking...' : 'Unlink'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                      <div className="flex items-center gap-3">
+                        <WalletIcon className="text-gray-400" size="lg" />
+                        <div>
+                          <div className="text-white font-medium">Solana Wallet</div>
+                          <div className="text-sm text-gray-400">Not connected</div>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="outline"
+                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                        onClick={handleLinkWallet}
+                        disabled={isLinkingWallet}
+                      >
+                        {isLinkingWallet ? 'Connecting...' : 'Connect Wallet'}
+                      </Button>
+                    </div>
+                  )}
+
 
                 </div>
 
-                {/* Legacy Social Accounts (from social_accounts table) */}
-                {socialAccounts.length > 0 && (
-                  <div className="space-y-4 mt-6">
-                    <h4 className="text-md font-medium text-white">Legacy Connected Accounts</h4>
-                    {socialAccounts.map(account => (
-                      <div key={account.platform} className="flex items-center gap-2 mb-2">
-                        <span className="font-medium text-white">{account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}:</span>
-                        <span className="text-gray-300">{account.username}</span>
-                        <Button variant="destructive" size="sm" onClick={() => handleUnlinkSocial(account.platform)}>
-                          Unlink
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+
               </div>
             </TabsContent>
           </Tabs>

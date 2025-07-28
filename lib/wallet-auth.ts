@@ -47,15 +47,21 @@ class WalletAuth {
     });
     
     try {
-      // Use the database function to handle wallet linking with web3 payments integration
-      const { data, error } = await supabase.rpc('link_wallet_to_user', {
-        p_user_id: currentUser.id,
-        p_wallet_address: walletAddress
+      // Use the API route to handle wallet linking
+      const response = await fetch('/api/auth/link-wallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: walletAddress
+        })
       });
+
+      const result = await response.json();
       
-      if (error) {
-        console.error('Error linking wallet:', error);
-        throw new Error(error.message || 'Failed to link wallet');
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to link wallet');
       }
       
       console.log('[Wallet Auth] Successfully linked wallet via web3 payments');
@@ -112,13 +118,18 @@ class WalletAuth {
     }
     
     try {
-      const { error } = await supabase.rpc('unlink_wallet_from_user', {
-        p_user_id: currentUser.id
+      // Use the API route to handle wallet unlinking
+      const response = await fetch('/api/auth/unlink-wallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
+
+      const result = await response.json();
       
-      if (error) {
-        console.error('Error unlinking wallet:', error);
-        throw new Error(error.message || 'Failed to unlink wallet');
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to unlink wallet');
       }
       
       console.log('[Wallet Auth] Successfully unlinked wallet');
@@ -138,23 +149,27 @@ class WalletAuth {
     if (typeof window !== 'undefined') {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Get wallet from social_accounts table (web3 payments integration)
-        const { data: socialAccount, error: socialError } = await supabase
-          .from('social_accounts')
-          .select('wallet_address, username')
-          .eq('user_id', user.id)
-          .eq('platform', 'solana')
-          .single();
-        
-        // Don't throw error if no solana account found - just return null
-        if (!socialError && socialAccount?.wallet_address) {
-          const walletUser: WalletUser = {
-            walletAddress: socialAccount.wallet_address,
-            username: socialAccount.username || undefined,
-          };
-          this.currentUser = walletUser;
-          localStorage.setItem("wallet_user", JSON.stringify(walletUser));
-          return walletUser;
+        try {
+          // Get wallet from social_accounts table (web3 payments integration)
+          const { data: socialAccount, error: socialError } = await supabase
+            .from('social_accounts')
+            .select('wallet_address, username')
+            .eq('user_id', user.id)
+            .eq('platform', 'solana')
+            .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no record exists
+          
+          // Don't throw error if no solana account found - just return null
+          if (!socialError && socialAccount?.wallet_address) {
+            const walletUser: WalletUser = {
+              walletAddress: socialAccount.wallet_address,
+              username: socialAccount.username || undefined,
+            };
+            this.currentUser = walletUser;
+            localStorage.setItem("wallet_user", JSON.stringify(walletUser));
+            return walletUser;
+          }
+        } catch (error) {
+          console.log('[Wallet Auth] No social account found or error occurred:', error);
         }
         
         // Fallback: Extract wallet address from user identity data (web3 payments)

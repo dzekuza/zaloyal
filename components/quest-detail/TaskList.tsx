@@ -96,6 +96,9 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
   onSignIn,
 }) {
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
+  
+  const adminStatus = isAdminOrCreator()
+  console.log('DEBUG: TaskList render:', { adminStatus, tasksCount: tasks.length })
 
   if (!isAuthenticated && !isAdminOrCreator()) {
     return (
@@ -276,6 +279,9 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
           const isCompleted = task.user_task_submissions;
           const isVerifying = verifyingTask === task.id;
           const isLocallyCompleted = completedTasks[task.id];
+          const taskAdminStatus = isAdminOrCreator();
+          console.log('DEBUG: Task render:', { taskId: task.id, taskAdminStatus, isCompleted });
+          
           return (
             <div key={task.id} className="flex items-start gap-3 md:gap-4 p-3 md:p-4 bg-[#111111] rounded-lg border border-[#282828] transition-all duration-300 hover:bg-[#181818] overflow-hidden">
               <div className="flex-1 min-w-0">
@@ -319,8 +325,11 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                               Complete Task
                             </Button>
                             <Button
-                              onClick={() => handleTaskVerification(task)}
-                              disabled={!isLocallyCompleted || isVerifying}
+                              onClick={() => {
+                                console.log('DEBUG: Verify Task button clicked for task:', task.id);
+                                handleTaskVerification(task);
+                              }}
+                              disabled={isVerifying}
                               className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
                               size="sm"
                             >

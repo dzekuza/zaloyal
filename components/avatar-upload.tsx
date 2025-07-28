@@ -6,7 +6,20 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Upload, User, Loader2 } from "lucide-react"
-import { storageService } from "@/lib/storage"
+
+// Safe storage service import
+let storageService: any = null
+try {
+  const { storageService: importedStorageService } = require("@/lib/storage")
+  storageService = importedStorageService
+} catch (error) {
+  console.warn('Storage service not available:', error)
+  // Create a fallback storage service
+  storageService = {
+    uploadQuestImage: async () => null,
+    uploadUserAvatar: async () => null,
+  }
+}
 
 interface AvatarUploadProps {
   onAvatarUploaded: (url: string) => void

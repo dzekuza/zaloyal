@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generateTwitterTransactionId } from '@/lib/twitter-utils';
 
 const TWITTER_BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+  const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const supabaseAdmin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);

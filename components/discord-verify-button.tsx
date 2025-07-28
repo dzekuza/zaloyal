@@ -13,13 +13,13 @@ export function DiscordVerifyButton({ guildId, children }: DiscordVerifyButtonPr
   const handleDiscordAuth = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'discord',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          scopes: 'identify connections guilds.join guilds.channels.read email guilds.members.read gdm.join'
-        }
-      });
+              const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'discord',
+          options: {
+            redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/callback`,
+            scopes: 'identify email'
+          }
+        });
 
       if (error) {
         console.error('Discord OAuth error:', error);

@@ -8,7 +8,6 @@ import { useAuth, AuthProvider } from '@/components/auth-provider-wrapper'
 import { useToast } from '@/hooks/use-toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import AuthDialog from '@/components/auth-dialog'
-import { supabase } from '@/lib/supabase'
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -17,26 +16,26 @@ const inter = Inter({
   fallback: ['system-ui', 'arial']
 })
 
-// Memoized loading screen to prevent re-renders
-const LoadingScreen = React.memo(() => (
-  <div className="min-h-screen bg-[#111111] flex items-center justify-center">
-    <LoadingSpinner size="lg" text="Loading..." />
-  </div>
-))
-LoadingScreen.displayName = 'LoadingScreen'
-
 // Separate component that uses auth context
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const { toast } = useToast();
   const { user, loading } = useAuth();
 
-  // Memoized auth state change handlers to prevent unnecessary re-renders
-  const handleAuthStateChange = useCallback((event: string, session: any) => {
-    if (event === "SIGNED_OUT") {
-      window.location.href = "/";
-    }
-  }, []);
+  // Memoized loading screen with proper auth context
+  const LoadingScreen = React.memo(() => {
+    return (
+      <div className="min-h-screen bg-[#111111] flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" text={loading ? "Loading..." : "Initializing..."} />
+          {user && (
+            <p className="text-gray-400 text-sm mt-2">Welcome back, {user.username || user.email}</p>
+          )}
+        </div>
+      </div>
+    )
+  })
+  LoadingScreen.displayName = 'LoadingScreen'
 
   const handleOpenAuthDialog = useCallback(() => {
     setShowAuthDialog(true);
@@ -46,14 +45,14 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const mainContent = useMemo(() => (
     <div className={`${inter.className} min-h-screen bg-[#111111] flex`}>
       {/* Navigation */}
-      <Navigation onAuthClick={handleOpenAuthDialog} />
+      <Navigation />
       
       {/* Main Content */}
       <div className="flex-1 md:ml-64">
         {children}
       </div>
     </div>
-  ), [children, handleOpenAuthDialog]);
+  ), [children]);
 
   // Memoized auth dialog event handler
   useEffect(() => {
@@ -61,12 +60,6 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     window.addEventListener('open-auth-dialog', handler);
     return () => window.removeEventListener('open-auth-dialog', handler);
   }, [handleOpenAuthDialog]);
-
-  // Memoized supabase auth subscription
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
-    return () => subscription.unsubscribe();
-  }, [handleAuthStateChange]);
 
   // Memoized theme provider content
   const themeProviderContent = useMemo(() => (

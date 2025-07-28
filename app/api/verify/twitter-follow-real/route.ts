@@ -27,127 +27,79 @@ interface TwitterFollowResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const body: { userWallet?: string; userEmail?: string; taskId: string; userId?: string } = await request.json();
+    const body: { taskId: string } = await request.json();
     console.log('DEBUG: Incoming request body:', body);
-    const { userWallet, userEmail, taskId, userId } = body;
+    const { taskId } = body;
 
     if (!taskId) {
       console.log('DEBUG: Missing taskId parameter');
       return NextResponse.json({ error: "Missing taskId parameter" }, { status: 400 });
     }
 
-    let user: any = null;
-    let userError: any = null;
-
-    // First try to get user from provided userId (for wallet auth)
-    if (userId) {
-      console.log('DEBUG: Using provided userId:', userId);
-      const { data: userData, error: userLookupError } = await supabaseAdmin
-        .from("users")
-        .select("id, wallet_address, email")
-        .eq("id", userId)
-        .single();
-      
-      if (!userLookupError && userData) {
-        user = userData;
-        console.log('DEBUG: Found user by userId:', user.id);
-      } else {
-        console.log('DEBUG: User lookup by userId failed:', userLookupError);
-      }
+    // 🔥 BEST PRACTICE: Get user from session using Authorization header
+    const authHeader = request.headers.get('authorization');
+    console.log('DEBUG: Auth header:', authHeader ? 'Present' : 'Missing');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('DEBUG: Invalid or missing Authorization header');
+      return NextResponse.json({ error: "Missing or invalid authorization header" }, { status: 401 });
     }
-
-    // If no user found by userId, try Supabase Auth
-    if (!user) {
-      console.log('DEBUG: Trying Supabase Auth...');
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      console.log('DEBUG: Auth user lookup:', { authUser: authUser?.id, authError });
-      
-      if (authError || !authUser) {
-        console.log('DEBUG: Authentication failed, trying alternative method');
-        
-        // Try to get user from Authorization header
-        const authHeader = request.headers.get('authorization');
-        console.log('DEBUG: Authorization header:', authHeader ? 'Present' : 'Missing');
-        
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-          const token = authHeader.substring(7);
-          console.log('DEBUG: Token length:', token.length);
-          try {
-            const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token);
-            console.log('DEBUG: Token user lookup:', { tokenUser: tokenUser?.id, tokenError });
-            
-            if (!tokenError && tokenUser) {
-              console.log('DEBUG: Got user from token:', tokenUser.id);
-              const { data: userData, error: userLookupError } = await supabaseAdmin
-                .from("users")
-                .select("id, wallet_address, email")
-                .eq("id", tokenUser.id)
-                .single();
-              
-              if (!userLookupError && userData) {
-                user = userData;
-                console.log('DEBUG: Found user by token:', user.id);
-              } else {
-                console.log('DEBUG: User lookup by token failed:', userLookupError);
-              }
-            } else {
-              console.log('DEBUG: Token verification failed:', tokenError);
-            }
-          } catch (tokenError) {
-            console.error('DEBUG: Token verification failed:', tokenError);
-          }
-        } else {
-          console.log('DEBUG: No Authorization header found');
-        }
-      } else {
-        // Got user from Supabase Auth
-        const { data: userData, error: userLookupError } = await supabaseAdmin
-          .from("users")
-          .select("id, wallet_address, email")
-          .eq("id", authUser.id)
-          .single();
-        
-        if (!userLookupError && userData) {
-          user = userData;
-          console.log('DEBUG: Found user by Supabase Auth:', user.id);
-        } else {
-          console.log('DEBUG: User lookup by Supabase Auth failed:', userLookupError);
-        }
-      }
-    }
-
-    if (!user) {
-      console.log('DEBUG: No user found by any method');
+    
+    const token = authHeader.replace('Bearer ', '');
+    console.log('DEBUG: Token extracted:', token ? 'Present' : 'Missing');
+    
+    // Get user from token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.log('DEBUG: Authentication failed:', authError);
       return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
     }
 
-    console.log('DEBUG: Using user:', user.id);
+    console.log('DEBUG: Authenticated user:', user.id);
 
-    // Get user's X account details
-    const { data: socialAccount, error: socialError } = await supabaseAdmin
-      .from('social_accounts')
-      .select('x_account_id, x_username, x_access_token, x_access_token_secret')
-      .eq('user_id', user.id)
-      .eq('platform', 'twitter')
-      .single();
+    // 🔥 BEST PRACTICE: Get X identity using admin API
+    const { data: { user: userWithIdentities }, error: identitiesError } = await supabaseAdmin.auth.admin.getUserById(user.id);
+    
+    if (identitiesError) {
+      console.log('DEBUG: Failed to get user identities:', identitiesError);
+      return NextResponse.json({ error: "Failed to get user identities" }, { status: 500 });
+    }
 
-    if (socialError || !socialAccount) {
-      console.error('Social account not found:', socialError);
+    const xIdentity = userWithIdentities?.identities?.find(
+      (identity: any) => identity.provider === 'twitter'
+    );
+
+    if (!xIdentity) {
+      console.log('DEBUG: No X identity found');
       return NextResponse.json(
         { 
-          error: 'No Twitter account found. Please link your Twitter account first.',
+          error: 'No X account linked. Please connect your X account in your profile.',
           action: 'connect_twitter',
-          message: 'Please connect your Twitter account in your profile settings.'
+          message: 'Please connect your X account in your profile settings.'
         },
         { status: 400 }
       );
     }
 
-    const twitterUserId = socialAccount.x_account_id;
-    const twitterUsername = socialAccount.x_username;
+    console.log('DEBUG: Found X identity:', xIdentity.identity_id);
+
+    // 🔥 BEST PRACTICE: Use X identity data from Auth
+    const twitterUserId = xIdentity.identity_id;
+    const twitterUsername = xIdentity.identity_data?.user_name || xIdentity.identity_data?.screen_name;
+    
+    if (!twitterUsername) {
+      console.log('DEBUG: No X username found in identity data');
+      return NextResponse.json(
+        { error: 'X username not found in identity data' },
+        { status: 400 }
+      );
+    }
+
+    console.log('DEBUG: Using X account:', { twitterUserId, twitterUsername });
     
     // Get task from database
-    const { data: task, error: taskError } = await supabaseAdmin.from("tasks").select("*", { count: "exact" }).eq("id", taskId).single();
+    const { data: task, error: taskError } = await supabaseAdmin.from("tasks").select("*").eq("id", taskId).single();
     console.log('DEBUG: Task lookup result:', task, taskError);
     if (!task || taskError) {
       return NextResponse.json({ error: "Task not found", taskError }, { status: 404 });
@@ -166,28 +118,42 @@ export async function POST(request: NextRequest) {
     if (!project || projectError) {
       return NextResponse.json({ error: "Project not found", projectError }, { status: 404 });
     }
-    // Get project owner's X account details
-    const { data: ownerSocialAccount, error: ownerSocialError } = await supabaseAdmin
-      .from('social_accounts')
-      .select('x_account_id, x_username, x_access_token, x_access_token_secret')
-      .eq('user_id', project.owner_id)
-      .eq('platform', 'twitter')
-      .single();
 
-    if (ownerSocialError || !ownerSocialAccount) {
-      console.error('Project owner X account not found:', ownerSocialError);
+    // 🔥 BEST PRACTICE: Get project owner's X identity from Auth (not social_accounts)
+    const { data: { user: ownerUser }, error: ownerAuthError } = await supabaseAdmin.auth.admin.getUserById(project.owner_id);
+    
+    if (ownerAuthError || !ownerUser) {
+      console.log('DEBUG: Failed to get project owner from Auth:', ownerAuthError);
+      return NextResponse.json({ error: "Project owner not found" }, { status: 404 });
+    }
+
+    // Get project owner's X identity from their user data
+    const ownerXIdentity = ownerUser.identities?.find(
+      (identity: any) => identity.provider === 'twitter'
+    );
+
+    if (!ownerXIdentity) {
+      console.log('DEBUG: Project owner has no X identity');
       return NextResponse.json(
         { error: 'Project owner has not linked their X account' },
         { status: 400 }
       );
     }
 
-    const projectXUsername = ownerSocialAccount.x_username;
-    const projectXId = ownerSocialAccount.x_account_id;
-    const projectXAccessToken = ownerSocialAccount.x_access_token;
-    const projectXAccessTokenSecret = ownerSocialAccount.x_access_token_secret;
+    const projectXUsername = ownerXIdentity.identity_data?.user_name || ownerXIdentity.identity_data?.screen_name;
+    const projectXId = ownerXIdentity.identity_id;
     
-    return await performVerification(user, task, quest, project, ownerSocialAccount, twitterUserId, twitterUsername, taskId);
+    if (!projectXUsername) {
+      console.log('DEBUG: Project owner X username not found');
+      return NextResponse.json(
+        { error: 'Project owner X username not found' },
+        { status: 400 }
+      );
+    }
+
+    console.log('DEBUG: Project owner X account:', { projectXId, projectXUsername });
+    
+    return await performVerification(user, task, quest, project, twitterUserId, twitterUsername, projectXId, projectXUsername, taskId);
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
     console.error('DEBUG: Exception in POST /api/verify/twitter-follow-real:', error);
@@ -197,26 +163,25 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to perform the actual verification
-async function performVerification(user: any, task: any, quest: any, project: any, owner: any, twitterAccountId: string, twitterUsername: string, taskId: string) {
-  // Use owner's X identity as project's X identity
-  const projectXUsername = owner.x_username;
-  const projectXId = owner.x_account_id;
-  const projectXAvatarUrl = owner.profile_data?.profile_image_url || null;
-
+async function performVerification(
+  user: any, 
+  task: any, 
+  quest: any, 
+  project: any, 
+  twitterAccountId: string, 
+  twitterUsername: string, 
+  projectXId: string, 
+  projectXUsername: string, 
+  taskId: string
+) {
   if (!user || !task) {
     return NextResponse.json({ error: "User or task not found" }, { status: 404 })
-  }
-
-  // Use the user's linked X (Twitter) username
-  const xUsername = twitterUsername
-  if (!xUsername) {
-    return NextResponse.json({ error: "No linked X (Twitter) account found for this user" }, { status: 400 })
   }
 
   // Check if Twitter API credentials are configured
   const twitterApiKey = process.env.TWITTER_API_KEY;
   const twitterApiSecret = process.env.TWITTER_API_SECRET;
-  const twitterBearer = process.env.TWITTER_BEARER;
+  const twitterBearer = process.env.TWITTER_BEARER_TOKEN;
   
   console.log('DEBUG: Twitter API credentials check:', {
     hasApiKey: !!twitterApiKey,
@@ -237,8 +202,16 @@ async function performVerification(user: any, task: any, quest: any, project: an
   if (task.social_action === "follow") {
     // For follow verification, use the user's Twitter account ID
     const result = await verifyTwitterFollowBasic(twitterAccountId, projectXId);
-    verified = result.verified;
-    message = verified ? "Follow verified!" : result.error || "Please follow the account first";
+    
+    if (result.error && result.error.includes("Twitter API access denied")) {
+      // Fallback: Since we can't verify via API, we'll provide a manual verification option
+      // The user has X linked, so we can at least confirm they have the capability to follow
+      verified = false;
+      message = "Twitter API access is limited. Please manually verify that you followed the account, or contact support for API access upgrade.";
+    } else {
+      verified = result.verified;
+      message = verified ? "Follow verified!" : result.error || "Please follow the account first";
+    }
   } else if (task.social_action === "like") {
     // Extract tweet ID from social_url if social_post_id is not available
     let tweetId = task.social_post_id;
@@ -252,8 +225,10 @@ async function performVerification(user: any, task: any, quest: any, project: an
       }, { status: 400 });
     }
     
-    // Get project owner's OAuth tokens from social_accounts
-    const { data: projectOwnerSocialAccount, error: socialAccountError } = await supabase
+    // 🔥 BEST PRACTICE: For OAuth operations, we need the project owner's OAuth tokens
+    // Since we can't get OAuth tokens from Auth identities, we need to get them from social_accounts
+    // This is the ONLY legitimate use of social_accounts table - for OAuth tokens
+    const { data: projectOwnerSocialAccount, error: socialAccountError } = await supabaseAdmin
       .from('social_accounts')
       .select('access_token, access_token_secret')
       .eq('user_id', project.owner_id)
@@ -262,7 +237,7 @@ async function performVerification(user: any, task: any, quest: any, project: an
     
     if (socialAccountError || !projectOwnerSocialAccount) {
       return NextResponse.json({ 
-        error: "Project owner's X account not linked or OAuth tokens not available." 
+        error: "Project owner's X account OAuth tokens not available. Please re-link the account." 
       }, { status: 400 });
     }
     
@@ -310,8 +285,8 @@ async function performVerification(user: any, task: any, quest: any, project: an
       }, { status: 400 });
     }
     
-    // Get project owner's OAuth tokens from social_accounts
-    const { data: projectOwnerSocialAccount, error: socialAccountError } = await supabase
+    // 🔥 BEST PRACTICE: For OAuth operations, we need the project owner's OAuth tokens
+    const { data: projectOwnerSocialAccount, error: socialAccountError } = await supabaseAdmin
       .from('social_accounts')
       .select('access_token, access_token_secret')
       .eq('user_id', project.owner_id)
@@ -320,7 +295,7 @@ async function performVerification(user: any, task: any, quest: any, project: an
     
     if (socialAccountError || !projectOwnerSocialAccount) {
       return NextResponse.json({ 
-        error: "Project owner's X account not linked or OAuth tokens not available." 
+        error: "Project owner's X account OAuth tokens not available. Please re-link the account." 
       }, { status: 400 });
     }
     
@@ -388,102 +363,12 @@ async function performVerification(user: any, task: any, quest: any, project: an
   })
 }
 
-// Helper: Twitter API v2 follow verification with OAuth 1.0a
-async function verifyTwitterFollowOAuth(oauth: OAuth, oauthToken: string, oauthTokenSecret: string, userHandle: string, targetHandle: string): Promise<{ verified: boolean, error?: string }> {
-  try {
-    console.log('DEBUG: Verifying follow with OAuth - userHandle:', userHandle, 'targetHandle:', targetHandle);
-    
-    // Generate a unique transaction ID for this request
-    const transactionId = generateTwitterTransactionId();
-    
-    // Get user ID using OAuth
-    const userData = {
-      url: `https://api.x.com/2/users/by/username/${userHandle}`,
-      method: 'GET',
-    };
-    const userHeaders = oauth.toHeader(oauth.authorize(userData, {
-      key: oauthToken,
-      secret: oauthTokenSecret,
-    }));
-    
-    const userResponse = await fetch(userData.url, {
-      method: userData.method,
-      headers: {
-        ...userHeaders,
-        'x-twitter-client-transaction-id': transactionId,
-      },
-    });
-    const userResult: TwitterUserResponse = await userResponse.json();
-    console.log('DEBUG: OAuth user lookup response:', userResponse.status, userResult);
-    
-    if (!userResponse.ok) return { verified: false, error: `Twitter user lookup failed: ${userResponse.status}` };
-    const userId = userResult.data?.id;
-    if (!userId) return { verified: false, error: "User ID not found in Twitter response" };
-    
-    // Get target user ID using OAuth
-    const targetData = {
-      url: `https://api.x.com/2/users/by/username/${targetHandle}`,
-      method: 'GET',
-    };
-    const targetHeaders = oauth.toHeader(oauth.authorize(targetData, {
-      key: oauthToken,
-      secret: oauthTokenSecret,
-    }));
-    
-    const targetResponse = await fetch(targetData.url, {
-      method: targetData.method,
-      headers: {
-        ...targetHeaders,
-        'x-twitter-client-transaction-id': transactionId,
-      },
-    });
-    const targetResult: TwitterUserResponse = await targetResponse.json();
-    console.log('DEBUG: OAuth target lookup response:', targetResponse.status, targetResult);
-    
-    if (!targetResponse.ok) return { verified: false, error: `Twitter target lookup failed: ${targetResponse.status}` };
-    const targetUserId = targetResult.data?.id;
-    if (!targetUserId) return { verified: false, error: "Target user ID not found in Twitter response" };
-    
-    // Check if user follows target using OAuth
-    const followData = {
-      url: `https://api.x.com/2/users/${userId}/following`,
-      method: 'GET',
-    };
-    const followHeaders = oauth.toHeader(oauth.authorize(followData, {
-      key: oauthToken,
-      secret: oauthTokenSecret,
-    }));
-    
-    const followResponse = await fetch(followData.url, {
-      method: followData.method,
-      headers: {
-        ...followHeaders,
-        'x-twitter-client-transaction-id': transactionId,
-      },
-    });
-    const followResult: TwitterFollowResponse = await followResponse.json();
-    console.log('DEBUG: OAuth following response:', followResponse.status, followResult);
-    
-    if (!followResponse.ok) return { verified: false, error: `Failed to check following status: ${followResponse.status}` };
-    const following = followResult.data || [];
-    const isFollowing = following.some((user) => user.id === targetUserId);
-    console.log('DEBUG: Follow verification result:', isFollowing);
-    
-    if (!isFollowing) return { verified: false, error: `User is not following the target account.` };
-    return { verified: true };
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error("Twitter OAuth API error (follow):", errMsg);
-    return { verified: false, error: errMsg };
-  }
-}
-
 // Helper: X API v2 follow verification with Application-Only auth
 async function verifyTwitterFollowBasic(userAccountId: string, targetAccountId: string): Promise<{ verified: boolean, error?: string }> {
   try {
     console.log('DEBUG: Verifying follow with Application-Only auth - userAccountId:', userAccountId, 'targetAccountId:', targetAccountId);
 
-    const bearerToken = process.env.TWITTER_BEARER;
+    const bearerToken = process.env.TWITTER_BEARER_TOKEN;
     if (!bearerToken) {
       return { verified: false, error: "Twitter Bearer Token not configured" };
     }
@@ -503,6 +388,9 @@ async function verifyTwitterFollowBasic(userAccountId: string, targetAccountId: 
     console.log('DEBUG: Follow response:', followResponse.status, followResult);
 
     if (!followResponse.ok) {
+      if (followResponse.status === 403) {
+        return { verified: false, error: `Twitter API access denied. The API requires higher access level. Please contact support or try manual verification.` };
+      }
       return { verified: false, error: `Failed to check following status: ${followResponse.status}` };
     }
     
@@ -602,7 +490,5 @@ async function verifyTwitterRetweetOAuth(oauth: OAuth, oauthToken: string, oauth
     return false;
   }
 }
-
-
 
 console.log('DEBUG: Is service role key defined?', !!process.env.SUPABASE_SERVICE_ROLE_KEY);

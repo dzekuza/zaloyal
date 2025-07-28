@@ -75,10 +75,16 @@ export default function ProjectCard({
   children,
   xpToCollect,
 }: ProjectCardProps) {
+  // Ensure project is valid
+  if (!project || typeof project !== 'object') {
+    return null;
+  }
+
   const isOwner = currentUserId && project.owner_id === currentUserId;
   const totalXp = typeof xpToCollect === 'number' ? xpToCollect : project.total_xp_distributed || 0;
 
   const getAbsoluteUrl = (url: string) => {
+    if (!url) return '#';
     return url?.match(/^https?:\/\//i) ? url : `https://${url}`;
   };
 
@@ -101,7 +107,7 @@ export default function ProjectCard({
         {project.cover_image_url ? (
           <Image
             src={project.cover_image_url}
-            alt={project.name}
+            alt={project.name || 'Project'}
             width={800}
             height={224}
             loading="lazy"
@@ -112,7 +118,7 @@ export default function ProjectCard({
           />
         ) : (
           <div className="h-40 sm:h-48 md:h-56 w-full">
-            <PlaceholderCover name={project.name} logoUrl={project.logo_url} />
+            <PlaceholderCover name={project.name || 'Project'} logoUrl={project.logo_url} />
           </div>
         )}
         
@@ -162,7 +168,7 @@ export default function ProjectCard({
           <div className="absolute bottom-3 left-3">
             <Image
               src={project.logo_url}
-              alt={`${project.name} logo`}
+              alt={`${project.name || 'Project'} logo`}
               width={32}
               height={32}
               loading="lazy"
@@ -178,10 +184,10 @@ export default function ProjectCard({
       {/* Card Body */}
       <CardHeader className="pb-3">
         <CardTitle className="text-lg sm:text-xl md:text-2xl text-white group-hover:text-green-400 transition-colors line-clamp-1">
-          {project.name}
+          {project.name || 'Unnamed Project'}
         </CardTitle>
         <CardDescription className="text-gray-300 text-sm sm:text-base line-clamp-2">
-          {project.description}
+          {project.description || 'No description available'}
         </CardDescription>
       </CardHeader>
 
@@ -190,13 +196,13 @@ export default function ProjectCard({
         <div className="flex flex-wrap justify-between items-center text-xs sm:text-sm md:text-base text-gray-400 gap-2">
           <span className="flex items-center gap-1">
             <Trophy className="h-3 w-3 text-yellow-400" />
-            <span className="hidden sm:inline">{project.quest_count} Quests</span>
-            <span className="sm:hidden">{project.quest_count}</span>
+            <span className="hidden sm:inline">{project.quest_count || 0} Quests</span>
+            <span className="sm:hidden">{project.quest_count || 0}</span>
           </span>
           <span className="flex items-center gap-1">
             <Users className="h-3 w-3" />
-            <span className="hidden sm:inline">{project.total_participants}</span>
-            <span className="sm:hidden">{project.total_participants}</span>
+            <span className="hidden sm:inline">{project.total_participants || 0}</span>
+            <span className="sm:hidden">{project.total_participants || 0}</span>
           </span>
           <span className="flex items-center gap-1">
             <Zap className="h-3 w-3 text-yellow-400" />

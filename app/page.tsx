@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase"
 import ProjectDiscoveryClient from "@/components/ProjectDiscoveryClient";
 import PageContainer from "@/components/PageContainer";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { cache } from "react"
 
 interface Project {
@@ -28,19 +29,24 @@ interface Project {
 // Cache the database queries with cache busting
 const getProjects = cache(async () => {
   console.log("🔍 Fetching projects from database...");
-  const { data: projects, error } = await supabase
-    .from("projects")
-    .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured, total_participants')
-    .eq("status", "approved")
-    .order("created_at", { ascending: false })
-  
-  if (error) {
-    console.error("❌ Error fetching projects:", error);
-    throw error;
+  try {
+    const { data: projects, error } = await supabase
+      .from("projects")
+      .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured, total_participants')
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+    
+    if (error) {
+      console.error("❌ Error fetching projects:", error);
+      throw error;
+    }
+    
+    console.log(`✅ Found ${projects?.length || 0} approved projects`);
+    return projects || [];
+  } catch (error) {
+    console.error("❌ Error in getProjects:", error);
+    return [];
   }
-  
-  console.log(`✅ Found ${projects?.length || 0} approved projects`);
-  return projects;
 })
 
 const getQuests = cache(async (projectIds: string[]) => {
@@ -50,26 +56,31 @@ const getQuests = cache(async (projectIds: string[]) => {
   }
   
   console.log(`🔍 Fetching quests for ${projectIds.length} projects...`);
-  const { data: quests, error } = await supabase
-    .from("quests")
-    .select("id, project_id, total_xp")
-    .in("project_id", projectIds)
-    .eq("status", "active")
-  
-  if (error) {
-    console.error("❌ Error fetching quests:", error);
-    throw error;
+  try {
+    const { data: quests, error } = await supabase
+      .from("quests")
+      .select("id, project_id, total_xp")
+      .in("project_id", projectIds)
+      .eq("status", "active")
+    
+    if (error) {
+      console.error("❌ Error fetching quests:", error);
+      throw error;
+    }
+    
+    console.log(`✅ Found ${quests?.length || 0} active quests`);
+    
+    const result = (quests || []).reduce((acc: Record<string, any[]>, q) => {
+      acc[q.project_id] = acc[q.project_id] || []
+      acc[q.project_id].push(q)
+      return acc
+    }, {} as Record<string, any[]>)
+    
+    return result;
+  } catch (error) {
+    console.error("❌ Error in getQuests:", error);
+    return {};
   }
-  
-  console.log(`✅ Found ${quests?.length || 0} active quests`);
-  
-  const result = (quests || []).reduce((acc: Record<string, any[]>, q) => {
-    acc[q.project_id] = acc[q.project_id] || []
-    acc[q.project_id].push(q)
-    return acc
-  }, {} as Record<string, any[]>)
-  
-  return result;
 })
 
 // Server component
@@ -125,7 +136,9 @@ export default async function ProjectDiscovery() {
 
     return (
       <PageContainer>
-        <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
+        <ErrorBoundary>
+          <ProjectDiscoveryClient projects={processedProjects} categories={categories} />
+        </ErrorBoundary>
       </PageContainer>
     )
   } catch (error) {
