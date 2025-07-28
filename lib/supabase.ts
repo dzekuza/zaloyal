@@ -291,6 +291,8 @@ export interface Database {
           submission_data: any | null
           verification_data: any | null
           xp_earned: number
+          xp_removed: number | null
+          xp_removal_reason: string | null
           verified_at: string | null
           created_at: string
           updated_at: string
@@ -304,6 +306,8 @@ export interface Database {
           submission_data?: any | null
           verification_data?: any | null
           xp_earned?: number
+          xp_removed?: number | null
+          xp_removal_reason?: string | null
           verified_at?: string | null
           created_at?: string
           updated_at?: string
@@ -317,6 +321,8 @@ export interface Database {
           submission_data?: any | null
           verification_data?: any | null
           xp_earned?: number
+          xp_removed?: number | null
+          xp_removal_reason?: string | null
           verified_at?: string | null
           created_at?: string
           updated_at?: string

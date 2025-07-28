@@ -169,7 +169,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
     let url = '';
     if (task.type === 'social' && task.social_url) url = getAbsoluteUrl(task.social_url);
     if (task.type === 'visit' && task.visit_url) url = getAbsoluteUrl(task.visit_url);
-            // if (task.type === 'form' && task.form_url) url = getAbsoluteUrl(task.form_url); // Removed - form_url doesn't exist in database
+    if (task.type === 'form' && task.form_url) url = getAbsoluteUrl(task.form_url);
     if (task.type === 'download' && task.download_url) url = getAbsoluteUrl(task.download_url);
     
     if (url) {
@@ -183,8 +183,8 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
       
       await trackTaskCompletion(task, action, { url })
       
-      // Automatically verify download and visit tasks
-      if (task.type === 'download' || task.type === 'visit') {
+      // Automatically verify download, visit, and form tasks
+      if (task.type === 'download' || task.type === 'visit' || task.type === 'form') {
         // Add a small delay to allow the URL to open
         setTimeout(async () => {
           await trackTaskCompletion(task, 'verification_attempted');
@@ -337,15 +337,24 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
         break;
       
       case 'learn':
-        if (task.learn_content) {
+        if (task.quiz_question) {
           return (
             <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
               <div className="flex items-center gap-2 mb-2">
                 <BookOpen className="w-4 h-4 text-yellow-400" />
                 <span className="text-sm text-gray-300">Quiz Task</span>
+                {task.quiz_is_multi_select && (
+                  <Badge variant="outline" className="text-xs">Multi-select</Badge>
+                )}
               </div>
-              <div className="text-sm text-gray-300">
-                {task.learn_content}
+              <div className="text-sm text-gray-300 mb-2">
+                {task.quiz_question}
+              </div>
+              <div className="text-xs text-gray-400">
+                {task.quiz_answer_1 && task.quiz_answer_2 && task.quiz_answer_3 && task.quiz_answer_4 ? 
+                  '4 answer options available' : 
+                  `${[task.quiz_answer_1, task.quiz_answer_2, task.quiz_answer_3, task.quiz_answer_4].filter(Boolean).length} answer options available`
+                }
               </div>
               {task.learn_passing_score && (
                 <p className="text-gray-300 text-xs mt-1">
@@ -414,9 +423,9 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                               className="bg-gray-700 hover:bg-gray-800 text-white text-xs md:text-sm"
                               size="sm"
                             >
-                              {task.type === 'download' || task.type === 'visit' ? 'Complete & Verify' : 'Complete Task'}
+                              {task.type === 'download' || task.type === 'visit' || task.type === 'form' ? 'Complete & Verify' : 'Complete Task'}
                             </Button>
-                            {task.type !== 'download' && task.type !== 'visit' && (
+                            {task.type !== 'download' && task.type !== 'visit' && task.type !== 'form' && (
                               <Button
                                 onClick={async () => {
                                   console.log('DEBUG: Verify Task button clicked for task:', task.id);

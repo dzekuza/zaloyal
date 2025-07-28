@@ -156,7 +156,15 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
     visit_duration_seconds: null,
     learn_content: null,
     learn_questions: null,
-    learn_passing_score: 80
+    learn_passing_score: 80,
+    // New quiz fields
+    quiz_question: null,
+    quiz_answer_1: null,
+    quiz_answer_2: null,
+    quiz_answer_3: null,
+    quiz_answer_4: null,
+    quiz_correct_answer: null,
+    quiz_is_multi_select: false
   })
 
   useEffect(() => {
@@ -325,41 +333,61 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
               <SelectValue placeholder="Select action" className="text-gray-400" />
             </SelectTrigger>
             <SelectContent className="bg-[#111111] border-[#282828]">
-              <SelectItem value="follow" className="text-white hover:bg-[#1a1a1a]">Follow</SelectItem>
-              <SelectItem value="like" className="text-white hover:bg-[#1a1a1a]">Like</SelectItem>
-              <SelectItem value="share" className="text-white hover:bg-[#1a1a1a]">Share</SelectItem>
-              <SelectItem value="comment" className="text-white hover:bg-[#1a1a1a]">Comment</SelectItem>
-              <SelectItem value="join" className="text-white hover:bg-[#1a1a1a]">Join</SelectItem>
+              {formData.social_platform === 'discord' ? (
+                <SelectItem value="join" className="text-white hover:bg-[#1a1a1a]">Join server</SelectItem>
+              ) : (
+                <>
+                  <SelectItem value="follow" className="text-white hover:bg-[#1a1a1a]">Follow</SelectItem>
+                  <SelectItem value="like" className="text-white hover:bg-[#1a1a1a]">Like</SelectItem>
+                  <SelectItem value="share" className="text-white hover:bg-[#1a1a1a]">Share</SelectItem>
+                  <SelectItem value="comment" className="text-white hover:bg-[#1a1a1a]">Comment</SelectItem>
+                  <SelectItem value="join" className="text-white hover:bg-[#1a1a1a]">Join</SelectItem>
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="social_url" className="text-sm font-medium text-gray-200">URL</Label>
+        <Label htmlFor="social_url" className="text-sm font-medium text-gray-200">
+          {formData.social_platform === 'discord' ? 'Discord Invite URL' : 'URL'}
+        </Label>
         <Input
           id="social_url"
           type="url"
-          placeholder="https://..."
+          placeholder={formData.social_platform === 'discord' ? 'https://discord.gg/...' : 'https://...'}
           value={formData.social_url || ''}
           onChange={(e) => setFormData(prev => ({ ...prev, social_url: e.target.value }))}
           className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
         />
-        {!task && formData.social_platform && socialAccounts[formData.social_platform as keyof typeof socialAccounts] && (
+        {formData.social_platform === 'discord' && (
+          <p className="text-xs text-gray-400">
+            Enter the Discord server invite URL (e.g., https://discord.gg/abc123)
+          </p>
+        )}
+        {!task && formData.social_platform && formData.social_platform !== 'discord' && socialAccounts[formData.social_platform as keyof typeof socialAccounts] && (
           <p className="text-xs text-gray-400">
             Pre-filled with your {formData.social_platform} profile URL
           </p>
         )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="social_username" className="text-sm font-medium text-gray-200">Username</Label>
+        <Label htmlFor="social_username" className="text-sm font-medium text-gray-200">
+          {formData.social_platform === 'discord' ? 'Server Name' : 'Username'}
+        </Label>
         <Input
           id="social_username"
-          placeholder="@username"
+          placeholder={formData.social_platform === 'discord' ? 'My Discord Server' : '@username'}
           value={formData.social_username || ''}
           onChange={(e) => setFormData(prev => ({ ...prev, social_username: e.target.value }))}
           className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
         />
-        {!task && formData.social_platform && socialAccounts[formData.social_platform as keyof typeof socialAccounts] && (
+        {formData.social_platform === 'discord' && (
+          <p className="text-xs text-gray-400">
+            Enter a name for your Discord server (optional)
+          </p>
+        )}
+        {!task && formData.social_platform && formData.social_platform !== 'discord' && socialAccounts[formData.social_platform as keyof typeof socialAccounts] && (
           <p className="text-xs text-gray-400">
             Pre-filled with your {formData.social_platform} username
           </p>
@@ -422,15 +450,58 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
   const renderLearnFields = () => (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="learn_content" className="text-sm font-medium text-gray-200">Learning Content</Label>
+        <Label htmlFor="quiz_question" className="text-sm font-medium text-gray-200">Question</Label>
         <Textarea
-          id="learn_content"
-          placeholder="Learning content..."
-          value={formData.learn_content || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, learn_content: e.target.value }))}
+          id="quiz_question"
+          placeholder="Enter your question here..."
+          value={formData.quiz_question || ''}
+          onChange={(e) => setFormData(prev => ({ ...prev, quiz_question: e.target.value }))}
           className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500 min-h-[80px]"
         />
       </div>
+      
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-gray-200">Answer Options</Label>
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((num) => (
+            <div key={num} className="flex items-center gap-2">
+              <Input
+                placeholder={`Answer ${num}`}
+                value={formData[`quiz_answer_${num}` as keyof typeof formData] as string || ''}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  [`quiz_answer_${num}`]: e.target.value 
+                }))}
+                className="bg-[#111111] border-[#282828] text-white placeholder:text-gray-500 hover:border-[#404040] focus:border-green-500"
+              />
+              <input
+                type="radio"
+                name="correct_answer"
+                checked={formData.quiz_correct_answer === num - 1}
+                onChange={() => setFormData(prev => ({ ...prev, quiz_correct_answer: num - 1 }))}
+                className="w-4 h-4 text-green-600 bg-[#111111] border-[#282828] focus:ring-green-500"
+              />
+              <Label className="text-sm text-gray-300">Correct</Label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="quiz_is_multi_select"
+            checked={formData.quiz_is_multi_select || false}
+            onChange={(e) => setFormData(prev => ({ ...prev, quiz_is_multi_select: e.target.checked }))}
+            className="w-4 h-4 text-green-600 bg-[#111111] border-[#282828] focus:ring-green-500"
+          />
+          <Label htmlFor="quiz_is_multi_select" className="text-sm font-medium text-gray-200">
+            Multi-select (allow multiple correct answers)
+          </Label>
+        </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="learn_passing_score" className="text-sm font-medium text-gray-200">Passing Score (%)</Label>
         <Input

@@ -40,7 +40,7 @@ import QuestStatsBar from "@/components/QuestStatsBar"
 import { supabase } from "@/lib/supabase"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import QuestResponsesViewer from "@/components/quest-responses-viewer"
+import AdminSubmissionsTable from "@/components/admin-submissions-table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import TaskList from '@/components/quest-detail/TaskList';
@@ -656,6 +656,53 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           }
           break
 
+        case 'form':
+          // For form tasks, we'll implement form tracking
+          try {
+            const response = await fetch('/api/verify/form-completion', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({
+                taskId: task.id,
+                userId: currentUserUUID,
+                questId: quest.id,
+                formUrl: task.form_url,
+                metadata: {
+                  task_title: task.title,
+                  task_description: task.description,
+                  form_title: task.form_title,
+                  form_description: task.form_description
+                }
+              })
+            })
+
+            const result = await response.json()
+            
+            if (result.success && result.verified) {
+              verified = true
+              message = result.message
+              // Form tasks are already handled by the API
+              // No need to create duplicate submission records
+              toast({
+                title: 'Task completed!',
+                description: message,
+              })
+              setVerifyingTask(null)
+              return
+            } else {
+              verified = false
+              message = result.message || 'Form verification failed'
+            }
+          } catch (error) {
+            console.error('Error verifying form task:', error)
+            verified = false
+            message = 'Form verification failed due to network error'
+          }
+          break
+
         default:
           message = 'Unsupported task type'
       }
@@ -806,6 +853,14 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         learn_content: taskData.learn_content || null,
         learn_questions: taskData.learn_questions || null,
         learn_passing_score: taskData.learn_passing_score || 80,
+        // New quiz fields
+        quiz_question: taskData.quiz_question || null,
+        quiz_answer_1: taskData.quiz_answer_1 || null,
+        quiz_answer_2: taskData.quiz_answer_2 || null,
+        quiz_answer_3: taskData.quiz_answer_3 || null,
+        quiz_answer_4: taskData.quiz_answer_4 || null,
+        quiz_correct_answer: taskData.quiz_correct_answer || null,
+        quiz_is_multi_select: taskData.quiz_is_multi_select || false,
         order_index: tasks.length
       }
 
@@ -951,10 +1006,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           isAuthenticated={isAuthenticated}
         />
 
-        {/* Quest Responses Viewer for Admins */}
+        {/* Admin Submissions Table */}
         {isAdminOrCreator() && (
           <div className="mt-8">
-            <QuestResponsesViewer 
+            <AdminSubmissionsTable 
               quest={quest} 
               tasks={tasks} 
               isAdmin={true} 

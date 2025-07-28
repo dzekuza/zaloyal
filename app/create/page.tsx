@@ -75,6 +75,14 @@ interface TaskForm {
     correctAnswer: number
   }>
   learnPassingScore?: number
+  // New quiz fields
+  quizQuestion?: string
+  quizAnswer1?: string
+  quizAnswer2?: string
+  quizAnswer3?: string
+  quizAnswer4?: string
+  quizCorrectAnswer?: number
+  quizIsMultiSelect?: boolean
 }
 
 interface QuestForm {
@@ -553,6 +561,14 @@ export default function CreateQuest() {
         learn_content: task.learnContent || null,
         learn_questions: task.learnQuestions || null,
         learn_passing_score: task.learnPassingScore || 80,
+        // New quiz fields
+        quiz_question: task.quizQuestion || null,
+        quiz_answer_1: task.quizAnswer1 || null,
+        quiz_answer_2: task.quizAnswer2 || null,
+        quiz_answer_3: task.quizAnswer3 || null,
+        quiz_answer_4: task.quizAnswer4 || null,
+        quiz_correct_answer: task.quizCorrectAnswer || null,
+        quiz_is_multi_select: task.quizIsMultiSelect || false,
       }))
       const { error: tasksError } = await supabase.from("tasks").insert(tasksToInsert)
       if (tasksError) throw tasksError
@@ -854,15 +870,56 @@ export default function CreateQuest() {
         return (
           <div className="space-y-4">
             <div>
-              <Label className="text-white">Learning Content (HTML)</Label>
+              <Label className="text-white">Question</Label>
               <Textarea
-                value={currentTask.learnContent || ""}
-                onChange={(e) => setCurrentTask((prev) => ({ ...prev, learnContent: e.target.value }))}
-                placeholder="<h2>Introduction to DeFi</h2><p>DeFi stands for...</p>"
-                rows={6}
+                value={currentTask.quizQuestion || ""}
+                onChange={(e) => setCurrentTask((prev) => ({ ...prev, quizQuestion: e.target.value }))}
+                placeholder="What does DeFi stand for?"
+                rows={3}
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
               />
             </div>
+            
+            <div>
+              <Label className="text-white">Answer Options</Label>
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map((num) => (
+                  <div key={num} className="flex items-center gap-2">
+                    <Input
+                      placeholder={`Answer ${num}`}
+                      value={currentTask[`quizAnswer${num}` as keyof typeof currentTask] as string || ""}
+                      onChange={(e) => setCurrentTask((prev) => ({ 
+                        ...prev, 
+                        [`quizAnswer${num}`]: e.target.value 
+                      }))}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                    />
+                    <input
+                      type="radio"
+                      name="correct_answer"
+                      checked={currentTask.quizCorrectAnswer === num - 1}
+                      onChange={() => setCurrentTask((prev) => ({ ...prev, quizCorrectAnswer: num - 1 }))}
+                      className="w-4 h-4 text-green-600 bg-white/10 border-white/20 focus:ring-green-500"
+                    />
+                    <Label className="text-white text-sm">Correct</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="quiz_is_multi_select"
+                checked={currentTask.quizIsMultiSelect || false}
+                onChange={(e) => setCurrentTask((prev) => ({ ...prev, quizIsMultiSelect: e.target.checked }))}
+                className="w-4 h-4 text-green-600 bg-white/10 border-white/20 focus:ring-green-500"
+              />
+              <Label htmlFor="quiz_is_multi_select" className="text-white text-sm">
+                Multi-select (allow multiple correct answers)
+              </Label>
+            </div>
+
             <div>
               <Label className="text-white">Passing Score (%)</Label>
               <Input
@@ -875,29 +932,6 @@ export default function CreateQuest() {
                 min="0"
                 max="100"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-              />
-            </div>
-            <div>
-              <Label className="text-white">Quiz Questions (JSON)</Label>
-              <Textarea
-                value={JSON.stringify(currentTask.learnQuestions || [], null, 2) || ""}
-                onChange={(e) => {
-                  try {
-                    const questions = JSON.parse(e.target.value)
-                    setCurrentTask((prev) => ({ ...prev, learnQuestions: questions }))
-                  } catch (error) {
-                    // Invalid JSON, ignore
-                  }
-                }}
-                placeholder={`[
-  {
-    "question": "What does DeFi stand for?",
-    "options": ["Decentralized Finance", "Digital Finance", "Distributed Finance"],
-    "correctAnswer": 0
-  }
-]`}
-                rows={8}
-                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 font-mono text-sm"
               />
             </div>
           </div>

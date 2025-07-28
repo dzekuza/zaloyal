@@ -44,27 +44,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 })
     }
 
-    // Use the isCorrect flag from the frontend or calculate it
-    let passed = isCorrect;
-    let score = 100; // Default to 100% if correct
-    let correctAnswers = answers.length;
-    let totalQuestions = 1; // Single quiz question
+    // Calculate if the answer is correct based on the new quiz system
+    let passed = false;
+    let score = 0;
+    let correctAnswers = 0;
+    let totalQuestions = 1;
     const passingScore = task.learn_passing_score || 80;
 
-    // If isCorrect is not provided, calculate it
-    if (typeof isCorrect === 'undefined' && quizData) {
-      const correctAnswersList = quizData.correctAnswers || [];
+    if (quizData) {
+      const correctAnswer = quizData.correctAnswer;
+      const isMultiSelect = quizData.isMultiSelect;
       
-      if (quizData.multiSelect) {
-        // For multi-select, all correct answers must be selected and no incorrect ones
-        passed = correctAnswersList.length === answers.length && 
-                correctAnswersList.every((answer: number) => answers.includes(answer));
+      if (isMultiSelect) {
+        // For multi-select, check if all correct answers are selected and no incorrect ones
+        // For now, we'll treat it as single correct answer until we implement multi-select properly
+        passed = answers.length === 1 && answers[0] === correctAnswer;
       } else {
         // For single-select, the selected answer must be correct
-        passed = answers.length === 1 && correctAnswersList.includes(answers[0]);
+        passed = answers.length === 1 && answers[0] === correctAnswer;
       }
       
       score = passed ? 100 : 0;
+      correctAnswers = passed ? 1 : 0;
+    } else if (typeof isCorrect !== 'undefined') {
+      // Fallback to the old system if quizData is not provided
+      passed = isCorrect;
+      score = passed ? 100 : 0;
+      correctAnswers = passed ? 1 : 0;
     }
 
     // Create task submission
