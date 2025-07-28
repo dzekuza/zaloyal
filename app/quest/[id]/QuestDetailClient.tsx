@@ -351,6 +351,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   // Memoized task verification handler
   const handleTaskVerification = useCallback(async (task: Task) => {
     console.log('DEBUG: handleTaskVerification called for task:', task.id, task);
+    console.log('DEBUG: Task type:', task.type);
+    console.log('DEBUG: Task object keys:', Object.keys(task));
+    console.log('DEBUG: currentUserUUID:', currentUserUUID);
     
     if (!currentUserUUID) {
       console.log('DEBUG: No currentUserUUID');
@@ -379,6 +382,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
 
     setVerifyingTask(task.id)
     console.log('DEBUG: Starting verification process for task:', task.id);
+    console.log('DEBUG: About to enter switch statement with task type:', task.type);
     try {
       let verified = false
       let message = ""
@@ -386,6 +390,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
       // Verify based on task type using new auth.users data
       switch (task.type) {
         case 'social':
+          console.log('DEBUG: Entering social case');
           if (task.social_platform === 'twitter') {
             
             // Get user's X data from auth.users
@@ -595,6 +600,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           break
 
         case 'download':
+          console.log('DEBUG: Entering download case');
           // For download tasks, we'll implement download tracking
           try {
             console.log('DEBUG: Starting download verification for task:', task.id);

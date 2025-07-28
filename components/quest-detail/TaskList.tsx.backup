@@ -111,7 +111,6 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
 }) {
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
   const [userSubmissions, setUserSubmissions] = useState<Record<string, any>>({});
-  const [completingTask, setCompletingTask] = useState<string | null>(null);
   const { toast } = useToast();
   
   const adminStatus = isAdminOrCreator()
@@ -229,89 +228,45 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
 
   // Helper to handle 'Complete Task' click
   const handleCompleteTask = async (task: Task) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to complete tasks.",
-        variant: "destructive",
-      });
+    if (task.type === 'learn') {
+      setShowQuiz(s => ({ ...s, [task.id]: true }));
+      setCompletedTasks(prev => ({ ...prev, [task.id]: true }));
+      await trackTaskCompletion(task, 'started_quiz')
       return;
     }
-
-    console.log('Session found for task completion:', walletUser?.email);
-    console.log('Task object:', task);
-
-    setCompletingTask(task.id);
-    setCompletedTasks(prev => ({ ...prev, [task.id]: true }));
-
-    try {
-      const completionData = {
-        taskId: task.id,
-        userId: walletUser?.id,
-        questId: task.quest_id || questId,
-        action: task.type === 'download' ? 'downloaded' : 
-                task.type === 'visit' ? 'visited' : 
-                task.type === 'form' ? 'form_submitted' : 'completed',
-        taskType: task.type,
-        metadata: { url: task.social_url || task.visit_url || task.form_url || task.download_url },
-        timestamp: new Date().toISOString(),
-      };
-
-      console.log('Sending task completion request:', completionData);
-
-      const response = await fetch('/api/track-task-completion', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${walletUser?.access_token}`,
-        },
-        body: JSON.stringify(completionData),
-      });
-
-      console.log('Task completion response status:', response.status);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Task completion tracked successfully:', result);
-
+    
+    // Social, visit, form, download: open URL if present
+    let url = '';
+    if (task.type === 'social' && task.social_url) url = getAbsoluteUrl(task.social_url);
+    if (task.type === 'visit' && task.visit_url) url = getAbsoluteUrl(task.visit_url);
+    if (task.type === 'form' && task.form_url) url = getAbsoluteUrl(task.form_url);
+    if (task.type === 'download' && task.download_url) url = getAbsoluteUrl(task.download_url);
+    
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setCompletedTasks(prev => ({ ...prev, [task.id]: true }));
+      
+      // Track the completion based on task type
+      const action = task.type === 'download' ? 'downloaded' : 
+                    task.type === 'visit' ? 'visited' : 
+                    task.type === 'form' ? 'form_submitted' : 'completed'
+      
+      await trackTaskCompletion(task, action, { url })
+      
+      // For visit, download, and form tasks, show success message and let user manually verify
+      if (task.type === 'download' || task.type === 'visit' || task.type === 'form') {
         toast({
-          title: "Task completed!",
-          description: "Your task completion has been recorded.",
-        });
-
-        // For download, visit, and form tasks, automatically trigger verification
-        if (task.type === 'download' || task.type === 'visit' || task.type === 'form') {
-          console.log('DEBUG: Auto-triggering verification for task:', task.id);
-          try {
-            await handleTaskVerification(task);
-            console.log('DEBUG: Auto-verification completed successfully');
-          } catch (error) {
-            console.error('DEBUG: Error in auto-verification:', error);
-            toast({
-              title: "Verification failed",
-              description: "Task completed but verification failed. Please try again.",
-              variant: "destructive",
-            });
-          }
-        }
-      } else {
-        const errorData = await response.json();
-        console.error('Task completion failed:', errorData);
-        toast({
-          title: "Task completion failed",
-          description: errorData.message || "Failed to record task completion.",
-          variant: "destructive",
-        });
+          title: 'Task completed!',
+          description: 'Click "Verify Task" to confirm completion and earn XP',
+        })
+        return
       }
-    } catch (error) {
-      console.error('Error completing task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to complete task. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setCompletingTask(null);
+      
+      // For other task types, call the verification function
+      if (task.type === 'social' || task.type === 'learn') {
+        console.log('Calling handleTaskVerification for task:', task.id);
+        await handleTaskVerification(task);
+      }
     }
   };
 
@@ -477,7 +432,6 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
           const userSubmission = userSubmissions[task.id];
           const isCompleted = userSubmission && (userSubmission.status === 'verified' || userSubmission.verified === true);
           const isVerifying = verifyingTask === task.id;
-          const isCompleting = completingTask === task.id;
           const isLocallyCompleted = completedTasks[task.id];
           const taskAdminStatus = isAdminOrCreator();
           console.log('DEBUG: Task render:', { taskId: task.id, taskAdminStatus, isCompleted, userSubmission });
@@ -516,19 +470,34 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                           <Button onClick={() => { setShowQuiz(s => ({ ...s, [task.id]: true })); setCompletedTasks(prev => ({ ...prev, [task.id]: true })); }} className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm" size="sm">Start Quiz</Button>
                         ) : (
                           <>
-                            {task.type === 'download' || task.type === 'visit' || task.type === 'form' ? (
+                            <Button
+                              onClick={() => handleCompleteTask(task)}
+                              disabled={isLocallyCompleted}
+                              className="bg-gray-700 hover:bg-gray-800 text-white text-xs md:text-sm"
+                              size="sm"
+                            >
+                              Complete Task
+                            </Button>
+                            {(task.type === 'download' || task.type === 'visit' || task.type === 'form') && isLocallyCompleted && (
                               <Button
-                                onClick={() => handleCompleteTask(task)}
-                                disabled={isCompleting}
+                                onClick={async () => {
+                                  console.log('DEBUG: Verify Task button clicked for task:', task.id);
+                                  await trackTaskCompletion(task, 'verification_attempted');
+                                  handleTaskVerification(task);
+                                }}
+                                disabled={isVerifying}
                                 className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
                                 size="sm"
                               >
-                                {isCompleting ? 'Completing...' : 'Complete Task'}
+                                {isVerifying ? 'Verifying...' : 'Verify Task'}
                               </Button>
-                            ) : (
+                            )}
+                            {task.type !== 'download' && task.type !== 'visit' && task.type !== 'form' && (
                               <Button
                                 onClick={async () => {
-                                  await handleTaskVerification(task);
+                                  console.log('DEBUG: Verify Task button clicked for task:', task.id);
+                                  await trackTaskCompletion(task, 'verification_attempted');
+                                  handleTaskVerification(task);
                                 }}
                                 disabled={isVerifying}
                                 className="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm"
