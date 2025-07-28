@@ -81,15 +81,13 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, 
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Quest Image */}
-      {quest.image_url && (
-        <div className="relative w-full h-32 sm:h-48 rounded-lg overflow-hidden bg-[#111111] border border-[#282828]">
-          <img 
-            src={quest.image_url} 
-            alt={quest.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+      <div className="relative w-full h-32 sm:h-48 rounded-lg overflow-hidden bg-[#111111] border border-[#282828]">
+        <img 
+          src={quest.image_url || "/quest-cover-fallback.jpeg"} 
+          alt={quest.title}
+          className="w-full h-full object-cover"
+        />
+      </div>
       
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex-1">

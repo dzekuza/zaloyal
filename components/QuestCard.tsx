@@ -12,6 +12,15 @@ interface QuestCardProps {
 const QuestCard: React.FC<QuestCardProps> = ({ quest, children, actions }) => {
   return (
     <Card className="bg-[#111111] rounded-lg border border-[#282828] transition-all duration-300 hover:bg-[#181818] overflow-hidden">
+      {/* Quest Cover Image */}
+      <div className="relative w-full h-32 sm:h-40 rounded-t-lg overflow-hidden">
+        <img 
+          src={quest.image_url || "/quest-cover-fallback.jpeg"} 
+          alt={quest.title}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      
       {/* Project Header */}
       {quest.projects?.name && (
         <div className="px-4 pt-4 pb-2 border-b border-[#282828]">
