@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Zap, Trophy, Globe, Twitter, MessageSquare, Building2 } from "lucide-react";
+import { Users, Zap, Trophy, Globe, Twitter, MessageSquare, Building2, Star } from "lucide-react";
 import Image from "next/image";
 
 interface Project {
@@ -22,6 +22,8 @@ interface Project {
   github_url?: string | null;
   telegram_url?: string | null;
   medium_url?: string | null;
+  twitter_url?: string | null;
+  twitter_username?: string | null;
   total_xp_distributed?: number;
   quest_count?: number;
   total_participants?: number;
@@ -29,12 +31,13 @@ interface Project {
 }
 
 interface ProjectCardProps {
-  project: any;
-  currentUserId?: string | null;
+  project: Project;
+  currentUserId?: string;
   onEdit?: () => void;
   onDelete?: () => void;
   children?: React.ReactNode;
   xpToCollect?: number;
+  myXp?: number;
 }
 
 function PlaceholderCover({ name, logoUrl }: { name: string; logoUrl?: string }) {
@@ -74,6 +77,7 @@ export default function ProjectCard({
   onDelete,
   children,
   xpToCollect,
+  myXp,
 }: ProjectCardProps) {
   // Ensure project is valid
   if (!project || typeof project !== 'object') {
@@ -118,7 +122,7 @@ export default function ProjectCard({
           />
         ) : (
           <div className="h-40 sm:h-48 md:h-56 w-full">
-            <PlaceholderCover name={project.name || 'Project'} logoUrl={project.logo_url} />
+            <PlaceholderCover name={project.name || 'Project'} logoUrl={project.logo_url || undefined} />
           </div>
         )}
         
@@ -209,6 +213,13 @@ export default function ProjectCard({
             <span className="hidden sm:inline">{totalXp} XP</span>
             <span className="sm:hidden">{totalXp}</span>
           </span>
+          {typeof myXp === 'number' && myXp > 0 && (
+            <span className="flex items-center gap-1">
+              <Star className="h-3 w-3 text-purple-400" />
+              <span className="hidden sm:inline">{myXp} My XP</span>
+              <span className="sm:hidden">{myXp}</span>
+            </span>
+          )}
         </div>
 
         {/* Social Links */}

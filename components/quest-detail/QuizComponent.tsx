@@ -4,7 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, BookOpen, AlertTriangle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { CheckCircle, XCircle, BookOpen, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { Task } from "./types"
 import { supabase } from '@/lib/supabase'
 
@@ -42,21 +43,18 @@ export default function QuizComponent({ task, onComplete }: QuizComponentProps) 
   if (!question || answers.length === 0 || correctAnswer === null) {
     return (
       <div className="text-center py-8">
-        <div className="space-y-4">
-          <div className="flex items-center justify-center gap-2 text-yellow-400">
-            <AlertTriangle className="w-5 h-5" />
-            <span className="font-medium">Quiz Configuration Issue</span>
-          </div>
-          <p className="text-gray-400">
+        <Alert variant="destructive" className="bg-red-900/20 border-red-800 text-red-200">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Quiz Configuration Issue</AlertTitle>
+          <AlertDescription>
             {!question ? 'Question is missing.' : 
              answers.length === 0 ? 'No answer options provided.' : 
              correctAnswer === null ? 'Correct answer not set.' : 
              'Quiz not properly configured.'}
-          </p>
-          <p className="text-sm text-gray-500">
-            Please contact an administrator to fix this quiz configuration.
-          </p>
-        </div>
+            <br />
+            <span className="text-xs text-red-300">Please contact an administrator to fix this quiz configuration.</span>
+          </AlertDescription>
+        </Alert>
       </div>
     )
   }
@@ -132,51 +130,56 @@ export default function QuizComponent({ task, onComplete }: QuizComponentProps) 
   if (showResults) {
     return (
       <div className="space-y-6">
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            {isCorrect ? (
-              <CheckCircle className="w-16 h-16 text-green-500" />
-            ) : (
-              <XCircle className="w-16 h-16 text-red-500" />
-            )}
-          </div>
-          <h3 className="text-xl font-semibold mb-2">
-            {isCorrect ? 'Quiz Completed!' : 'Quiz Failed'}
-          </h3>
-          <p className="text-gray-600 mb-4">
-            {message}
-          </p>
-          <Badge variant={isCorrect ? "default" : "destructive"} className="mb-4">
-            {isCorrect ? 'PASSED' : 'FAILED'}
-          </Badge>
-        </div>
+        {/* Success Alert for Quiz Completion */}
+        {isCorrect && (
+          <Alert className="bg-green-900/20 border-green-800 text-green-200">
+            <CheckCircle2 className="h-4 w-4 text-green-400" />
+            <AlertTitle>Quiz Completed!</AlertTitle>
+            <AlertDescription>
+              {message}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Failure Alert for Quiz Failure */}
+        {!isCorrect && (
+          <Alert variant="destructive" className="bg-red-900/20 border-red-800 text-red-200">
+            <XCircle className="h-4 w-4 text-red-400" />
+            <AlertTitle>Quiz Failed</AlertTitle>
+            <AlertDescription>
+              {message}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="space-y-4">
-          <h4 className="font-semibold">Question Review:</h4>
-          <Card className="border-l-4 border-l-gray-200">
+          <h4 className="font-semibold text-gray-200">Question Review:</h4>
+          <Card className="bg-gray-800 border-gray-700">
             <CardContent className="pt-4">
-              <p className="font-medium mb-2">{question}</p>
+              <p className="font-medium mb-2 text-gray-200">{question}</p>
               <div className="space-y-2">
                 {answers.map((answer, index) => (
                   <div
                     key={index}
-                    className={`p-2 rounded ${
+                    className={`p-3 rounded-lg border transition-colors ${
                       selectedAnswers.includes(index)
                         ? index === correctAnswer
-                          ? 'bg-green-100 border border-green-300'
-                          : 'bg-red-100 border border-red-300'
+                          ? 'bg-green-900/30 border-green-600 text-green-200'
+                          : 'bg-red-900/30 border-red-600 text-red-200'
                         : index === correctAnswer
-                        ? 'bg-green-100 border border-green-300'
-                        : 'bg-gray-50'
+                        ? 'bg-green-900/30 border-green-600 text-green-200'
+                        : 'bg-gray-700 border-gray-600 text-gray-300'
                     }`}
                   >
-                    {answer}
-                    {index === correctAnswer && (
-                      <CheckCircle className="w-4 h-4 text-green-600 inline ml-2" />
-                    )}
-                    {selectedAnswers.includes(index) && index !== correctAnswer && (
-                      <XCircle className="w-4 h-4 text-red-600 inline ml-2" />
-                    )}
+                    <div className="flex items-center justify-between">
+                      <span>{answer}</span>
+                      {index === correctAnswer && (
+                        <CheckCircle className="w-4 h-4 text-green-400" />
+                      )}
+                      {selectedAnswers.includes(index) && index !== correctAnswer && (
+                        <XCircle className="w-4 h-4 text-red-400" />
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -186,16 +189,23 @@ export default function QuizComponent({ task, onComplete }: QuizComponentProps) 
 
         <div className="flex justify-center gap-2">
           {!isCorrect && (
-            <Button onClick={() => {
-              setSelectedAnswers([])
-              setShowResults(false)
-              setMessage("")
-            }} variant="outline">
+            <Button 
+              onClick={() => {
+                setSelectedAnswers([])
+                setShowResults(false)
+                setMessage("")
+              }} 
+              variant="outline"
+              className="border-gray-600 text-gray-300 hover:bg-gray-700"
+            >
               Try Again
             </Button>
           )}
           {isCorrect && (
-            <Button onClick={handleComplete} className="bg-green-600 hover:bg-green-700">
+            <Button 
+              onClick={handleComplete} 
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
               Complete Task
             </Button>
           )}
@@ -209,16 +219,16 @@ export default function QuizComponent({ task, onComplete }: QuizComponentProps) 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-blue-500" />
-          <span className="font-medium">Quiz</span>
+          <span className="font-medium text-gray-200">Quiz</span>
         </div>
-        <Badge variant="outline">
+        <Badge variant="outline" className="border-gray-600 text-gray-300">
           {isMultiSelect ? 'Multi-select' : 'Single-select'}
         </Badge>
       </div>
 
-      <Card>
+      <Card className="bg-gray-800 border-gray-700">
         <CardHeader>
-          <CardTitle className="text-lg">{question}</CardTitle>
+          <CardTitle className="text-lg text-gray-200">Answer the questions to complete this task.</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -228,8 +238,8 @@ export default function QuizComponent({ task, onComplete }: QuizComponentProps) 
                 onClick={() => handleAnswerToggle(index)}
                 className={`w-full p-3 text-left rounded-lg border transition-colors ${
                   selectedAnswers.includes(index)
-                    ? 'bg-blue-100 border-blue-300'
-                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                    ? 'bg-green-600/20 border-green-500 text-green-200'
+                    : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
                 }`}
               >
                 {answer}
@@ -240,16 +250,17 @@ export default function QuizComponent({ task, onComplete }: QuizComponentProps) 
       </Card>
 
       {message && (
-        <div className="text-red-500 text-sm text-center">
-          {message}
-        </div>
+        <Alert variant="destructive" className="bg-red-900/20 border-red-800 text-red-200">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
       )}
 
       <div className="flex justify-center">
         <Button 
           onClick={handleSubmit}
           disabled={isSubmitting || selectedAnswers.length === 0}
-          className="bg-green-600 hover:bg-green-700"
+          className="bg-green-600 hover:bg-green-700 text-white"
         >
           {isSubmitting ? 'Submitting...' : 'Submit Answer'}
         </Button>

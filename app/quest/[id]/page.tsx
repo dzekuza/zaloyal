@@ -47,15 +47,40 @@ export default async function QuestDetail({
     console.error("Error fetching tasks:", tasksError)
   }
   
+  // Calculate participant count by counting unique users who have submitted tasks
+  let participantCount = 0
+  try {
+    const { data: submissions, error: submissionsError } = await supabaseAdmin
+      .from("user_task_submissions")
+      .select("user_id")
+      .eq("quest_id", questId)
+      .eq("status", "verified")
+    
+    if (!submissionsError && submissions) {
+      // Count unique users
+      const uniqueUsers = new Set(submissions.map(s => s.user_id))
+      participantCount = uniqueUsers.size
+    }
+  } catch (error) {
+    console.error("Error calculating participant count:", error)
+  }
+  
+  // Add participant count to quest data
+  const questWithParticipants = {
+    ...quest,
+    participant_count: participantCount
+  }
+  
   // Debug logging
   console.log("Server-side tasks fetch:")
   console.log("Quest ID:", questId)
   console.log("Tasks found:", tasks?.length || 0)
   console.log("Tasks data:", tasks)
   console.log("Tasks error:", tasksError)
+  console.log("Participant count:", participantCount)
   
   // Do NOT fetch user on the server; let the client handle user/session
   return (
-    <QuestDetailClient quest={quest} tasks={tasks || []} />
+    <QuestDetailClient quest={questWithParticipants} tasks={tasks || []} />
   )
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import TelegramLoginWidget from '@/components/telegram-login-widget';
@@ -14,55 +14,62 @@ interface TaskListProps {
   setEditingTask: React.Dispatch<React.SetStateAction<Task | null>>;
   setShowEditTask: React.Dispatch<React.SetStateAction<boolean>>;
   setShowQuiz: (fn: (s: Record<string, boolean>) => Record<string, boolean>) => void;
-  handleTaskVerification: (task: Task) => Promise<void>;
+  handleTaskVerification: (Task: Task) => Promise<void>;
   handleDeleteTask: (taskId: string) => Promise<void>;
   walletUser: any;
   isAuthenticated: boolean;
   onSignIn?: () => void;
+  questId?: string; // Add questId prop
 }
 
-function getAbsoluteUrl(url: string): string {
-  return url?.match(/^https?:\/\//i) ? url : `https://${url}`;
-}
-
-function getTwitterTaskHeading(twitterTaskType: string): string {
-  switch (twitterTaskType) {
-    case 'tweet_reaction': return 'React to Tweet';
-    case 'twitter_follow': return 'Follow on Twitter';
-    case 'tweet': return 'Tweet';
-    case 'twitter_space': return 'Join Twitter Space';
-    case 'like': return 'Like Tweet';
-    case 'retweet': return 'Retweet';
-    case 'post': return 'Post';
-    case 'reply': return 'Reply';
-    case 'quote': return 'Quote';
-    case 'bookmark': return 'Bookmark';
-    default: return 'Twitter Task';
+// Helper to get task type display name
+function getTaskTypeDisplay(task: Task) {
+  switch (task.type) {
+    case 'social':
+      if (task.social_platform === 'twitter') return 'X';
+      if (task.social_platform === 'discord') return 'Discord';
+      if (task.social_platform === 'telegram') return 'Telegram';
+      return 'Social';
+    case 'visit':
+      return 'Visit URL';
+    case 'download':
+      return 'Download';
+    case 'learn':
+      return 'Quiz';
+    case 'form':
+      return 'Form';
+    default:
+      return task.title || 'Task';
   }
 }
 
-// Helper to get heading and description based on task type/action
-function getTaskHeadingAndDescription(task: Task) {
-  if (task.type === 'learn') {
-    return { heading: 'Quiz', description: 'Complete the quiz' };
+// Helper to get task description
+function getTaskDescription(task: Task) {
+  switch (task.type) {
+    case 'social':
+      if (task.social_platform === 'twitter') {
+        if (task.social_action === 'follow') return 'Follow';
+        if (task.social_action === 'like') return 'Like post';
+        if (task.social_action === 'retweet') return 'Retweet post';
+      }
+      if (task.social_platform === 'discord' && task.social_action === 'join') {
+        return 'Join channel';
+      }
+      if (task.social_platform === 'telegram' && task.social_action === 'join') {
+        return 'Join channel';
+      }
+      return 'Complete social task';
+    case 'visit':
+      return 'Visit the specified URL';
+    case 'download':
+      return 'Download the file';
+    case 'learn':
+      return 'Complete the quiz';
+    case 'form':
+      return 'Fill out the form';
+    default:
+      return task.description || '';
   }
-  if (task.type === 'visit') {
-    return { heading: 'Visit URL', description: 'Visit the specified URL' };
-  }
-  if (task.type === 'social') {
-    if (task.social_platform === 'twitter') {
-      if (task.social_action === 'follow') return { heading: 'X', description: 'Follow' };
-      if (task.social_action === 'like') return { heading: 'X', description: 'Like post' };
-      if (task.social_action === 'retweet') return { heading: 'X', description: 'Retweet post' };
-    }
-    if (task.social_platform === 'discord' && task.social_action === 'join') {
-      return { heading: 'Discord', description: 'Join channel' };
-    }
-    if (task.social_platform === 'telegram' && task.social_action === 'join') {
-      return { heading: 'Telegram', description: 'Join channel' };
-    }
-  }
-  return { heading: task.title || 'Task', description: task.description || '' };
 }
 
 // Helper to get task icon
@@ -99,11 +106,47 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
   walletUser,
   isAuthenticated,
   onSignIn,
+  questId,
 }) {
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
+  const [userSubmissions, setUserSubmissions] = useState<Record<string, any>>({});
   
   const adminStatus = isAdminOrCreator()
   console.log('DEBUG: TaskList render:', { adminStatus, tasksCount: tasks.length })
+
+  // Check if user has completed tasks
+  useEffect(() => {
+    const checkUserSubmissions = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+
+        const { data: submissions, error } = await supabase
+          .from('user_task_submissions')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .in('task_id', tasks.map(t => t.id))
+
+        if (error) {
+          console.error('Error fetching user submissions:', error)
+          return
+        }
+
+        const submissionsMap: Record<string, any> = {}
+        submissions?.forEach(submission => {
+          submissionsMap[submission.task_id] = submission
+        })
+
+        setUserSubmissions(submissionsMap)
+      } catch (error) {
+        console.error('Error checking user submissions:', error)
+      }
+    }
+
+    if (isAuthenticated && tasks.length > 0) {
+      checkUserSubmissions()
+    }
+  }, [isAuthenticated, tasks])
 
   if (!isAuthenticated && !isAdminOrCreator()) {
     return (
@@ -119,42 +162,74 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
     );
   }
 
+  // Helper to get absolute URL
+  const getAbsoluteUrl = (url: string) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return `https://${url}`;
+  };
+
   // Helper to track task completion
   const trackTaskCompletion = async (task: Task, action: string, metadata?: any) => {
     try {
+      // Get current session
       const { data: { session } } = await supabase.auth.getSession()
-      
       if (!session) {
+        console.log('No session available for task completion tracking')
         return
       }
 
-      const trackData = {
-        taskId: task.id,
-        userId: session.user.id,
-        questId: task.quest_id,
-        action: action,
-        taskType: task.type,
-        socialPlatform: task.social_platform,
-        socialAction: task.social_action,
-        visitUrl: task.visit_url,
-        downloadUrl: task.download_url,
-        quizAnswers: metadata?.quizAnswers,
-        duration: metadata?.duration,
-        metadata: metadata
+      console.log('Session found for task completion:', session.user.email)
+      console.log('Task object:', task)
+
+      // Ensure we have all required fields
+      if (!task.id) {
+        console.error('Task ID is missing')
+        return
       }
 
-      await fetch('/api/track-task-completion', {
+      const taskQuestId = task.quest_id || questId
+      if (!taskQuestId) {
+        console.error('Task quest_id is missing and no questId prop provided:', task)
+        return
+      }
+
+      const completionData = {
+        taskId: task.id,
+        userId: session.user.id,
+        questId: taskQuestId,
+        action: action,
+        taskType: task.type,
+        metadata: metadata || {},
+        timestamp: new Date().toISOString()
+      }
+
+      console.log('Sending task completion request:', completionData)
+
+      const response = await fetch('/api/track-task-completion', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify(trackData)
+        body: JSON.stringify(completionData)
       })
+
+      console.log('Task completion response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Error tracking task completion:', response.statusText, errorText)
+        console.error('Request data that failed:', completionData)
+      } else {
+        const result = await response.json()
+        console.log('Task completion tracked successfully:', result)
+      }
     } catch (error) {
       console.error('Error tracking task completion:', error)
     }
-  }
+  };
 
   // Helper to handle 'Complete Task' click
   const handleCompleteTask = async (task: Task) => {
@@ -183,13 +258,18 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
       
       await trackTaskCompletion(task, action, { url })
       
-      // Automatically verify download, visit, and form tasks
+      // For visit, download, and form tasks, call the verification function
+      // which will handle the verification and XP awarding
       if (task.type === 'download' || task.type === 'visit' || task.type === 'form') {
         // Add a small delay to allow the URL to open
         setTimeout(async () => {
-          await trackTaskCompletion(task, 'verification_attempted');
-          handleTaskVerification(task);
-        }, 1000);
+          try {
+            console.log('Calling handleTaskVerification for task:', task.id);
+            await handleTaskVerification(task);
+          } catch (error) {
+            console.error('Error in handleTaskVerification:', error);
+          }
+        }, 1000); // Reduced delay since we're using the proper verification flow
       }
     }
   };
@@ -200,11 +280,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
       case 'social':
         if (task.social_platform === 'twitter') {
           return (
-            <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
-              <div className="flex items-center gap-2 mb-2">
-                <Twitter className="w-4 h-4 text-blue-400" />
-                <span className="text-sm text-gray-300">X Task</span>
-              </div>
+            <div className="mt-3">
               {task.social_action === 'follow' ? (
                 task.social_url ? (
                   <a 
@@ -233,40 +309,32 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
             </div>
           );
         }
-            if (task.social_platform === 'discord') {
-      return (
-        <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
-          <div className="flex items-center gap-2 mb-2">
-            <MessageCircle className="w-4 h-4 text-indigo-400" />
-            <span className="text-sm text-gray-300">Discord Task</span>
-          </div>
-          {task.social_action === 'join' && task.social_url ? (
-            <div className="space-y-2">
-              <a 
-                href={getAbsoluteUrl(task.social_url)} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-indigo-400 hover:text-indigo-300 text-sm break-all block"
-              >
-                Join Discord Server
-              </a>
-              <p className="text-xs text-gray-400">
-                Click the link above to join the Discord server, then click "Verify Task" to confirm your membership.
-              </p>
+        if (task.social_platform === 'discord') {
+          return (
+            <div className="mt-3">
+              {task.social_action === 'join' && task.social_url ? (
+                <div className="space-y-2">
+                  <a 
+                    href={getAbsoluteUrl(task.social_url)} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-indigo-400 hover:text-indigo-300 text-sm break-all block"
+                  >
+                    Join Discord Server
+                  </a>
+                  <p className="text-xs text-gray-400">
+                    Click the link above to join the Discord server, then click "Verify Task" to confirm your membership.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-indigo-400 text-sm">Join the Discord server</p>
+              )}
             </div>
-          ) : (
-            <p className="text-indigo-400 text-sm">Join the Discord server</p>
-          )}
-        </div>
-      );
-    }
+          );
+        }
         if (task.social_platform === 'telegram') {
           return (
-            <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
-              <div className="flex items-center gap-2 mb-2">
-                <MessageSquare className="w-4 h-4 text-blue-500" />
-                <span className="text-sm text-gray-300">Telegram Task</span>
-              </div>
+            <div className="mt-3">
               {task.social_action === 'join' && task.social_url ? (
                 <a 
                   href={getAbsoluteUrl(task.social_url)} 
@@ -287,11 +355,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
       case 'visit':
         if (task.visit_url) {
           return (
-            <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
-              <div className="flex items-center gap-2 mb-2">
-                <ExternalLink className="w-4 h-4 text-purple-400" />
-                <span className="text-sm text-gray-300">Visit Task</span>
-              </div>
+            <div className="mt-3">
               <a 
                 href={getAbsoluteUrl(task.visit_url)} 
                 target="_blank" 
@@ -313,29 +377,23 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
       case 'download':
         if (task.download_url) {
           return (
-            <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
-              <div className="flex items-center gap-2 mb-2">
-                <Download className="w-4 h-4 text-green-400" />
-                <span className="text-sm text-gray-300">Download Task</span>
-              </div>
-              <div className="space-y-2">
-                {task.download_title && (
-                  <p className="text-sm text-gray-300 font-medium">{task.download_title}</p>
-                )}
-                {task.download_description && (
-                  <p className="text-sm text-gray-300">{task.download_description}</p>
-                )}
-                <a 
-                  href={getAbsoluteUrl(task.download_url)} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 text-sm break-all"
-                  onClick={() => trackTaskCompletion(task, 'downloaded', { url: task.download_url })}
-                >
-                  <Download className="w-4 h-4" />
-                  Download File
-                </a>
-              </div>
+            <div className="mt-3 space-y-2">
+              {task.download_title && (
+                <p className="text-sm text-gray-300 font-medium">{task.download_title}</p>
+              )}
+              {task.download_description && (
+                <p className="text-sm text-gray-300">{task.download_description}</p>
+              )}
+              <a 
+                href={getAbsoluteUrl(task.download_url)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 text-sm break-all"
+                onClick={() => trackTaskCompletion(task, 'downloaded', { url: task.download_url })}
+              >
+                <Download className="w-4 h-4" />
+                Download File
+              </a>
             </div>
           );
         }
@@ -344,14 +402,7 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
       case 'learn':
         if (task.quiz_question) {
           return (
-            <div className="mt-3 p-3 bg-[#181818] rounded border border-[#282828]">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm text-gray-300">Quiz Task</span>
-                {task.quiz_is_multi_select && (
-                  <Badge variant="outline" className="text-xs">Multi-select</Badge>
-                )}
-              </div>
+            <div className="mt-3">
               <div className="text-sm text-gray-300 mb-2">
                 {task.quiz_question}
               </div>
@@ -382,11 +433,12 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
         </div>
       ) : (
         tasks.map((task) => {
-          const isCompleted = task.user_task_submissions;
+          const userSubmission = userSubmissions[task.id];
+          const isCompleted = userSubmission && (userSubmission.status === 'verified' || userSubmission.verified === true);
           const isVerifying = verifyingTask === task.id;
           const isLocallyCompleted = completedTasks[task.id];
           const taskAdminStatus = isAdminOrCreator();
-          console.log('DEBUG: Task render:', { taskId: task.id, taskAdminStatus, isCompleted });
+          console.log('DEBUG: Task render:', { taskId: task.id, taskAdminStatus, isCompleted, userSubmission });
           
           return (
             <div key={task.id} className="flex items-start gap-3 md:gap-4 p-3 md:p-4 bg-[#111111] rounded-lg border border-[#282828] transition-all duration-300 hover:bg-[#181818] overflow-hidden">
@@ -395,12 +447,12 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       {getTaskIcon(task)}
-                      <h3 className="text-white font-semibold text-sm md:text-base">{getTaskHeadingAndDescription(task).heading}</h3>
+                      <h3 className="text-white font-semibold text-sm md:text-base">{getTaskTypeDisplay(task)}</h3>
                       {isCompleted && (
                         <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Completed</Badge>
                       )}
                     </div>
-                    <p className="text-gray-300 text-xs md:text-sm mb-3">{getTaskHeadingAndDescription(task).description}</p>
+                    <p className="text-gray-300 text-xs md:text-sm mb-3">{getTaskDescription(task)}</p>
                     
                     {/* Task-specific content */}
                     {renderTaskContent(task)}
@@ -447,6 +499,9 @@ const TaskList: React.FC<TaskListProps> = React.memo(function TaskList({
                           </>
                         )}
                       </div>
+                    )}
+                    {isCompleted && !isAdminOrCreator() && (
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Completed</Badge>
                     )}
                   </div>
                 </div>

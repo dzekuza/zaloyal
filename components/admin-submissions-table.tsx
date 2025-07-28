@@ -50,9 +50,15 @@ import type { Database } from "@/lib/supabase"
 import { Textarea } from "@/components/ui/textarea"
 import type { Task } from '@/components/quest-detail/types'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import React from 'react'
 
 type UserTaskSubmission = Database["public"]["Tables"]["user_task_submissions"]["Row"] & {
-  users: Database["public"]["Tables"]["users"]["Row"] | null
+  users: (Database["public"]["Tables"]["users"]["Row"] & {
+    email_confirmed_at?: string | null
+    last_sign_in_at?: string | null
+    user_metadata?: any
+    app_metadata?: any
+  }) | null
   tasks: Database["public"]["Tables"]["tasks"]["Row"] | null
   social_accounts?: Database["public"]["Tables"]["social_accounts"]["Row"][]
   xp_earned?: number
@@ -106,6 +112,26 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
       const userIds = [...new Set(submissionsData?.map(s => s.user_id) || [])]
       const taskIds = [...new Set(submissionsData?.map(s => s.task_id) || [])]
 
+      // Fetch auth.users data using API endpoint
+      const authUsersResponse = await fetch('/api/admin/get-auth-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userIds })
+      })
+
+      let authUsersMap = new Map()
+      if (authUsersResponse.ok) {
+        const { users: authUsersData } = await authUsersResponse.json()
+        authUsersData?.forEach((user: any) => {
+          authUsersMap.set(user.id, user)
+        })
+      } else {
+        console.error('Error fetching auth users:', authUsersResponse.statusText)
+      }
+
+      // Fetch public.users profiles for additional data
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
@@ -124,7 +150,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
       }
 
       // Create maps for easy lookup
-      const usersMap = new Map(usersData?.map(u => [u.user_id, u]) || [])
+      const usersMap = new Map(usersData?.map(u => [u.id, u]) || [])
       const tasksMap = new Map(tasksData?.map(t => [t.id, t]) || [])
 
       // Fetch social accounts for each user
@@ -146,13 +172,48 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
         socialAccountsMap.get(account.user_id).push(account)
       })
 
-      // Combine the data
-      const combinedData = submissionsData?.map(submission => ({
-        ...submission,
-        users: usersMap.get(submission.user_id) || null,
-        tasks: tasksMap.get(submission.task_id) || null,
-        social_accounts: socialAccountsMap.get(submission.user_id) || []
-      })) || []
+      // Combine the data - include all submissions with proper user data
+      const combinedData = submissionsData?.map(submission => {
+        const authUser = authUsersMap.get(submission.user_id)
+        const userProfile = usersMap.get(submission.user_id)
+        
+        // Create comprehensive user object with auth data and profile data
+        const combinedUser = authUser ? {
+          user_id: authUser.id,
+          username: userProfile?.username || authUser.user_metadata?.username || `User ${authUser.id.slice(0, 8)}`,
+          email: authUser.email || 'No email available',
+          avatar_url: userProfile?.avatar_url || authUser.user_metadata?.avatar_url || null,
+          total_xp: userProfile?.total_xp || 0,
+          level: userProfile?.level || 1,
+          bio: userProfile?.bio || null,
+          social_links: userProfile?.social_links || {},
+          created_at: authUser.created_at,
+          updated_at: authUser.updated_at,
+          // Add auth user metadata for additional info
+          email_confirmed_at: authUser.email_confirmed_at,
+          last_sign_in_at: authUser.last_sign_in_at,
+          user_metadata: authUser.user_metadata,
+          app_metadata: authUser.app_metadata
+        } : {
+          user_id: submission.user_id,
+          username: `User ${submission.user_id.slice(0, 8)}`,
+          email: 'No email available',
+          avatar_url: null,
+          total_xp: 0,
+          level: 1,
+          bio: null,
+          social_links: {},
+          created_at: submission.created_at,
+          updated_at: submission.updated_at
+        }
+
+        return {
+          ...submission,
+          users: combinedUser,
+          tasks: tasksMap.get(submission.task_id) || null,
+          social_accounts: socialAccountsMap.get(submission.user_id) || []
+        }
+      }) || []
 
       setSubmissions(combinedData)
     } catch (error) {
@@ -177,14 +238,14 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
 
       // Try to add XP removal fields if they exist
       try {
-        updateData.xp_removed = submissions.find(s => s.id === submissionId)?.xp_earned || 0
+        updateData.xp_removed = submissions.find(s => s.id === submissionId)?.tasks?.xp_reward || 0
         updateData.xp_removal_reason = removeXPReason
       } catch (error) {
         console.log('XP removal fields not available, using fallback')
         // If the fields don't exist, we'll just update the submission_data with the removal info
         const submission = submissions.find(s => s.id === submissionId)
         const submissionData = submission?.submission_data || {}
-        submissionData.xp_removed = submission?.xp_earned || 0
+        submissionData.xp_removed = submission?.tasks?.xp_reward || 0
         submissionData.xp_removal_reason = removeXPReason
         updateData.submission_data = submissionData
       }
@@ -270,134 +331,238 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
 
   const renderSubmissionDetails = (submission: UserTaskSubmission) => {
     const task = submission.tasks
-    if (!task) return null
-
     const submissionData = submission.submission_data || {}
     const verificationData = submission.verification_data || {}
 
     return (
-      <div className="space-y-4 p-4 bg-[#0a0a0a] rounded-lg border border-[#282828]">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="p-4 bg-[#111111] border-t border-[#282828]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h4 className="font-semibold text-white mb-2">Submission Data</h4>
-            <div className="space-y-2 text-sm">
+            <h4 className="font-semibold text-white mb-3">Submission Data</h4>
+            <div className="space-y-3 text-sm">
+              {/* Quiz Answers - Enhanced Display */}
               {submissionData.answers && (
-                <div>
-                  <span className="text-gray-400">Quiz Answers:</span>
-                  <div className="text-white mt-1">
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400 block mb-2">Quiz Answers:</span>
+                  <div className="text-white">
                     {Array.isArray(submissionData.answers) 
-                      ? submissionData.answers.join(', ')
-                      : JSON.stringify(submissionData.answers)
+                      ? submissionData.answers.map((answer: string, index: number) => (
+                          <div key={index} className="mb-1">
+                            <span className="text-gray-400">Q{index + 1}:</span> {answer}
+                          </div>
+                        ))
+                      : typeof submissionData.answers === 'object' 
+                        ? Object.entries(submissionData.answers).map(([key, value]) => (
+                            <div key={key} className="mb-1">
+                              <span className="text-gray-400">{key}:</span> {String(value)}
+                            </div>
+                          ))
+                        : <span>{String(submissionData.answers)}</span>
                     }
                   </div>
                 </div>
               )}
+              
+              {/* Quiz Score */}
               {submissionData.score && (
-                <div>
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
                   <span className="text-gray-400">Score:</span>
-                  <span className="text-white ml-2">{submissionData.score}%</span>
+                  <span className="text-white ml-2 font-semibold">{submissionData.score}%</span>
                 </div>
               )}
+              
+              {/* Quiz Question and Selected Answers */}
+              {submissionData.question && (
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400 block mb-2">Question:</span>
+                  <div className="text-white mb-2">{submissionData.question}</div>
+                  {submissionData.selected_answers && (
+                    <div>
+                      <span className="text-gray-400 block mb-1">Selected Answer(s):</span>
+                      <div className="text-white">
+                        {Array.isArray(submissionData.selected_answers) 
+                          ? submissionData.selected_answers.map((answer: string, index: number) => (
+                              <div key={index} className="mb-1">
+                                <span className="text-green-400">✓</span> {answer}
+                              </div>
+                            ))
+                          : <span>{String(submissionData.selected_answers)}</span>
+                        }
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Quiz Answer Details */}
+              {submissionData.quiz_answers && (
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400 block mb-2">Quiz Answer Details:</span>
+                  <div className="text-white">
+                    {Array.isArray(submissionData.quiz_answers) 
+                      ? submissionData.quiz_answers.map((answer: any, index: number) => (
+                          <div key={index} className="mb-2 p-2 bg-[#0a0a0a] rounded border border-[#333]">
+                            <div className="text-gray-400 text-xs mb-1">Question {index + 1}</div>
+                            <div className="text-sm">{answer.question || 'No question text'}</div>
+                            <div className="text-green-400 text-sm mt-1">
+                              Selected: {answer.selected || answer.answer || 'No answer'}
+                            </div>
+                            {answer.correct !== undefined && (
+                              <div className={`text-xs mt-1 ${answer.correct ? 'text-green-400' : 'text-red-400'}`}>
+                                {answer.correct ? '✓ Correct' : '✗ Incorrect'}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      : typeof submissionData.quiz_answers === 'object' 
+                        ? Object.entries(submissionData.quiz_answers).map(([key, value]) => (
+                            <div key={key} className="mb-1">
+                              <span className="text-gray-400">{key}:</span> {String(value)}
+                            </div>
+                          ))
+                        : <span>{String(submissionData.quiz_answers)}</span>
+                    }
+                  </div>
+                </div>
+              )}
+              
+              {/* Visit URL */}
               {submissionData.visit_url && (
-                <div>
-                  <span className="text-gray-400">Visit URL:</span>
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400 block mb-2">Visit URL:</span>
                   <a 
                     href={submissionData.visit_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 ml-2 flex items-center gap-1"
+                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 break-all"
                   >
                     {submissionData.visit_url}
-                    <ExternalLinkIcon className="w-3 h-3" />
+                    <ExternalLinkIcon className="w-3 h-3 flex-shrink-0" />
                   </a>
                 </div>
               )}
+              
+              {/* Download URL */}
               {submissionData.download_url && (
-                <div>
-                  <span className="text-gray-400">Download URL:</span>
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400 block mb-2">Download URL:</span>
                   <a 
                     href={submissionData.download_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 ml-2 flex items-center gap-1"
+                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 break-all"
                   >
                     {submissionData.download_url}
-                    <ExternalLinkIcon className="w-3 h-3" />
+                    <ExternalLinkIcon className="w-3 h-3 flex-shrink-0" />
                   </a>
                 </div>
               )}
+              
+              {/* Form URL */}
               {submissionData.form_url && (
-                <div>
-                  <span className="text-gray-400">Form URL:</span>
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400 block mb-2">Form URL:</span>
                   <a 
                     href={submissionData.form_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 ml-2 flex items-center gap-1"
+                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 break-all"
                   >
                     {submissionData.form_url}
-                    <ExternalLinkIcon className="w-3 h-3" />
+                    <ExternalLinkIcon className="w-3 h-3 flex-shrink-0" />
                   </a>
                 </div>
               )}
+              
+              {/* Discord Social */}
               {submissionData.social_platform === 'discord' && submissionData.social_url && (
-                <div>
-                  <span className="text-gray-400">Discord Server:</span>
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400 block mb-2">Discord Server:</span>
                   <a 
                     href={submissionData.social_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-indigo-400 hover:text-indigo-300 ml-2 flex items-center gap-1"
+                    className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 break-all"
                   >
                     {submissionData.social_url}
-                    <ExternalLinkIcon className="w-3 h-3" />
+                    <ExternalLinkIcon className="w-3 h-3 flex-shrink-0" />
                   </a>
                   {submissionData.discord_user_id && (
-                    <div className="mt-1">
-                      <span className="text-gray-400 text-xs">Discord User ID:</span>
-                      <span className="text-white text-xs ml-2">{submissionData.discord_user_id}</span>
+                    <div className="mt-2 text-xs">
+                      <span className="text-gray-400">Discord User ID:</span>
+                      <span className="text-white ml-2">{submissionData.discord_user_id}</span>
                     </div>
                   )}
                   {submissionData.guild_id && (
-                    <div>
-                      <span className="text-gray-400 text-xs">Server ID:</span>
-                      <span className="text-white text-xs ml-2">{submissionData.guild_id}</span>
+                    <div className="mt-1 text-xs">
+                      <span className="text-gray-400">Server ID:</span>
+                      <span className="text-white ml-2">{submissionData.guild_id}</span>
                     </div>
                   )}
                 </div>
               )}
+              
+              {/* Social Username */}
               {submissionData.social_username && (
-                <div>
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
                   <span className="text-gray-400">Social Username:</span>
                   <span className="text-white ml-2">{submissionData.social_username}</span>
+                </div>
+              )}
+              
+              {/* Raw Submission Data for Debugging */}
+              {Object.keys(submissionData).length > 0 && 
+               !submissionData.answers && 
+               !submissionData.score && 
+               !submissionData.visit_url && 
+               !submissionData.download_url && 
+               !submissionData.form_url && 
+               !submissionData.social_platform && 
+               !submissionData.social_username && 
+               !submissionData.question && 
+               !submissionData.quiz_answers && (
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400 block mb-2">Raw Submission Data:</span>
+                  <pre className="text-white text-xs overflow-auto">
+                    {JSON.stringify(submissionData, null, 2)}
+                  </pre>
+                </div>
+              )}
+              
+              {/* Show empty state if no submission data */}
+              {Object.keys(submissionData).length === 0 && (
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400">No submission data available</span>
                 </div>
               )}
             </div>
           </div>
           
           <div>
-            <h4 className="font-semibold text-white mb-2">Verification Data</h4>
-            <div className="space-y-2 text-sm">
-              <div>
+            <h4 className="font-semibold text-white mb-3">Verification Data</h4>
+            <div className="space-y-3 text-sm">
+              <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
                 <span className="text-gray-400">Method:</span>
                 <span className="text-white ml-2">{verificationData.method || 'Unknown'}</span>
               </div>
+              
               {verificationData.verified !== undefined && (
-                <div>
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
                   <span className="text-gray-400">Verified:</span>
                   <span className={`ml-2 ${verificationData.verified ? 'text-green-400' : 'text-red-400'}`}>
                     {verificationData.verified ? 'Yes' : 'No'}
                   </span>
                 </div>
               )}
-                             {(submission.xp_removal_reason || submission.submission_data?.xp_removal_reason) && (
-                 <div>
-                   <span className="text-gray-400">XP Removal Reason:</span>
-                   <span className="text-red-400 ml-2">
-                     {submission.xp_removal_reason || submission.submission_data?.xp_removal_reason}
-                   </span>
-                 </div>
-               )}
+              
+              {(submission.xp_removal_reason || submission.submission_data?.xp_removal_reason) && (
+                <div className="bg-[#181818] p-3 rounded-lg border border-[#282828]">
+                  <span className="text-gray-400">XP Removal Reason:</span>
+                  <span className="text-red-400 ml-2">
+                    {submission.xp_removal_reason || submission.submission_data?.xp_removal_reason}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -414,7 +579,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
 
     return (
       <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-[#111111] border-[#282828] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>User Details</DialogTitle>
             <DialogDescription>
@@ -422,7 +587,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
+          <div className="px-6 pb-6 space-y-6">
             {/* User Basic Info */}
             <div className="flex items-center gap-4">
               <Avatar className="w-16 h-16">
@@ -433,7 +598,10 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
               </Avatar>
               <div>
                 <h3 className="text-xl font-semibold text-white">{user.username || 'Unknown User'}</h3>
-                <p className="text-gray-400">{user.email}</p>
+                <p className="text-gray-400">{user.email || 'No email available'}</p>
+                {user.email_confirmed_at && (
+                  <p className="text-green-400 text-sm">✓ Email verified</p>
+                )}
                 <div className="flex items-center gap-2 mt-2">
                   <Trophy className="w-4 h-4 text-green-400" />
                   <span className="text-green-400 font-semibold">{user.total_xp || 0} XP</span>
@@ -444,15 +612,13 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
               </div>
             </div>
 
-            <Separator />
-
             {/* Connected Accounts */}
             <div>
               <h4 className="font-semibold text-white mb-3">Connected Accounts</h4>
               <div className="space-y-3">
                 {/* Wallet */}
                 {socialAccounts.find(acc => acc.platform === 'solana') && (
-                  <div className="flex items-center gap-3 p-3 bg-[#111111] rounded-lg border border-[#282828]">
+                  <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
                     <Wallet className="w-5 h-5 text-purple-400" />
                     <div>
                       <div className="text-white font-medium">Wallet</div>
@@ -465,7 +631,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
 
                 {/* Discord */}
                 {socialAccounts.find(acc => acc.platform === 'discord') && (
-                  <div className="flex items-center gap-3 p-3 bg-[#111111] rounded-lg border border-[#282828]">
+                  <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
                     <MessageCircle className="w-5 h-5 text-blue-400" />
                     <div>
                       <div className="text-white font-medium">Discord</div>
@@ -478,7 +644,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
 
                 {/* X/Twitter */}
                 {socialAccounts.find(acc => acc.platform === 'x') && (
-                  <div className="flex items-center gap-3 p-3 bg-[#111111] rounded-lg border border-[#282828]">
+                  <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
                     <Twitter className="w-5 h-5 text-blue-400" />
                     <div>
                       <div className="text-white font-medium">X (Twitter)</div>
@@ -491,7 +657,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
 
                 {/* Telegram */}
                 {socialAccounts.find(acc => acc.platform === 'telegram') && (
-                  <div className="flex items-center gap-3 p-3 bg-[#111111] rounded-lg border border-[#282828]">
+                  <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
                     <MessageSquare className="w-5 h-5 text-blue-400" />
                     <div>
                       <div className="text-white font-medium">Telegram</div>
@@ -502,15 +668,44 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
                   </div>
                 )}
 
-                {socialAccounts.length === 0 && (
+                {/* Check for social accounts in user metadata (for OAuth users) */}
+                {user.user_metadata && (
+                  <>
+                    {/* Discord from metadata */}
+                    {user.user_metadata.discord_id && (
+                      <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                        <MessageCircle className="w-5 h-5 text-blue-400" />
+                        <div>
+                          <div className="text-white font-medium">Discord (OAuth)</div>
+                          <div className="text-gray-400 text-sm">
+                            {user.user_metadata.discord_username || user.user_metadata.discord_id}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* X/Twitter from metadata */}
+                    {user.user_metadata.x_username && (
+                      <div className="flex items-center gap-3 p-3 bg-[#181818] rounded-lg border border-[#282828]">
+                        <Twitter className="w-5 h-5 text-blue-400" />
+                        <div>
+                          <div className="text-white font-medium">X (Twitter) (OAuth)</div>
+                          <div className="text-gray-400 text-sm">
+                            {user.user_metadata.x_username}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {socialAccounts.length === 0 && !user.user_metadata?.discord_id && !user.user_metadata?.x_username && (
                   <div className="text-gray-400 text-center py-4">
                     No connected accounts found
                   </div>
                 )}
               </div>
             </div>
-
-            <Separator />
 
             {/* User Bio */}
             {user.bio && (
@@ -520,7 +715,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
               </div>
             )}
 
-            {/* Account Created */}
+            {/* Account Information */}
             <div>
               <h4 className="font-semibold text-white mb-2">Account Information</h4>
               <div className="space-y-2 text-sm">
@@ -532,6 +727,18 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
                   <span className="text-gray-400">Last Updated:</span>
                   <span className="text-white ml-2">{formatDate(user.updated_at)}</span>
                 </div>
+                {user.last_sign_in_at && (
+                  <div>
+                    <span className="text-gray-400">Last Sign In:</span>
+                    <span className="text-white ml-2">{formatDate(user.last_sign_in_at)}</span>
+                  </div>
+                )}
+                {user.email_confirmed_at && (
+                  <div>
+                    <span className="text-gray-400">Email Confirmed:</span>
+                    <span className="text-white ml-2">{formatDate(user.email_confirmed_at)}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -588,7 +795,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
                   <TableHead className="text-gray-400">Task</TableHead>
                   <TableHead className="text-gray-400">Type</TableHead>
                   <TableHead className="text-gray-400">Status</TableHead>
-                  <TableHead className="text-gray-400">XP</TableHead>
+                  <TableHead className="text-gray-400">Task XP</TableHead>
                   <TableHead className="text-gray-400">Date</TableHead>
                   <TableHead className="text-gray-400">Actions</TableHead>
                 </TableRow>
@@ -598,13 +805,13 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
                   const user = submission.users
                   const task = submission.tasks
                   
-                  if (!user || !task) return null
+                  if (!user) return null
 
                   const isExpanded = expandedRows.has(submission.id)
 
                   return (
-                    <>
-                      <TableRow key={submission.id} className="border-[#282828] hover:bg-[#181818]">
+                    <React.Fragment key={submission.id}>
+                      <TableRow className="border-[#282828] hover:bg-[#181818]">
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar 
@@ -631,13 +838,19 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {getTaskIcon(task as Task)}
-                            <span className="text-white">{task.title}</span>
+                            {task ? (
+                              <>
+                                {getTaskIcon(task as Task)}
+                                <span className="text-white">{task.title}</span>
+                              </>
+                            ) : (
+                              <span className="text-gray-400">Task not found</span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="capitalize">
-                            {task.type}
+                            {task?.type || 'unknown'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -647,7 +860,7 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
                           <div className="flex items-center gap-1">
                             <Trophy className="w-4 h-4 text-green-400" />
                             <span className="text-green-400 font-semibold">
-                              {submission.xp_earned || 0}
+                              {submission.tasks?.xp_reward || 0}
                             </span>
                             {(submission.xp_removed || submission.submission_data?.xp_removed) && (
                               <span className="text-red-400 text-sm">
@@ -698,13 +911,13 @@ export default function AdminSubmissionsTable({ quest, tasks, isAdmin }: AdminSu
                       
                       {/* Expanded Details Row */}
                       {isExpanded && (
-                        <TableRow>
+                        <TableRow key={`${submission.id}-details`} className="border-[#282828]">
                           <TableCell colSpan={7} className="p-0">
                             {renderSubmissionDetails(submission)}
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </React.Fragment>
                   )
                 })}
               </TableBody>

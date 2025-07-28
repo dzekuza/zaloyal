@@ -1,12 +1,13 @@
-import { Trophy, Users, Zap } from "lucide-react";
+import { Trophy, Users, Zap, Star } from "lucide-react";
 
 interface ProjectStatsBarProps {
   questCount: number;
   participants: number;
   xpToCollect: number;
+  myXp?: number;
 }
 
-export default function ProjectStatsBar({ questCount, participants, xpToCollect }: ProjectStatsBarProps) {
+export default function ProjectStatsBar({ questCount, participants, xpToCollect, myXp = 0 }: ProjectStatsBarProps) {
   return (
     <div className="bg-black/20 border-b border-white/10">
       <div className="px-2 sm:px-4 py-2 sm:py-4">
@@ -26,6 +27,11 @@ export default function ProjectStatsBar({ questCount, participants, xpToCollect 
               <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="font-semibold">{xpToCollect}</span>
               <span className="text-gray-200 hidden sm:inline">XP to Collect</span>
+            </div>
+            <div className="flex items-center gap-2 text-purple-400 text-xs sm:text-sm md:text-base">
+              <Star className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="font-semibold">{myXp}</span>
+              <span className="text-gray-200 hidden sm:inline">My XP</span>
             </div>
           </div>
         </div>

@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { data: profile } = await supabase
             .from('users')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('id', session.user.id)
             .single()
 
           console.log('DEBUG: Initial profile query result:', { profile })
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const { data: profile } = await supabase
                 .from('users')
                 .select('*')
-                .eq('user_id', session.user.id)
+                .eq('id', session.user.id)
                 .single()
               
               if (isMounted) {
@@ -184,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const { data: profile } = await supabase
                 .from('users')
                 .select('*')
-                .eq('user_id', session.user.id)
+                .eq('id', session.user.id)
                 .single()
               
               if (isMounted) {

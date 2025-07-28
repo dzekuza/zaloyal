@@ -16,6 +16,7 @@ import QuestFormWrapper from "@/components/quest-form-wrapper"
 import QuestCard from '@/components/QuestCard';
 import { toast } from "sonner"
 import { useAuth } from '@/components/auth-provider-wrapper'
+import { supabase } from '@/lib/supabase'
 
 interface Project {
   id: string;
@@ -73,12 +74,64 @@ export default function ProjectDetailClient({
 }) {
   const { user, loading } = useAuth()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [myProjectXp, setMyProjectXp] = useState(0)
 
   // Check if user is the project owner
   const isOwner = user?.id === project.owner_id
 
   // Calculate total XP
   const xpToCollect = quests.reduce((sum, q) => sum + (q.total_xp || 0), 0)
+
+  // Calculate user's XP for this project
+  useEffect(() => {
+    const calculateMyProjectXp = async () => {
+      if (!user?.id) {
+        setMyProjectXp(0)
+        return
+      }
+
+      try {
+        // Get all quest IDs for this project
+        const { data: quests, error: questsError } = await supabase
+          .from("quests")
+          .select('id')
+          .eq("project_id", project.id)
+        
+        if (questsError || !quests) {
+          setMyProjectXp(0)
+          return
+        }
+        
+        const questIds = quests.map(q => q.id)
+        if (questIds.length === 0) {
+          setMyProjectXp(0)
+          return
+        }
+        
+        // Get user's verified submissions for this project's quests
+        const { data: submissions, error: submissionsError } = await supabase
+          .from("user_task_submissions")
+          .select("xp_earned")
+          .in("quest_id", questIds)
+          .eq("user_id", user.id)
+          .eq("status", "verified")
+        
+        if (submissionsError || !submissions) {
+          setMyProjectXp(0)
+          return
+        }
+        
+        // Sum up all XP earned
+        const totalXp = submissions.reduce((sum, submission) => sum + (submission.xp_earned || 0), 0)
+        setMyProjectXp(totalXp)
+      } catch (error) {
+        console.error("Error calculating user project XP:", error)
+        setMyProjectXp(0)
+      }
+    }
+
+    calculateMyProjectXp()
+  }, [user?.id, project.id])
 
   if (loading) {
     return (
@@ -154,7 +207,7 @@ export default function ProjectDetailClient({
       </div>
 
       {/* Project Stats Bar */}
-      <ProjectStatsBar questCount={quests.length} participants={project.total_participants || 0} xpToCollect={xpToCollect} />
+      <ProjectStatsBar questCount={quests.length} participants={project.total_participants || 0} xpToCollect={xpToCollect} myXp={myProjectXp} />
 
       {/* Main Content: Quests and Connect */}
       <div className="w-full max-w-7xl mx-auto px-4 py-8">

@@ -73,23 +73,19 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       task_id: taskId,
       quest_id: task.quest_id,
-      status: passed ? "verified" : "rejected",
-      submission_data: {
-        answers,
-        score,
-        correctAnswers,
-        totalQuestions,
-        submitted_at: new Date().toISOString(),
-        verifier_notes: `Score: ${score}% (${correctAnswers}/${totalQuestions} correct)`,
-      },
+      status: passed ? "verified" : "failed",
       verification_data: {
         method: "quiz",
         score,
         passingScore,
         passed,
         verified_at: new Date().toISOString(),
+        answers,
+        correctAnswers,
+        totalQuestions,
+        verifier_notes: `Score: ${score}% (${correctAnswers}/${totalQuestions} correct)`,
       },
-      xp_earned: passed ? task.xp_reward : 0,
+      verified: passed,
       verified_at: passed ? new Date().toISOString() : null,
     })
 
@@ -97,23 +93,66 @@ export async function POST(request: NextRequest) {
       throw submissionError
     }
 
-    // Get user's wallet address from social accounts
-    const { data: socialAccounts } = await supabaseAdmin
-      .from('social_accounts')
-      .select('wallet_address')
-      .eq('user_id', user.id)
-      .eq('platform', 'wallet')
-      .single()
+    // Update user XP if passed
+    if (passed) {
+      // First, get current user XP
+      const { data: currentUser, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('total_xp')
+        .eq('user_id', user.id)
+        .single()
 
-    // Update user XP if passed and wallet address exists
-    if (passed && socialAccounts?.wallet_address) {
-      const { error: xpError } = await supabaseAdmin.rpc("increment_user_xp", {
-        user_wallet: socialAccounts.wallet_address.toLowerCase(),
-        xp_amount: task.xp_reward,
-      })
+      if (!userError && currentUser) {
+        // Update XP using user ID (for email auth users)
+        const newTotalXp = (currentUser.total_xp || 0) + task.xp_reward
+        const { error: xpError } = await supabaseAdmin
+          .from('users')
+          .update({ 
+            total_xp: newTotalXp,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
 
-      if (xpError) {
-        console.error("XP update error:", xpError)
+        if (xpError) {
+          console.error("XP update error:", xpError)
+        }
+      } else {
+        // User doesn't exist in users table, create a profile first
+        console.log("Creating user profile for:", user.id)
+        const { error: createUserError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            user_id: user.id,
+            email: user.email,
+            username: user.user_metadata?.username || user.email?.split('@')[0] || `User ${user.id.slice(0, 8)}`,
+            avatar_url: user.user_metadata?.avatar_url || null,
+            total_xp: task.xp_reward,
+            level: 1,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (createUserError) {
+          console.error("Error creating user profile:", createUserError)
+          // Fallback: try to update using wallet address if available
+          const { data: socialAccounts } = await supabaseAdmin
+            .from('social_accounts')
+            .select('wallet_address')
+            .eq('user_id', user.id)
+            .eq('platform', 'solana')
+            .single()
+
+          if (socialAccounts?.wallet_address) {
+            const { error: walletXpError } = await supabaseAdmin.rpc("increment_user_xp", {
+              user_wallet: socialAccounts.wallet_address.toLowerCase(),
+              xp_amount: task.xp_reward,
+            })
+
+            if (walletXpError) {
+              console.error("Wallet XP update error:", walletXpError)
+            }
+          }
+        }
       }
     }
 
@@ -131,8 +170,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         task_id: taskId,
         quest_id: task.quest_id,
-        status: passed ? "verified" : "rejected",
-        xp_earned: passed ? task.xp_reward : 0,
+        status: passed ? "verified" : "failed",
       }
     })
   } catch (error) {

@@ -49,6 +49,7 @@ import { extractTweetIdFromUrl } from "@/lib/twitter-utils"
 import PageContainer from "@/components/PageContainer";
 import TaskForm from "@/components/quest-detail/TaskForm";
 import QuizComponent from "@/components/quest-detail/QuizComponent";
+import EditQuestForm from "@/components/edit-quest-form";
 
 // Safe wallet auth import
 import { walletAuth, WalletUser } from "@/lib/wallet-auth"
@@ -68,7 +69,13 @@ type Quest = Database["public"]["Tables"]["quests"]["Row"] & {
 }
 
 // Memoized quest header component to prevent unnecessary re-renders
-const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport }: { quest: Quest, isAdminOrCreator: () => boolean, onAddTask: () => void, onExport: () => void }) => {
+const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport, onEditQuest }: { 
+  quest: Quest, 
+  isAdminOrCreator: () => boolean, 
+  onAddTask: () => void, 
+  onExport: () => void,
+  onEditQuest: () => void 
+}) => {
   const adminStatus = isAdminOrCreator()
   
   return (
@@ -143,7 +150,7 @@ const QuestHeader = React.memo(({ quest, isAdminOrCreator, onAddTask, onExport }
               <FileDown className="w-4 h-4 mr-2" />
               Export Submissions
             </Button>
-            <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
+            <Button onClick={onEditQuest} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
               <Edit className="w-4 h-4 mr-2" />
               Edit Quest
             </Button>
@@ -166,7 +173,53 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
   const [emailUser, setEmailUser] = useState<any>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showEditQuest, setShowEditQuest] = useState(false)
   const { toast } = useToast()
+
+  // Track task completion
+  const trackTaskCompletion = async (task: Task, action: string, metadata?: any) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      await fetch('/api/track-task-completion', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          taskId: task.id,
+          questId: quest.id,
+          action,
+          taskType: task.type,
+          metadata
+        })
+      })
+    } catch (error) {
+      console.error('Error tracking task completion:', error)
+    }
+  }
+
+  // Refresh tasks data
+  const refreshTasks = async () => {
+    try {
+      const { data: tasksData, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('quest_id', quest.id)
+        .order('order_index', { ascending: true })
+
+      if (error) {
+        console.error('Error refreshing tasks:', error)
+        return
+      }
+
+      setTasks(tasksData || [])
+    } catch (error) {
+      console.error('Error refreshing tasks:', error)
+    }
+  }
 
   // Export submissions function
   const handleExportSubmissions = async () => {
@@ -544,6 +597,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         case 'download':
           // For download tasks, we'll implement download tracking
           try {
+            console.log('DEBUG: Starting download verification for task:', task.id);
+            console.log('DEBUG: Download URL:', task.download_url);
+            console.log('DEBUG: Session token:', session.access_token ? 'Present' : 'Missing');
+            
             const response = await fetch('/api/verify/download-completion', {
               method: 'POST',
               headers: {
@@ -564,7 +621,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               })
             })
 
+            console.log('DEBUG: Download verification response status:', response.status);
             const result = await response.json()
+            console.log('DEBUG: Download verification result:', result);
             
             if (result.success && result.verified) {
               verified = true
@@ -591,6 +650,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         case 'visit':
           // For visit tasks, we'll implement visit tracking
           try {
+            console.log('DEBUG: Starting visit verification for task:', task.id);
+            console.log('DEBUG: Visit URL:', task.visit_url);
+            console.log('DEBUG: Session token:', session.access_token ? 'Present' : 'Missing');
+            
             const response = await fetch('/api/verify/visit-completion', {
               method: 'POST',
               headers: {
@@ -610,7 +673,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               })
             })
 
+            console.log('DEBUG: Visit verification response status:', response.status);
             const result = await response.json()
+            console.log('DEBUG: Visit verification result:', result);
             
             if (result.success && result.verified) {
               verified = true
@@ -637,6 +702,10 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         case 'form':
           // For form tasks, we'll implement form tracking
           try {
+            console.log('DEBUG: Starting form verification for task:', task.id);
+            console.log('DEBUG: Form URL:', task.form_url);
+            console.log('DEBUG: Session token:', session.access_token ? 'Present' : 'Missing');
+            
             const response = await fetch('/api/verify/form-completion', {
               method: 'POST',
               headers: {
@@ -657,7 +726,9 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               })
             })
 
+            console.log('DEBUG: Form verification response status:', response.status);
             const result = await response.json()
+            console.log('DEBUG: Form verification result:', result);
             
             if (result.success && result.verified) {
               verified = true
@@ -909,7 +980,15 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
         visit_duration_seconds: taskData.visit_duration_seconds,
         learn_content: taskData.learn_content,
         learn_questions: taskData.learn_questions,
-        learn_passing_score: taskData.learn_passing_score
+        learn_passing_score: taskData.learn_passing_score,
+        // Quiz fields
+        quiz_question: taskData.quiz_question,
+        quiz_answer_1: taskData.quiz_answer_1,
+        quiz_answer_2: taskData.quiz_answer_2,
+        quiz_answer_3: taskData.quiz_answer_3,
+        quiz_answer_4: taskData.quiz_answer_4,
+        quiz_correct_answer: taskData.quiz_correct_answer,
+        quiz_is_multi_select: taskData.quiz_is_multi_select
       }
 
       const { data, error } = await supabase
@@ -969,6 +1048,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           isAdminOrCreator={isAdminOrCreator}
           onAddTask={() => setShowEditTask(true)}
           onExport={handleExportSubmissions}
+          onEditQuest={() => setShowEditQuest(true)}
         />
         
         <TaskList
@@ -983,6 +1063,7 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
           handleDeleteTask={handleDeleteTask}
           walletUser={walletUser}
           isAuthenticated={isAuthenticated}
+          questId={quest.id}
         />
 
         {/* Admin Submissions Table */}
@@ -1038,15 +1119,55 @@ export default function QuestDetailClient({ quest, tasks: initialTasks }: { ques
               <div className="px-6 pb-6">
                 <QuizComponent
                   task={tasks.find(t => t.id === taskId)}
-                  onComplete={() => {
+                  onComplete={async () => {
                     setShowQuiz(prev => ({ ...prev, [taskId]: false }))
                     // Handle quiz completion
+                    const task = tasks.find(t => t.id === taskId)
+                    if (task) {
+                      // Track completion
+                      await trackTaskCompletion(task, 'quiz_completed')
+                      // Refresh task data
+                      await refreshTasks()
+                      // Show success toast
+                      toast({
+                        title: 'Quiz completed!',
+                        description: 'You have successfully completed the quiz task.',
+                        variant: 'default',
+                      })
+                      // Force a page refresh to update task completion status
+                      window.location.reload()
+                    }
                   }}
                 />
               </div>
             </DialogContent>
           </Dialog>
         ))}
+
+        {/* Edit Quest Dialog */}
+        <Dialog open={showEditQuest} onOpenChange={setShowEditQuest}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Quest</DialogTitle>
+              <DialogDescription>
+                Update the details of this quest.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <EditQuestForm
+              quest={quest}
+              onSave={() => {
+                setShowEditQuest(false)
+                toast({
+                  title: 'Quest updated',
+                  description: 'Quest has been updated successfully',
+                })
+                // Refresh the page to get updated quest data
+                window.location.reload()
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </PageContainer>
   )

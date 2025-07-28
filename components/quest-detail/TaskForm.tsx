@@ -191,7 +191,15 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
         visit_duration_seconds: task.visit_duration_seconds,
         learn_content: task.learn_content,
         learn_questions: task.learn_questions,
-        learn_passing_score: task.learn_passing_score
+        learn_passing_score: task.learn_passing_score,
+        // Quiz fields
+        quiz_question: task.quiz_question,
+        quiz_answer_1: task.quiz_answer_1,
+        quiz_answer_2: task.quiz_answer_2,
+        quiz_answer_3: task.quiz_answer_3,
+        quiz_answer_4: task.quiz_answer_4,
+        quiz_correct_answer: task.quiz_correct_answer,
+        quiz_is_multi_select: task.quiz_is_multi_select
       })
     } else if (!loading && socialAccounts) {
       // Pre-populate with user's social account data for new tasks

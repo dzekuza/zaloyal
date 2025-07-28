@@ -112,9 +112,7 @@ export async function POST(request: NextRequest) {
           method: 'download_verification',
           verified: true,
           download_url: downloadUrl
-        },
-        xp_earned: task.xp_reward,
-        xp_awarded: task.xp_reward
+        }
       }
 
       const { error: submissionError } = await supabase

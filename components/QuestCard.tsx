@@ -31,7 +31,7 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, children, actions }) => {
           </span>
           <span className="flex items-center gap-1">
             <Users className="h-4 w-4" />
-            <span>{quest.participants || 0} participants</span>
+            <span>{quest.participants || quest.participant_count || 0} participants</span>
           </span>
         </div>
         {children}

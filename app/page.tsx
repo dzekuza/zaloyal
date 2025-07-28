@@ -32,7 +32,7 @@ const getProjects = cache(async () => {
   try {
     const { data: projects, error } = await supabase
       .from("projects")
-      .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured, total_participants')
+      .select('id, owner_id, name, logo_url, cover_image_url, category, status, featured')
       .eq("status", "approved")
       .order("created_at", { ascending: false })
     
@@ -46,6 +46,128 @@ const getProjects = cache(async () => {
   } catch (error) {
     console.error("❌ Error in getProjects:", error);
     return [];
+  }
+})
+
+const getProjectParticipants = cache(async (projectIds: string[]) => {
+  if (projectIds.length === 0) {
+    console.log("📋 No project IDs provided for participants query");
+    return {};
+  }
+  
+  console.log(`🔍 Fetching participants for ${projectIds.length} projects...`);
+  try {
+    // Get all quest IDs for these projects
+    const { data: quests, error: questsError } = await supabase
+      .from("quests")
+      .select("id, project_id")
+      .in("project_id", projectIds)
+    
+    if (questsError) {
+      console.error("❌ Error fetching quests for participants:", questsError);
+      return {};
+    }
+    
+    const questIds = quests?.map(q => q.id) || []
+    if (questIds.length === 0) {
+      console.log("📋 No quests found for participants calculation");
+      return {};
+    }
+    
+    // Count unique users per project
+    const { data: submissions, error: submissionsError } = await supabase
+      .from("user_task_submissions")
+      .select("user_id, quest_id")
+      .in("quest_id", questIds)
+      .eq("status", "verified")
+    
+    if (submissionsError) {
+      console.error("❌ Error fetching submissions for participants:", submissionsError);
+      return {};
+    }
+    
+    // Create a map of quest_id to project_id
+    const questToProject = new Map(quests?.map(q => [q.id, q.project_id]) || [])
+    
+    // Count unique users per project
+    const projectParticipants: Record<string, Set<string>> = {}
+    submissions?.forEach(submission => {
+      const projectId = questToProject.get(submission.quest_id)
+      if (projectId) {
+        if (!projectParticipants[projectId]) {
+          projectParticipants[projectId] = new Set()
+        }
+        projectParticipants[projectId].add(submission.user_id)
+      }
+    })
+    
+    // Convert Sets to counts
+    const result: Record<string, number> = {}
+    Object.entries(projectParticipants).forEach(([projectId, users]) => {
+      result[projectId] = users.size
+    })
+    
+    console.log(`✅ Calculated participants for ${Object.keys(result).length} projects`);
+    return result;
+  } catch (error) {
+    console.error("❌ Error in getProjectParticipants:", error);
+    return {};
+  }
+})
+
+const getUserProjectXp = cache(async (projectIds: string[], userId?: string) => {
+  if (!userId || projectIds.length === 0) {
+    return {};
+  }
+  
+  console.log(`🔍 Fetching user XP for ${projectIds.length} projects...`);
+  try {
+    // Get all quest IDs for these projects
+    const { data: quests, error: questsError } = await supabase
+      .from("quests")
+      .select("id, project_id")
+      .in("project_id", projectIds)
+    
+    if (questsError) {
+      console.error("❌ Error fetching quests for user XP:", questsError);
+      return {};
+    }
+    
+    const questIds = quests?.map(q => q.id) || []
+    if (questIds.length === 0) {
+      return {};
+    }
+    
+    // Get user's verified submissions for these projects' quests
+    const { data: submissions, error: submissionsError } = await supabase
+      .from("user_task_submissions")
+      .select("xp_earned, quest_id")
+      .in("quest_id", questIds)
+      .eq("user_id", userId)
+      .eq("status", "verified")
+    
+    if (submissionsError) {
+      console.error("❌ Error fetching submissions for user XP:", submissionsError);
+      return {};
+    }
+    
+    // Create a map of quest_id to project_id
+    const questToProject = new Map(quests?.map(q => [q.id, q.project_id]) || [])
+    
+    // Sum XP per project
+    const projectXp: Record<string, number> = {}
+    submissions?.forEach(submission => {
+      const projectId = questToProject.get(submission.quest_id)
+      if (projectId) {
+        projectXp[projectId] = (projectXp[projectId] || 0) + (submission.xp_earned || 0)
+      }
+    })
+    
+    console.log(`✅ Calculated user XP for ${Object.keys(projectXp).length} projects`);
+    return projectXp;
+  } catch (error) {
+    console.error("❌ Error in getUserProjectXp:", error);
+    return {};
   }
 })
 
@@ -96,10 +218,14 @@ export default async function ProjectDiscovery() {
     console.log(`📋 Project IDs for quests query:`, projectIds);
     const questsByProject = await getQuests(projectIds)
 
+    // Fetch participant counts for all projects
+    const participantCounts = await getProjectParticipants(projectIds)
+
     // Process the data to calculate stats
     const processedProjects: Project[] = (projects || []).map(project => {
       const quests = (questsByProject as Record<string, any[]>)[project.id] || []
       const xpToCollect = quests.reduce((sum: number, q: { total_xp: number }) => sum + (q.total_xp || 0), 0)
+      const totalParticipants = participantCounts[project.id] || 0;
 
       const processedProject = {
         id: project.id,
@@ -110,12 +236,12 @@ export default async function ProjectDiscovery() {
         category: project.category,
         status: project.status,
         featured: project.featured,
-        total_participants: project.total_participants || 0,
+        total_participants: totalParticipants,
         xpToCollect,
         quest_count: quests.length,
       }
       
-      console.log(`📊 Processed project: ${processedProject.name} (${quests.length} quests, ${xpToCollect} XP)`);
+      console.log(`📊 Processed project: ${processedProject.name} (${quests.length} quests, ${xpToCollect} XP, ${totalParticipants} participants)`);
       return processedProject;
     })
 

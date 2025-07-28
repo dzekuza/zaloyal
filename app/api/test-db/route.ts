@@ -56,4 +56,37 @@ export async function GET(request: NextRequest) {
     console.error('Error in test-db:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { query } = await request.json()
+    
+    if (!query) {
+      return NextResponse.json({ error: "Query is required" }, { status: 400 })
+    }
+
+    // Handle specific queries
+    if (query.includes('user_task_submissions')) {
+      const { data, error } = await supabase
+        .from('user_task_submissions')
+        .select('id, user_id, task_id, status')
+        .limit(5)
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      return NextResponse.json({ 
+        success: true,
+        data: data
+      })
+    }
+
+    return NextResponse.json({ error: "Unsupported query" }, { status: 400 })
+
+  } catch (error) {
+    console.error('Error in test-db POST:', error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 } 

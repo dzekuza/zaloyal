@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Search, Filter, Users, Zap, Trophy, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import ProjectCard from "@/components/ProjectCard";
+import { useAuth } from "@/components/auth-provider-wrapper";
+import { supabase } from "@/lib/supabase";
 
 interface Project {
   id: string;
@@ -50,7 +52,7 @@ function ProjectGrid({ projects, currentUserId, onProjectDeleted }: ProjectGridP
         <ProjectCard
           key={project.id}
           project={project}
-          currentUserId={currentUserId}
+          currentUserId={currentUserId || undefined}
           onDelete={currentUserId && project.owner_id === currentUserId ? () => handleDeleteProject(project.id) : undefined}
           xpToCollect={project.xpToCollect}
         >
@@ -74,10 +76,67 @@ interface ProjectDiscoveryClientProps {
 }
 
 export default function ProjectDiscoveryClient({ projects, categories }: ProjectDiscoveryClientProps) {
-  try {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("all");
+  const { user } = useAuth();
+  const [userProjectXp, setUserProjectXp] = useState<Record<string, number>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
+  // Calculate user XP for each project
+  useEffect(() => {
+    const calculateUserProjectXp = async () => {
+      if (!user?.id) {
+        setUserProjectXp({});
+        return;
+      }
+
+      try {
+        const projectIds = projects.map(p => p.id);
+        if (projectIds.length === 0) return;
+
+        // Get all quest IDs for these projects
+        const { data: quests, error: questsError } = await supabase
+          .from("quests")
+          .select("id, project_id")
+          .in("project_id", projectIds);
+
+        if (questsError || !quests) return;
+
+        const questIds = quests.map(q => q.id);
+        if (questIds.length === 0) return;
+
+        // Get user's verified submissions for these projects' quests
+        const { data: submissions, error: submissionsError } = await supabase
+          .from("user_task_submissions")
+          .select("xp_earned, quest_id")
+          .in("quest_id", questIds)
+          .eq("user_id", user.id)
+          .eq("status", "verified");
+
+        if (submissionsError || !submissions) return;
+
+        // Create a map of quest_id to project_id
+        const questToProject = new Map(quests.map(q => [q.id, q.project_id]));
+
+        // Sum XP per project
+        const projectXp: Record<string, number> = {};
+        submissions.forEach(submission => {
+          const projectId = questToProject.get(submission.quest_id);
+          if (projectId) {
+            projectXp[projectId] = (projectXp[projectId] || 0) + (submission.xp_earned || 0);
+          }
+        });
+
+        setUserProjectXp(projectXp);
+      } catch (error) {
+        console.error("Error calculating user project XP:", error);
+        setUserProjectXp({});
+      }
+    };
+
+    calculateUserProjectXp();
+  }, [user?.id, projects]);
+
+  try {
     // Ensure projects is always an array
     const safeProjects = useMemo(() => {
       return Array.isArray(projects) ? projects : [];
@@ -188,27 +247,48 @@ export default function ProjectDiscoveryClient({ projects, categories }: Project
         <div className="flex flex-col gap-8">
           {/* Featured Projects */}
           {featuredProjects.length > 0 && (
-            <div>
-              <h2 className="flex items-center gap-2 text-2xl font-bold text-white mb-6">
-                <Star className="h-5 w-5 text-yellow-400" />
-                Featured Projects
-              </h2>
-              <ProjectGrid
-                projects={featuredProjects}
-                currentUserId={null}
-                onProjectDeleted={() => window.location.reload()}
-              />
+            <div className="w-full">
+              <h2 className="text-2xl font-bold text-white mb-6">Featured Projects</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {featuredProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    currentUserId={user?.id ? user.id : undefined}
+                    xpToCollect={project.xpToCollect}
+                    myXp={userProjectXp[project.id] || 0}
+                  >
+                    <Link href={`/project/${project.id}`}>
+                      <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white">
+                        View Project
+                      </Button>
+                    </Link>
+                  </ProjectCard>
+                ))}
+              </div>
             </div>
           )}
 
           {/* All Projects */}
           <div className="w-full">
             <h2 className="text-2xl font-bold text-white mb-6">All Projects</h2>
-            <ProjectGrid
-              projects={allProjects}
-              currentUserId={null}
-              onProjectDeleted={() => window.location.reload()}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {allProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  currentUserId={user?.id ? user.id : undefined}
+                  xpToCollect={project.xpToCollect}
+                  myXp={userProjectXp[project.id] || 0}
+                >
+                  <Link href={`/project/${project.id}`}>
+                    <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white">
+                      View Project
+                    </Button>
+                  </Link>
+                </ProjectCard>
+              ))}
+            </div>
             
             {filteredProjects.length === 0 && (
               <div className="text-center py-12">

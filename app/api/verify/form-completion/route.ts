@@ -111,9 +111,7 @@ export async function POST(request: NextRequest) {
           method: 'form_verification',
           verified: true,
           form_url: formUrl
-        },
-        xp_earned: task.xp_reward,
-        xp_awarded: task.xp_reward
+        }
       }
 
       const { error: submissionError } = await supabase
