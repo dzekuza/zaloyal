@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Users, Zap, Trophy, Star } from "lucide-react";
 import Link from "next/link";
 import ProjectCard from "./ProjectCard";
+import { HeroGeometric } from "@/components/ui/shape-landing-hero";
 
 // Reusable error fallback component
 function ErrorFallback({ message }: { message: string }) {
