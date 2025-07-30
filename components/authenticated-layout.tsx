@@ -6,6 +6,7 @@ import Navigation from '@/components/navigation'
 import MobileNavigation from '@/components/mobile-navigation'
 import LoadingSpinner from '@/components/loading-spinner'
 import OnboardingAlertBar from '@/components/onboarding-alert-bar'
+import AIQuestChat from '@/components/ai-quest-chat'
 import { useAuth } from '@/components/auth-provider-wrapper'
 import { useToast } from '@/hooks/use-toast'
 import AuthDialog from '@/components/auth-dialog'
@@ -62,8 +63,11 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
       
       {/* Onboarding Alert Bar */}
       <OnboardingAlertBar />
+      
+      {/* AI Quest Chat - Only show for project owners */}
+      {user && <AIQuestChat />}
     </div>
-  ), [children]);
+  ), [children, user]);
 
   // Memoized auth dialog event handler
   useEffect(() => {
